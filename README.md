@@ -3,7 +3,7 @@
 **Team workspace for the Tanda AI Hackathon 2026 — Brisbane, 20–21 November.**
 Theme: *Bring an idea to life.* Research, strategy, idea selection and the build plan live here.
 
-**🎯 We're building [`UNSEEN`](docs/07-instruments.md#4--unseen--a-phone-that-shows-you-motion-your-eyes-cant-resolve)** — a phone that shows you motion your eyes can't resolve. Point it at a hand and watch a pulse appear. Point it at a fan and see the bearing that's about to fail.
+**🎯 We're building [`BUZZ CHECK`](docs/08-three-ideas.md)** — a body-drift recorder. Log a drink, hold still, and find out how far you've moved from your own normal. Three sensor channels: phone accelerometer, camera, and a smart ring over Bluetooth.
 
 📋 **[Team plan page](https://claude.ai/artifact/9XfYmYj56wfpLVB24GecEj)** — the build plan with a live countdown, tickable gates, the pre-mortem and the demo script. *(Ask Bharath for access.)*
 
@@ -50,7 +50,8 @@ Read them in order; later ones correct earlier ones where they disagree.
 | **[`docs/04-idea-selection.md`](docs/04-idea-selection.md)** | Idea pool 1 critiqued, plus the verified browser and hardware constraints that rule out whole categories of project. |
 | **[`docs/05-merged-ideas.md`](docs/05-merged-ideas.md)** | Idea pool 2 audited for uniqueness, and the merge that folds four of them into one. |
 | **[`docs/06-patient-zero.md`](docs/06-patient-zero.md)** | A crowd-scale merge of 8 of the 12 ideas. Superseded by `07`; kept for the hardware verdict. |
-| **[`docs/07-instruments.md`](docs/07-instruments.md)** | 🎯 **The pick.** Where the earlier docs over-read the brief, the real prizes and schedule, and five non-game instrument ideas. |
+| **[`docs/07-instruments.md`](docs/07-instruments.md)** | Where the earlier docs over-read the brief, the real prizes and schedule, and five non-game instrument ideas. |
+| **[`docs/08-three-ideas.md`](docs/08-three-ideas.md)** | 🎯 **The pick.** Why our three ideas are one instrument, the wearable feasibility verdicts, and the science behind Wired vs Tipsy. |
 | **[`IDEA`](IDEA)** | The locked idea in one sentence, plus the go/no-go checklist. |
 
 ## The strategy in short
@@ -62,18 +63,25 @@ video-generation platform and a VR mood detector.
 
 But the brief says *"pick up, try, experience **or use**"*, and *"a link the judges open on their own
 phone"* is its own bullet. **A single-user instrument qualifies.** So: build one instrument, flawless
-at the one thing it does, that a judge can point at their own hand and immediately understand. Not an
-AI chat wrapper — that will be the most common project in the room.
+at the one thing it does, that a judge can use on themselves and immediately understand. Not an AI
+chat wrapper — that will be the most common project in the room.
 
-Full reasoning and counter-arguments: `docs/02` §3 and §5, `docs/07` §1.
+Buzz Check measures one thing through three sensors: **how far your body has drifted from its own
+baseline.** Phone accelerometer is the floor and works on every device; the camera is the showpiece;
+the ring is the hero instrument. Because it's all baseline-relative, a $20 ring is good enough.
+
+Full reasoning and counter-arguments: `docs/02` §3 and §5, `docs/07` §1, `docs/08`.
 
 ## Constraints we verified, so nobody rediscovers them at 2am
 
-- **Web Bluetooth does not exist on iOS Safari** — so on any iPhone — or in Firefox. The crowd's phones cannot read a wearable.
-- **Mi Band heart rate is auth-key gated** and returns one averaged BPM per 15–20s with no beat-to-beat. It's a stage prop, not a data source.
-- **Torch control is unsupported on Safari everywhere**, so camera work that needs the flash is Android-only.
-- **`navigator.vibrate` is Android-only.** Neither vibration nor torch can carry a signal.
-- Details and sources: `docs/04` §3.
+- **Web Bluetooth does not exist on iOS Safari** — so on any iPhone — or in Firefox. The crowd's phones cannot read a wearable; the ring is read from laptop Chrome or Android.
+- **Mi Band 8 is a dead end.** Gadgetbridge: third-party real-time heart rate is not supported on Xiaomi protobuf bands *even with the vendor app*. Auth token needs extracting from Mi Fitness logs, often from a rooted device.
+- **Mi Band 10 has a "Share HR" broadcast mode** that may expose the standard BLE Heart Rate Service. One 15-minute test, then move on either way.
+- **The Kmart (Anko) ring is a rebadged Colmi/Yawell QRing** — unencrypted, publicly documented protocol, HR + SpO2 + HRV, with an existing Web Bluetooth client. Kmart at 10 James St is ~500 m from the venue.
+- **Cheap ring HR can be ~30 bpm off.** Fine, because we measure drift from your own baseline, not absolute values.
+- **`DeviceMotionEvent.requestPermission()` must be called from a user gesture on iOS 13+**, or motion silently does nothing.
+- **Torch control is unsupported on Safari everywhere**; `navigator.vibrate` is Android-only. Neither can carry a signal.
+- Details and sources: `docs/04` §3 and `docs/08` §2.
 
 ## Working agreements
 
