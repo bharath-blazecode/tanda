@@ -30,6 +30,7 @@ Theme: *Bring an idea to life.* Research, strategy and build notes live here.
 | **[`docs/03-strategy-and-plan.md`](docs/03-strategy-and-plan.md)** | The playbook: idea shortlist with scores, architecture defaults, hour-by-hour gates, demo script, an 11-row pre-mortem, and questions to ask the organisers. |
 | **[`docs/04-idea-selection.md`](docs/04-idea-selection.md)** | The six submitted ideas critiqued against the real rubric, verified hardware/browser constraints, and five replacement ideas with a risk-hedged build plan. |
 | **[`docs/05-merged-ideas.md`](docs/05-merged-ideas.md)** | The team's second idea pool audited for uniqueness, and the merge that folds four of them into one buildable project. |
+| **[`docs/06-patient-zero.md`](docs/06-patient-zero.md)** | 🎯 **The pick.** One idea merged from 8 of the 12, with the hardware verdict and a reverse-priority build plan. |
 | **[`IDEA`](IDEA)** | Our locked idea, in one sentence. If it doesn't fit in one sentence, it isn't locked. |
 
 ## The short version of the strategy
