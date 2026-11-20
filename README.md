@@ -28,6 +28,7 @@ Theme: *Bring an idea to life.* Research, strategy and build notes live here.
 | **[`docs/01-hackathon-brief.md`](docs/01-hackathon-brief.md)** | The rules exactly as given — theme, judging rubric, team size, API-key rules, deadlines, logistics. Every fact is sourced and confidence-rated. |
 | **[`docs/02-past-hackathons.md`](docs/02-past-hackathons.md)** | 10 years of Tanda hackathons, what actually won in 2025, archetype analysis, and an explicit devil's-advocate section on where that analysis could be wrong. |
 | **[`docs/03-strategy-and-plan.md`](docs/03-strategy-and-plan.md)** | The playbook: idea shortlist with scores, architecture defaults, hour-by-hour gates, demo script, an 11-row pre-mortem, and questions to ask the organisers. |
+| **[`docs/04-idea-selection.md`](docs/04-idea-selection.md)** | The six submitted ideas critiqued against the real rubric, verified hardware/browser constraints, and five replacement ideas with a risk-hedged build plan. |
 | **[`IDEA`](IDEA)** | Our locked idea, in one sentence. If it doesn't fit in one sentence, it isn't locked. |
 
 ## The short version of the strategy
