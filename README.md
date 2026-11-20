@@ -53,7 +53,8 @@ Read them in order; later ones correct earlier ones where they disagree.
 | **[`docs/07-instruments.md`](docs/07-instruments.md)** | Where the earlier docs over-read the brief, the real prizes and schedule, and five non-game instrument ideas. |
 | **[`docs/08-three-ideas.md`](docs/08-three-ideas.md)** | Why the three ideas are one instrument, and the wearable feasibility verdicts. |
 | **[`docs/09-the-three-ideas.md`](docs/09-the-three-ideas.md)** | 📋 **The three ideas in full detail** — what each is, how it's built, its honest risks, and how they stack. Not yet prioritised. |
-| **[`docs/10-biosignals.md`](docs/10-biosignals.md)** | 🔬 **What actually detects alcohol and caffeine**, whether the ring provides it, the on-demand BLE commands, and what a local agent can honestly do. |
+| **[`docs/10-biosignals.md`](docs/10-biosignals.md)** | 🔬 **What actually detects alcohol and caffeine**, and what a local agent can honestly do. Hardware section superseded by `11`. |
+| **[`docs/11-the-ring.md`](docs/11-the-ring.md)** | 💍 **The Kmart ring** — which to buy, the real metric list (JRing/56ff), the standard-BLE shortcut, and the things that will bite you. |
 | **[`IDEA`](IDEA)** | The locked idea in one sentence, plus the go/no-go checklist. |
 
 ## The strategy in short
@@ -79,7 +80,7 @@ Full reasoning and counter-arguments: `docs/02` §3 and §5, `docs/07` §1, `doc
 - **Web Bluetooth does not exist on iOS Safari** — so on any iPhone — or in Firefox. The crowd's phones cannot read a wearable; the ring is read from laptop Chrome or Android.
 - **Mi Band 8 is a dead end.** Gadgetbridge: third-party real-time heart rate is not supported on Xiaomi protobuf bands *even with the vendor app*. Auth token needs extracting from Mi Fitness logs, often from a rooted device.
 - **Mi Band 10 has a "Share HR" broadcast mode** that may expose the standard BLE Heart Rate Service. One 15-minute test, then move on either way.
-- **The Kmart (Anko) ring is a rebadged Colmi/Yawell QRing** — unencrypted, publicly documented protocol, HR + SpO2 + HRV, with an existing Web Bluetooth client. Kmart at 10 James St is ~500 m from the venue.
+- **The Kmart (Anko) ring is a JRing/56ff device**, $29, all sizes the same hardware. HRV ✅, live HR ✅, SpO₂ ✅, blood pressure ✅, **skin temperature ❌**. It advertises the **standard BLE Heart Rate Service `0x180D`**, so live BPM in the browser is ~20 lines. Kmart at 10 James St is ~500 m from the venue.
 - **Cheap ring HR can be ~30 bpm off.** Fine, because we measure drift from your own baseline, not absolute values.
 - **`DeviceMotionEvent.requestPermission()` must be called from a user gesture on iOS 13+**, or motion silently does nothing.
 - **Torch control is unsupported on Safari everywhere**; `navigator.vibrate` is Android-only. Neither can carry a signal.

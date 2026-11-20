@@ -1,5 +1,10 @@
 # 10 — What actually detects alcohol and caffeine, and what the ring gives you
 
+> ⚠️ **Superseded in part by [`11-the-ring.md`](11-the-ring.md).** This document assumed the Kmart ring
+> would be a Colmi/QRing device. It isn't — it's a **JRing / 56ff**, which has **no skin temperature
+> sensor** but **does** have blood pressure and spot SpO₂. The alcohol and caffeine physiology in §1–3
+> below is unchanged and still correct; §4's capability table is the wrong ring. Use `11` for hardware.
+
 > **TL;DR — the short answer to your question.**
 > **Alcohol: yes, the ring is the right instrument.** HRV down, resting HR up, skin temperature up —
 > that's the signature Oura and WHOOP built products on, and the QRing family exposes **HRV and skin
