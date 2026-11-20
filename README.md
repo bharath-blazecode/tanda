@@ -3,7 +3,7 @@
 **Team workspace for the Tanda AI Hackathon 2026 — Brisbane, 20–21 November.**
 Theme: *Bring an idea to life.* Research, strategy, idea selection and the build plan live here.
 
-**🎯 We're building [`BUZZ CHECK`](docs/08-three-ideas.md)** — a body-drift recorder. Log a drink, hold still, and find out how far you've moved from your own normal. Three sensor channels: phone accelerometer, camera, and a smart ring over Bluetooth.
+**Three ideas, not yet prioritised** — [`UNSEEN`](docs/09-the-three-ideas.md#idea-1--unseen) (camera), [`BUZZ CHECK`](docs/09-the-three-ideas.md#idea-2--buzz-check-phone-sensors) (phone sensors) and [`THE WEARABLE`](docs/09-the-three-ideas.md#idea-3--the-wearable--the-one-the-team-wants) (smart ring). They share one spine: **measure how far a body has drifted from its own baseline.** Each works alone; together they're three channels on one instrument.
 
 📋 **[Team plan page](https://claude.ai/artifact/9XfYmYj56wfpLVB24GecEj)** — the build plan with a live countdown, tickable gates, the pre-mortem and the demo script. *(Ask Bharath for access.)*
 
@@ -51,7 +51,9 @@ Read them in order; later ones correct earlier ones where they disagree.
 | **[`docs/05-merged-ideas.md`](docs/05-merged-ideas.md)** | Idea pool 2 audited for uniqueness, and the merge that folds four of them into one. |
 | **[`docs/06-patient-zero.md`](docs/06-patient-zero.md)** | A crowd-scale merge of 8 of the 12 ideas. Superseded by `07`; kept for the hardware verdict. |
 | **[`docs/07-instruments.md`](docs/07-instruments.md)** | Where the earlier docs over-read the brief, the real prizes and schedule, and five non-game instrument ideas. |
-| **[`docs/08-three-ideas.md`](docs/08-three-ideas.md)** | 🎯 **The pick.** Why our three ideas are one instrument, the wearable feasibility verdicts, and the science behind Wired vs Tipsy. |
+| **[`docs/08-three-ideas.md`](docs/08-three-ideas.md)** | Why the three ideas are one instrument, and the wearable feasibility verdicts. |
+| **[`docs/09-the-three-ideas.md`](docs/09-the-three-ideas.md)** | 📋 **The three ideas in full detail** — what each is, how it's built, its honest risks, and how they stack. Not yet prioritised. |
+| **[`docs/10-biosignals.md`](docs/10-biosignals.md)** | 🔬 **What actually detects alcohol and caffeine**, whether the ring provides it, the on-demand BLE commands, and what a local agent can honestly do. |
 | **[`IDEA`](IDEA)** | The locked idea in one sentence, plus the go/no-go checklist. |
 
 ## The strategy in short
