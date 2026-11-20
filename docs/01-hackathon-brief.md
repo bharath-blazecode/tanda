@@ -1,9 +1,12 @@
 # 01 — Hackathon Brief: the rules, as given
 
-> **TL;DR** — Tanda AI Hackathon, Brisbane, **Fri 20 Nov 17:30 → Sat 21 Nov 19:00 AEST**.
-> Theme: **"Bring an idea to life."** Teams of **2–6**. One **US$150** Anthropic key per team.
-> **Showcase link due in `#showcase` by 16:30 Saturday.** 2 slides, ~2 min pitch, 2 min for the room to play.
-> The single hardest constraint: **it must work, right now, on a stranger's own phone, on their own mobile data.**
+> **TL;DR** — Tanda AI Hackathon, Brisbane. Theme: **"Bring an idea to life."** Teams of **2–6**.
+> One **US$150** Anthropic key per team. **Link in `#showcase` by 16:30 Saturday**, demos **17:00**
+> with a 90-minute cap, winners **19:30**. First prize is **a year of Claude for every team member**.
+> The pass/fail test: **it works, right now, on a stranger's own phone.**
+
+*Every fact on this page is from the organisers' kickoff deck (8 slides) or the official Luma event
+page. Nothing here is inferred.*
 
 ---
 
@@ -14,25 +17,35 @@
 | **Name** | Tanda AI Hackathon: *Bring an idea to life* |
 | **Host** | Tanda (Brisbane workforce-management SaaS). *Not officially affiliated with Anthropic/Claude.* |
 | **Organisers** | Philip Fraser, Austin Wilshire (Head of Engineering), Ellen Mackenzie |
-| **Venue** | 100 Wickham St, Fortitude Valley QLD 4006 (Tanda office) |
+| **Venue** | 100 Wickham St, Fortitude Valley QLD 4006 |
 | **Starts** | Friday 20 November 2026, 17:30 AEST |
-| **Ends** | Saturday 21 November 2026, 19:00 AEST |
-| **Build window** | ~23 hours to the `#showcase` deadline (16:30 Sat) |
+| **Ends** | Saturday 21 November 2026, ~20:00 AEST |
+| **Build window** | ~23 hours to the `#showcase` deadline |
 | **Cost** | Free (Participant / Spectator tickets) |
-| **Scale** | 223 registered on Luma at time of writing (2025 ran ~150–156 attendees) |
+| **Scale** | 223 registered on Luma. *(Demos are capped at 90 minutes — at ~4 min a team that's roughly 22 slots, so the field is likely smaller than registrations suggest.)* |
 | **Tooling provided** | Claude Code + Anthropic API access |
-| **Prizes** | **Not publicly announced.** See §6 — do not plan around a prize figure. |
+| **Venue wifi** | `Tanda-Guest` / `Guest@Tanda25!` |
+| **Team registration** | `hackathon-teams-vxlk.onrender.com` — one person creates the team, the rest join |
+| **Slack** | `tandahackathon2026.slack.com` · `#team-formation` · `#showcase` |
 
-## 2. The theme, as stated officially
+## 2. The theme, as stated
 
-> "This year's invitation is simple: **bring an idea to life.** Pick an idea you're keen to build.
-> It could be **a game**, **something that solves a small annoyance**, or **a ridiculous experiment that has
-> no practical purpose at all**. Have some fun with it and **make something we can try**."
+> **Bring an idea to life.**
+> *Build something people can **pick up, try, experience or use**, not just watch.
+> On Saturday the crowd and the judges will try your project for themselves.*
 
-Three sanctioned lanes. Note that two of the three are explicitly *not* "useful product". The
-operative phrase is the last one: **make something we can try.**
+And from the event page:
 
-## 3. "What counts as brought to life" (from the briefing slides)
+> *"Pick an idea you're keen to build. It could be **a game**, **something that solves a small
+> annoyance**, or **a ridiculous experiment that has no practical purpose at all**. Have some fun
+> with it and **make something we can try**."*
+
+⚠️ **Read "experience or use" literally.** It does not have to be a game, and it does not have to be
+multiplayer — see the "This counts" list below, where *"a link the judges open on their own phone"*
+stands on its own. An earlier version of this document over-read the brief as requiring a crowd
+game; `07-instruments.md` §1 corrects that.
+
+## 3. "What counts as brought to life"
 
 | ✅ This counts | ❌ This doesn't |
 |---|---|
@@ -40,34 +53,33 @@ operative phrase is the last one: **make something we can try.**
 | A multi-player game, tool or toy the crowd can play with | A form that saves to nowhere |
 | Something works end to end | Something only your team can run |
 
-> "Hosting is up to you and can be dead simple. Any working link is ideal. **Be aware that the
-> auditorium has its own network, not everyone in the crowd will be on it. Test that before demos.**"
+> *"**Hosting is up to you and can be dead simple.** Any working link is ideal. Be aware that the
+> auditorium has its own network, not everyone in the crowd will be on it. **Test that before demos.**"*
 
-**Read this table as a scoring function, not as flavour text.** Each ❌ is a named, disqualifying
-failure mode that somebody has clearly done before. See `03-strategy-and-plan.md` §3 for why the
-network sentence is the most dangerous line on the slide.
+The three "counts" items are **alternatives, not a checklist** — any one of them qualifies. The three
+"doesn't" items are named, disqualifying failure modes. That last paragraph is the most dangerous
+line in the deck: it means `localhost`, a laptop server and a tunnel bound to your machine are all
+losing architectures, because judges open your link later, without you.
 
 ## 4. Teams
 
 - **2–6 people per team.**
-- Teams form in **`#team-formation`** on Slack.
-- 2025 precedent: teams of 3 placed highly. Headcount is not the constraint; coordination is.
+- Teams form in `#team-formation` on Slack.
+- Register at `hackathon-teams-vxlk.onrender.com` — **one person creates the team, the others join it.**
 
-## 5. The Anthropic API key — rules and the trap
+## 5. The Anthropic API key
 
 - **One key per team, with US$150 of credit.**
-- **Grab it from Philip** once your team is set.
-- **"Plan with Opus, build with Sonnet."** (Organisers' explicit guidance.)
+- **Grab it from Philip** once your team is registered.
+- **"Plan with Opus, build with Sonnet."**
 - ⚠️ **"Your app's users spend it too: cap requests."**
 - Run out → **message Philip on Slack.**
-- 🔒 **Keep it secret. Never commit it.**
+- 🔒 **"Keep it secret. Never commit it."**
 
-**The trap, spelled out:** that US$150 is not only your development budget. If your demo calls the
-API from the crowd's phones, ~200 people hitting it during a 2-minute play window spend it too —
-and they spend it at the worst possible moment, live, in front of the judges. A 2025 team reported
-burning **US$55 in a single night of testing** on an AI-video project. That is a third of the budget
-on *testing alone*. Budget engineering is a first-class design constraint here, not an afterthought.
-Mitigations are in `03-strategy-and-plan.md` §4.
+**The trap:** that US$150 is not only your development budget. If your demo calls the API from the
+audience's phones, they spend it live, in front of the judges. A 2025 team burned **US$55 in one
+night of testing**. Budget engineering is a design constraint, not an afterthought — see
+`03-strategy-and-plan.md` §4 for the controls.
 
 ## 6. Judging
 
@@ -85,37 +97,41 @@ Mitigations are in `03-strategy-and-plan.md` §4.
 3. Pitch it quickly, then show it and **let the room try it**.
 4. **Judges try every project before deciding.**
 
-**Four of the five criteria are about the audience experience, not the code.** "Technical ingenuity"
-is the only engineering-weighted criterion and it is explicitly fenced: *clever answers to hard
-problems, not complexity for its own sake*. This is the most important fact in this document and
-the whole of `03-strategy-and-plan.md` is derived from it.
+Four of the five criteria are about the audience experience, not the code. "Technical ingenuity" is
+the only engineering-weighted one and it is explicitly fenced against complexity for its own sake.
+Point 4 means your hosted link is judged *after* your slot, possibly cold, from a judge's own phone,
+with your laptop shut — **your project must survive your absence.**
 
-**"Judges try every project before deciding"** means your hosted link is judged *after* your slot,
-possibly cold, possibly from a judge's own phone, possibly while your laptop is shut.
-**Your project must survive your absence.**
+## 7. Prizes
 
-## 7. Hard deadlines
+| | |
+|---|---|
+| 🥇 **First place** | **A year of Claude, for every member of the team** |
+| 🥈 **Runner up** | **$50, for every member of the team** |
+
+## 8. Saturday 21 November — the official schedule
 
 | Time (AEST) | What |
 |---|---|
-| Fri 17:30 | Event opens |
-| Fri evening | Team formation (`#team-formation`), pitch ideas, collect API key from Philip |
-| **Sat 16:30** | **🚨 Link posted in `#showcase`. This is the real deadline.** |
-| Sat evening | Demos: 2 slides / ~2 min pitch / 2 min play, per team |
-| Sat 19:00 | Event ends |
+| 08:00 | Light breakfast and kickoff |
+| All day | Build — *"aim to be demo-ready by 5pm"* |
+| 12:30 | Lunch arrives |
+| **16:30** | 🚨 **Link due in `#showcase`.** Spectators arrive, drinks and snacks |
+| **17:00** | **Demos — 90 minute cap** |
+| 18:30 | Dinner |
+| **19:30** | **Winners announced** |
+| 20:00 | Home, or drinks at The Osborne in Fortitude Valley |
 
-Treat **16:30 Saturday** as the end of the hackathon, not 19:00. Everything after it is
-presentation. Working backwards from it is the only schedule that matters — see
-`03-strategy-and-plan.md` §6.
+**Treat 16:30 as the end of the hackathon.** Everything after it is presentation. Note that demos are
+at **17:00, not 19:00** — the build day is shorter than the event's end time suggests.
 
 ---
 
-## Provenance of this document
+## Change log
 
-| Fact | Source | Confidence |
-|---|---|---|
-| Theme, dates, venue, hosts, ticket types, Claude Code/API provision | Official Luma event page (`luma.com/n0sbm2px`) | **High** — primary |
-| Judging rubric, "what counts", team size, API key rules, showcase deadline | Photographs of the organisers' briefing slides, taken in the room 20 Nov ~18:00 | **High** — primary, but transcribed from projected slides at an angle; re-check exact wording against the deck |
-| Registration count (223) | Luma, 20 Nov 2026 | Medium — moves |
-| Prize amounts | **Not found.** Public listings show the event with no prize field. A web-search snippet circulating "$1,500 / $800 / $200" could **not** be verified against any Tanda source and appears to be snippet contamination from an unrelated event. | **Do not rely on it.** |
-
+- **v2** — Rewritten against the organisers' kickoff deck. Added the real prizes, the full Saturday
+  schedule, venue wifi and the team-registration URL. Corrected the demo time to 17:00.
+  Flagged the "experience or use" wording that `07` acts on.
+- **v1** — Built from photographs of the briefing slides plus the Luma event page. The
+  "$1,500 / $800 / $200" prize figure circulating in search results was flagged as unverified;
+  **the deck confirms it was wrong.** Good thing nothing was planned around it.
