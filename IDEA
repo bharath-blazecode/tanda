@@ -1,17 +1,32 @@
 LOCKED IDEA
 ===========
 
-  BUZZ CHECK - a body drift recorder.
+      KACHKA   (KATCH-ka)
+
+  Russian  качка  = the rolling and pitching of a ship
+  Ukrainian качка = duck
+
+      DR. KACHKA
+      Body drift recorder · Model BC-2
+      Peer-reviewed by a bin chicken
 
 Log a drink, hold still, find out how far you've moved from your own normal.
-Steady / Wired / Tipsy / Wobbly, printed on a receipt, signed by a bin chicken.
+Steady / Wired / Tipsy / Wobbly, printed on a receipt.
 
 It is a toy, not a test. Say that on the slide.
 
-Status + plan:  docs/12-current-plan.md
-Flow artifact:  https://claude.ai/artifact/PxjfUo9T94tEkLCm1eNk3z
-Lens artifact:  https://claude.ai/artifact/1S1tCjbbQxQF2u7MS4BimT
-Ring dossier:   https://claude.ai/artifact/R3XmooEsVLgv4nF1oQzKMM   (Tier 3, on hold)
+The name:      docs/13-the-name.md
+Status + plan: docs/12-current-plan.md
+Flow artifact: https://claude.ai/artifact/PxjfUo9T94tEkLCm1eNk3z
+Lens artifact: https://claude.ai/artifact/1S1tCjbbQxQF2u7MS4BimT
+Ring dossier:  https://claude.ai/artifact/R3XmooEsVLgv4nF1oQzKMM   (Tier 3, on hold)
+
+
+WHEN SOMEONE ASKS WHAT IT MEANS  (12 seconds, gets a laugh, is true)
+--------------------------------------------------------------------
+  "Kachka is what Russian sailors call it when the ship won't hold still.
+   It's also Ukrainian for duck. We measure one and we're signed off by
+   the other."
 
 
 TIERS
@@ -36,14 +51,13 @@ THE RISK THAT MATTERS
   Both work properly ONLY once hosted on our own HTTPS URL.
 
   => Deploy to a free host NOW. Do not block on buying a domain.
-     A working something.vercel.app beats a half-propagated custom domain.
 
 
 TODAY  (link due 16:30, demos 17:00)
 ------
   11:30  Public HTTPS URL live                        <- nothing counts until this
   12:30  Real motion on a real iPhone, mobile data
-  13:30  HARD FEATURE FREEZE. Both tiers, one link.
+  13:30  HARD FEATURE FREEZE. Both tiers, one link. Rename in the same pass.
   14:30  Ten strangers, their own phones, iOS + Android
   15:00  Slides done, first rehearsal on a stopwatch
   15:45  Second rehearsal, someone tries to break it
@@ -51,12 +65,21 @@ TODAY  (link due 16:30, demos 17:00)
   16:30  Deadline
 
 
-DECIDE BEFORE 13:30
--------------------
-  [ ] Does the lens merge into the flow as Test 3 of 3, or stay a second link?
-      Merging is better for judging. Costs about an hour.
-  [ ] The name. "Buzz Check" is on every screen already.
-      Recommendation: ship as Buzz Check, rename later if the domain forces it.
+RENAME CHECKLIST  (text change, not a redesign)
+-----------------------------------------------
+  [ ] Flow artifact - plate name, <title>, landing copy
+  [ ] Lens artifact - plate name, <title>, bench header
+  [ ] Receipt signature -> Dr. Kachka
+  [ ] Slide 1 - the name above the QR
+  [ ] #showcase post
+  [x] Repo README, IDEA, docs/12, docs/13
+
+
+DOMAIN  (don't block on it)
+---------------------------
+  kachka.app      best fit
+  drkachka.com    matches the signature, likely wide open
+  kachka.co  /  kachka.dev  /  kachka.com.au
 
 
 TEAM
@@ -67,4 +90,4 @@ TEAM
   API key collected from Philip:  [ ]
   Team registered at hackathon-teams-vxlk.onrender.com:  [ ]
   Public URL:
-  Domain (optional):
+  Domain:
