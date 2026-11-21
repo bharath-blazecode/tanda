@@ -215,7 +215,7 @@ It replaces the working titles Body Check and Buzz Check. The name lives in one 
 **D48. Deploy as built.** Locked 21 Nov, 12:30. Replaces D5b (no mirror repo) and updates D5c.
 - **Where:** `https://kachka.fun`, with `https://kachka.mikepineda.work` as the fallback. Both point at the same Dokploy application on Mike's server, behind Cloudflare.
 - **How Dokploy gets the code:** it clones the team repo directly with a read-only deploy key. The private half was generated on the server and never left it. There is no mirror repo and no second remote.
-- **What triggers a deploy:** a push to `main`, through a repository webhook to Dokploy. Calling Dokploy from a GitHub Actions runner does not work: Cloudflare answers the runner with a challenge page (403), so that step was removed from the workflow. A deploy can always be started by hand from the Dokploy panel.
+- **What triggers a deploy:** a push to `main`. The GitHub Actions workflow runs the checks and then calls Dokploy's deploy webhook (secret `DOKPLOY_DEPLOY_URL`), so a deploy only starts when the checks pass. For this to work, Cloudflare's Bot Fight Mode is off on the zone that serves the Dokploy panel: with it on, Cloudflare answered the runner with a 403 challenge page. On the free plan that setting cannot be excepted for one path. A deploy can always be started by hand from the Dokploy panel.
 - **The gate:** CI (`npm run check` and build) runs on every pull request. Wait for it to pass before merging, because merging is what deploys.
 - **Secrets:** the Anthropic key and the room admin token live only in the Dokploy environment.
 - **Cost of a redeploy:** the server restarts, so the room board and the in-memory limits reset. Freeze merges at 16:15 (D29).

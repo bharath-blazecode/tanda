@@ -1,4 +1,4 @@
-name: check
+name: check and deploy
 
 on:
   pull_request:
@@ -26,6 +26,32 @@ jobs:
       - run: npm run check
       - run: npm run build
 
-# Deploys are not triggered from here. Cloudflare challenges calls from GitHub's runners to the
-# Dokploy panel (403 "Just a moment..."), so the call never arrives. Dokploy is told about a push by a
-# repository webhook instead (Settings > Webhooks, push events), or by a manual deploy from the panel.
+  deploy:
+    # Merging to main deploys, but only after the checks pass.
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask Dokploy to build and deploy this commit
+        env:
+          # A URL that can only redeploy this one app. Set by the repo owner under
+          # Settings > Secrets and variables > Actions.
+          DOKPLOY_DEPLOY_URL: ${{ secrets.DOKPLOY_DEPLOY_URL }}
+        run: |
+          if [ -z "$DOKPLOY_DEPLOY_URL" ]; then
+            echo "DOKPLOY_DEPLOY_URL is not set; skipping the deploy."
+            exit 0
+          fi
+          # Dokploy expects the shape of a GitHub push event and checks the branch in it.
+          # Note: Cloudflare's Bot Fight Mode on the panel's zone must stay off, or it answers
+          # this runner with a 403 challenge page and the request never arrives.
+          code=$(curl -sS -o /tmp/deploy.out -w '%{http_code}' -X POST "$DOKPLOY_DEPLOY_URL" \
+            -H 'content-type: application/json' \
+            -H 'x-github-event: push' \
+            -d "{\"ref\":\"refs/heads/main\",\"head_commit\":{\"id\":\"$GITHUB_SHA\",\"message\":\"deploy $GITHUB_SHA\"}}")
+          echo "Dokploy answered $code"
+          # Print a short, safe summary only: a challenge page is long and useless in a log.
+          head -c 200 /tmp/deploy.out || true
+          echo
+          test "$code" -ge 200 && test "$code" -lt 300
