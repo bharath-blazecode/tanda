@@ -88,9 +88,10 @@ export function Check() {
   // Known to have no motion this session: do not mount Stand Still only to watch it stall.
   const noMotion = getMotionAvailability() === 'unavailable'
 
-  // A pulse only counts when the baseline has one as well (D46), so if it does not, do not
-  // spend eighteen seconds of someone's time collecting a number nothing can use.
-  const wantPulse = baseline.run.hr !== undefined
+  // The step is always offered. It is only SCORED when the baseline has a pulse too (D46), but
+  // gating the step on that trapped anyone whose normal predates the camera step, or who skipped
+  // it once: they could never be offered it again. Showing a rate is worth something on its own.
+  const pulseWillScore = baseline.run.hr !== undefined
 
   if (step === 'intro') {
     return (
@@ -98,11 +99,16 @@ export function Check() {
         <Plate small serial={'Check\nAgainst your normal'} />
         <Sheet grow>
           <Label paper>Same two tests</Label>
-          <h2>About {wantPulse ? 'seventy' : 'fifty'} seconds.</h2>
+          <h2>About seventy seconds.</h2>
           <p>
             Stand still, then tap fast. We compare both against the normal you recorded.
-            {wantPulse ? ' Then an optional pulse reading you can skip.' : ''}
+            {' Then an optional pulse reading you can skip.'}
           </p>
+          {!pulseWillScore && (
+            <p className="k-small">
+              Your normal has no pulse in it, so this one will show but will not be scored.
+            </p>
+          )}
           {!baseline.run.stand && (
             <p className="k-small">
               Your normal has no standing test in it, so this one will not be scored.
@@ -152,10 +158,6 @@ export function Check() {
         <ChoiceTest
           label={noMotion ? 'No motion sensor here · Choice tap only' : 'Test 2 of 2 · Choice tap'}
           onDone={(metrics) => {
-            if (!wantPulse) {
-              void finish(metrics, null)
-              return
-            }
             setChoice(metrics)
             setStep('pulse')
           }}
