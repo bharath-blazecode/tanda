@@ -1,15 +1,33 @@
 // CARD 7. Result (docs/04-screens-spec.md, section 7).
 // The last reading, printed on the ticket. Everything comes from storage, so a reload prints the
 // same ticket again with no network call (the bird's line was saved with the result).
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { load } from '../../store/local'
-import { InkFilter } from '../../ui'
+import { InkFilter, Key } from '../../ui'
 import { guessFromDrift, guessLine, isDemoHandicap } from '../demo/guess'
 import { metricRows, printedAt, serialFor, ticketTags } from './format'
 import { ResultPreview } from './Preview'
-import { ResultTicket } from './ResultTicket'
+import { ResultTicket, nudges } from './ResultTicket'
+import { buildShareImage, canShareFile, shareOrSave, type ShareCard } from './share'
 import './result.css'
+
+/** The ticket as a picture. Built ahead of the tap, so the share sheet opens inside the gesture. */
+function ShareKey({ card }: { card: ShareCard }) {
+  const [file, setFile] = useState<File | null>(null)
+  const cardRef = useRef(card)
+  useEffect(() => {
+    let cancelled = false
+    void buildShareImage(cardRef.current).then((built) => {
+      if (!cancelled) setFile(built)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  if (!file) return null
+  return <Key onClick={() => void shareOrSave(file)}>{canShareFile(file) ? 'Share ticket' : 'Save ticket'}</Key>
+}
 
 export function Result() {
   const location = useLocation()
@@ -32,18 +50,38 @@ export function Result() {
       ? guessLine(guessFromDrift(assessment.drift), isDemoHandicap(picked) ? picked : undefined)
       : undefined
 
+  const rows = metricRows(assessment.drift, run, baseline.run)
+  const cleanLine = line.trim().replace(/^["“]+|["”]+$/g, '').trim()
+  const readingId = serialFor(run.at).replace(/^No\. /, '')
+  const timestamp = printedAt(run.at)
+  const tags = ticketTags({ mode, assessment, baselineClean: baseline.clean })
+  const card: ShareCard = {
+    name: stored.nickname,
+    readingId,
+    timestamp,
+    tags,
+    rows,
+    extra: guess,
+    verdict: assessment.verdict,
+    line: cleanLine,
+    nudge: nudges[assessment.nudge],
+    // The same rule as the ticket on screen: the safety line travels with the picture.
+    safety: assessment.showSafetyLine || assessment.verdict === 'tipsy',
+  }
+
   return (
     <>
       <InkFilter />
       <ResultTicket
         assessment={assessment}
-        rows={metricRows(assessment.drift, run, baseline.run)}
-        line={line.trim().replace(/^["“]+|["”]+$/g, '').trim()}
-        readingId={serialFor(run.at).replace(/^No\. /, '')}
-        timestamp={printedAt(run.at)}
+        rows={rows}
+        line={cleanLine}
+        readingId={readingId}
+        timestamp={timestamp}
         name={stored.nickname}
-        tags={ticketTags({ mode, assessment, baselineClean: baseline.clean })}
+        tags={tags}
         extra={guess}
+        action={<ShareKey card={card} />}
         againTo={mode === 'demo' ? '/demo' : '/check'}
       />
     </>

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { Assessment } from "../../../shared/contracts";
 import {
@@ -30,10 +31,12 @@ export type ResultTicketProps = {
   tags?: string[];
   /** One extra line under the rows: the demo's guess at the handicap. */
   extra?: string;
+  /** One more key above "Run again", e.g. sharing the ticket as a picture. */
+  action?: ReactNode;
   /** Where "Run again" goes. A demo reading goes back to the demo. */
   againTo?: string;
 };
-const nudges: Record<Assessment["nudge"], string> = {
+export const nudges: Record<Assessment["nudge"], string> = {
   "carry-on": "Carry on.",
   water: "Water, and a slow breath.",
   "no-more-caffeine": "No more coffee today. Water.",
@@ -52,6 +55,7 @@ export function ResultTicket({
   name,
   tags = [],
   extra,
+  action,
   againTo = "/check",
 }: ResultTicketProps) {
   // The data producer owns the verdict. The screen renders the supplied assessment.
@@ -131,6 +135,7 @@ export function ResultTicket({
           )}
           <Stub label="Next">{nudges[assessment.nudge]}</Stub>
         </Ticket>
+        {action}
         <nav className="k-keys k-keys--2" aria-label="After your reading">
           <Link className="k-key k-key--quiet result-link" to={againTo}>
             Run again
