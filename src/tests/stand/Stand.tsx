@@ -155,7 +155,7 @@ export function Stand({
       <p className="fine">
         A toy, not a test. For adults.
         <br />
-        <span lang="zh-Hant">請保持頁面開啟，直到結束提示音響起。</span>
+        Keep this page open until the end tone sounds.
       </p>
     </Housing>
   );
