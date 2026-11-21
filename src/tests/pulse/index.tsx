@@ -259,6 +259,15 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
             <Label paper>{label}</Label>
             <h2>No reading</h2>
             <p>{FAILURE_TEXT[result.reason]}</p>
+            {/* The numbers behind the failure. A pulse can only be debugged on the phone it
+                failed on, and "no reading" alone tells nobody anything. */}
+            <Rows
+              items={[
+                ['Lens covered', `${Math.round(result.coveredFraction * 100)}%`],
+                ['Rhythm found', result.confidence.toFixed(2)],
+                ['Frames', `${result.samples} in ${Math.round(result.seconds)}s`],
+              ]}
+            />
           </Sheet>
           <Key onClick={begin}>Try again</Key>
           <Key quiet onClick={skip}>

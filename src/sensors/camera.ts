@@ -16,13 +16,17 @@ export type CameraPermission = 'granted' | 'denied' | 'unsupported' | 'insecure'
  *  signal is a whole-field brightness change, and a small patch keeps the per-frame work tiny. */
 const PATCH = 48
 
+// These bounds are deliberately generous. A phone with no torch runs its auto-exposure hard
+// against a covered lens, so a real fingertip wanders far more than a clean test signal does.
+// The gate only chooses which advice to give on a failure; a clear rhythm is accepted whatever
+// it says (see analyzePulse), so being strict here only ever lost good readings.
 /** A covered lens is red-dominant, because a fingertip passes red light and blocks the rest. */
-const MIN_RED_DOMINANCE = 1.4
+const MIN_RED_DOMINANCE = 1.25
 /** Saturated white or pure black both mean the lens is not covered by a finger. */
-const MIN_RED = 12
-const MAX_RED = 250
+const MIN_RED = 8
+const MAX_RED = 253
 /** A covered lens is a flat field. A view of the room is not. */
-const MAX_SPREAD = 28
+const MAX_SPREAD = 40
 
 export function cameraSupported(): boolean {
   return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia

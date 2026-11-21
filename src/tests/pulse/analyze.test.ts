@@ -139,10 +139,26 @@ describe('analyzePulse', () => {
     expect(got.bpm!).toBeLessThan(82)
   })
 
-  it('says not-covered rather than guessing when the finger came off the lens', () => {
-    const got = analyzePulse(capture({ bpm: 72, covered: false }))
+  it('says not-covered when the lens gate failed AND there is no rhythm to be found', () => {
+    const got = analyzePulse(capture({ bpm: 72, amplitude: 0, noise: 30, covered: false }))
     expect(got.reason).toBe('not-covered')
     expect(got.bpm).toBeNull()
+  })
+
+  it('takes a clear rhythm even when the frame gate was unhappy', () => {
+    // Deliberate. A phone hunting for an exposure can push frames outside the single-frame
+    // gate while the pulse is still plainly there, and gating on coverage first threw those
+    // readings away. A steady rhythm is better evidence of a finger on a lens than any one frame.
+    const got = analyzePulse(capture({ bpm: 72, covered: false }))
+    expect(got.reason).toBe('ok')
+    expect(got.bpm!).toBeGreaterThan(69)
+    expect(got.coveredFraction).toBe(0)
+  })
+
+  it('reports what it saw, so a failure on a real phone can be diagnosed', () => {
+    const got = analyzePulse(capture({ bpm: 72 }))
+    expect(got.samples).toBeGreaterThan(100)
+    expect(got.seconds).toBeGreaterThan(15)
   })
 
   it('says too-short for a capture that cannot hold enough cycles', () => {

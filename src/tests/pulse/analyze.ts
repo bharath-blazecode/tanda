@@ -24,11 +24,14 @@ export const RESAMPLE_HZ = 30
 export const MIN_BPM = 40
 export const MAX_BPM = 180
 
-/** Autocorrelation peak height below this is noise, not a pulse. */
-export const MIN_CONFIDENCE = 0.5
+/** Autocorrelation peak height below this is noise, not a pulse. Real fingertip signals on a
+ *  phone with no torch sit a long way below a clean synthetic sine, so this is deliberately low:
+ *  a wrong rate is caught by the band check, not by demanding a pretty signal. */
+export const MIN_CONFIDENCE = 0.3
 
-/** Below this share of covered frames the finger was not on the lens for long enough. */
-export const MIN_COVERED_FRACTION = 0.8
+/** Below this share of covered frames we doubt the finger was on the lens. Advisory only: a
+ *  reading with a clear rhythm is accepted whatever this says (see analyzePulse). */
+export const MIN_COVERED_FRACTION = 0.6
 
 /** A capture shorter than this cannot hold enough cycles at MIN_BPM to trust. */
 export const MIN_CAPTURE_SECONDS = 8
@@ -43,6 +46,8 @@ export type PulseFailure = 'too-short' | 'not-covered' | 'no-rhythm'
 export type PulseAnalysis = {
   /** Average beats per minute, or null when we could not read one. */
   bpm: number | null
+  /** Frames used, after the settling ones are dropped. For diagnosing a failure on a real phone. */
+  samples: number
   /** Height of the autocorrelation peak, 0 to 1. Reported for diagnostics, never shown as health. */
   confidence: number
   /** Share of frames that passed the lens gate, 0 to 1. */
@@ -170,7 +175,7 @@ export function rateFromAutocorrelation(y: readonly number[], hz: number): { bpm
  * Returns a reason rather than throwing: every failure here is an ordinary outcome.
  */
 export function analyzePulse(samples: readonly PulseSample[], settleSeconds = SETTLE_SECONDS): PulseAnalysis {
-  const empty = { bpm: null, confidence: 0, coveredFraction: 0, seconds: 0 }
+  const empty = { bpm: null, confidence: 0, coveredFraction: 0, seconds: 0, samples: 0 }
   if (samples.length < 2) return { ...empty, reason: 'too-short' }
 
   const start = samples[0].t
@@ -179,18 +184,25 @@ export function analyzePulse(samples: readonly PulseSample[], settleSeconds = SE
 
   const seconds = (used[used.length - 1].t - used[0].t) / 1000
   const coveredFraction = used.filter((s) => s.covered).length / used.length
+  const base = { coveredFraction, seconds, samples: used.length }
 
-  if (seconds < MIN_CAPTURE_SECONDS) return { ...empty, coveredFraction, seconds, reason: 'too-short' }
-  if (coveredFraction < MIN_COVERED_FRACTION) return { ...empty, coveredFraction, seconds, reason: 'not-covered' }
+  if (seconds < MIN_CAPTURE_SECONDS) return { ...empty, ...base, reason: 'too-short' }
 
+  // Read the rate FIRST, and judge coverage only if that fails. Coverage was a hard gate before
+  // this, so a phone whose auto-exposure pushed a few frames outside the gate threw away a
+  // reading that was perfectly good. A clear rhythm is the better evidence of a finger on a lens
+  // than any single-frame test, so it wins.
   const grid = resample(used, RESAMPLE_HZ)
   // 0.1 s smooths sensor noise; 1.5 s is longer than one beat at MIN_BPM, so the slow term
-  // removes drift and finger pressure without removing the pulse.
+  // removes drift, finger pressure and the camera hunting for an exposure, without removing
+  // the pulse itself.
   const filtered = bandpass(grid, RESAMPLE_HZ, 0.1, 1.5)
   const { bpm, confidence } = rateFromAutocorrelation(filtered, RESAMPLE_HZ)
 
-  if (bpm === null || confidence < MIN_CONFIDENCE) {
-    return { bpm: null, confidence, coveredFraction, seconds, reason: 'no-rhythm' }
+  if (bpm !== null && confidence >= MIN_CONFIDENCE) {
+    return { bpm: Math.round(bpm), confidence, ...base, reason: 'ok' }
   }
-  return { bpm: Math.round(bpm), confidence, coveredFraction, seconds, reason: 'ok' }
+  // No rate. Now coverage decides which advice to give.
+  const reason: PulseFailure = coveredFraction < MIN_COVERED_FRACTION ? 'not-covered' : 'no-rhythm'
+  return { bpm: null, confidence, ...base, reason }
 }
