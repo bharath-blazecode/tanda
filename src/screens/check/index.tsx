@@ -9,13 +9,14 @@ import { cannedLine } from '../../engine/canned'
 import { assess } from '../../engine/classify'
 import { CAFFEINE_MG } from '../../engine/nudge'
 import { ChoiceTest } from '../../tests/choice'
+import { PulseTest } from '../../tests/pulse'
 import { StandTest } from '../../tests/stand'
 import { getMotionAvailability } from '../../sensors/motion'
 import { drinksToday } from '../../store/day'
 import { load, update } from '../../store/local'
 import { Housing, Key, Label, Plate, Sheet } from '../../ui'
 
-type Step = 'intro' | 'stand' | 'choice' | 'scoring'
+type Step = 'intro' | 'stand' | 'choice' | 'pulse' | 'scoring'
 
 export function Check() {
   const navigate = useNavigate()
@@ -25,6 +26,7 @@ export function Check() {
   const mode: Mode = handed?.mode === 'demo' ? 'demo' : 'real'
   const [step, setStep] = useState<Step>('intro')
   const [stand, setStand] = useState<StandMetrics | null>(null)
+  const [choice, setChoice] = useState<ChoiceMetrics | null>(null)
 
   // A check only means something against a baseline.
   useEffect(() => {
@@ -34,10 +36,15 @@ export function Check() {
   if (!stored.baseline) return null
   const baseline = stored.baseline
 
-  const finish = async (choice: ChoiceMetrics) => {
+  const finish = async (taps: ChoiceMetrics, hr: number | null) => {
     setStep('scoring')
     const now = Date.now()
-    const run: RunResult = { stand: stand ?? undefined, choice, at: now }
+    const run: RunResult = {
+      stand: stand ?? undefined,
+      choice: taps,
+      at: now,
+      ...(hr === null ? {} : { hr, hrSource: 'camera' as const }),
+    }
     const today = drinksToday(stored.drinks, now)
 
     const assessment = assess({
@@ -81,14 +88,21 @@ export function Check() {
   // Known to have no motion this session: do not mount Stand Still only to watch it stall.
   const noMotion = getMotionAvailability() === 'unavailable'
 
+  // A pulse only counts when the baseline has one as well (D46), so if it does not, do not
+  // spend eighteen seconds of someone's time collecting a number nothing can use.
+  const wantPulse = baseline.run.hr !== undefined
+
   if (step === 'intro') {
     return (
       <Housing>
         <Plate small serial={'Check\nAgainst your normal'} />
         <Sheet grow>
           <Label paper>Same two tests</Label>
-          <h2>About fifty seconds.</h2>
-          <p>Stand still, then tap fast. We compare both against the normal you recorded.</p>
+          <h2>About {wantPulse ? 'seventy' : 'fifty'} seconds.</h2>
+          <p>
+            Stand still, then tap fast. We compare both against the normal you recorded.
+            {wantPulse ? ' Then an optional pulse reading you can skip.' : ''}
+          </p>
           {!baseline.run.stand && (
             <p className="k-small">
               Your normal has no standing test in it, so this one will not be scored.
@@ -123,9 +137,11 @@ export function Check() {
 
   return (
     <Housing>
-      <Plate small serial={`Check\n${step === 'stand' ? '1' : '2'} of 2`} />
+      <Plate small serial={`Check\n${step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
       {step === 'stand' && <Label>Test 1 of 2 · Stand still</Label>}
-      {step === 'stand' ? (
+      {step === 'pulse' ? (
+        <PulseTest label="Optional · Pulse" onDone={(hr) => void finish(choice!, hr)} />
+      ) : step === 'stand' ? (
         <StandTest
           onDone={(metrics) => {
             setStand(metrics)
@@ -135,7 +151,14 @@ export function Check() {
       ) : (
         <ChoiceTest
           label={noMotion ? 'No motion sensor here · Choice tap only' : 'Test 2 of 2 · Choice tap'}
-          onDone={finish}
+          onDone={(metrics) => {
+            if (!wantPulse) {
+              void finish(metrics, null)
+              return
+            }
+            setChoice(metrics)
+            setStep('pulse')
+          }}
         />
       )}
       {step === 'stand' && (
