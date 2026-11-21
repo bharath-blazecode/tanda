@@ -25,12 +25,17 @@ export function Check() {
   // Demo hands over its mode and the handicap picked; anything else is a real check.
   const handed = useLocation().state as { mode?: Mode; handicap?: Handicap } | null
   const mode: Mode = handed?.mode === 'demo' ? 'demo' : 'real'
-  const [step, setStep] = useState<Step>('intro')
+  // Quick demo arrives here straight from the normal, so it starts on the first test, with the
+  // pulse step on, rather than on another screen to tap through.
+  const quickStart = isQuickDemo()
+  const [step, setStep] = useState<Step>(
+    quickStart ? (getMotionAvailability() === 'unavailable' ? 'choice' : 'stand') : 'intro',
+  )
   const [stand, setStand] = useState<StandMetrics | null>(null)
   const [choice, setChoice] = useState<ChoiceMetrics | null>(null)
   // The pulse step is opt-in: it fails often enough on real phones that nobody should meet it
   // unasked, least of all in a two-minute demo. One quiet key on the intro turns it on.
-  const [withPulse, setWithPulse] = useState(false)
+  const [withPulse, setWithPulse] = useState(quickStart)
 
   // A check only means something against a baseline.
   useEffect(() => {
