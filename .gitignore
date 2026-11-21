@@ -24,3 +24,6 @@ Thumbs.db
 
 # Server bundle
 dist-server/
+
+# Claude Code worktrees (local only)
+.claude/worktrees/

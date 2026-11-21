@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-server
+docs
+.claude
+.github
+*.md
+.env
+.env.*
+!.env.example
+.DS_Store

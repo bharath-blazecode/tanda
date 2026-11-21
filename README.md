@@ -140,3 +140,15 @@ gh repo edit bharath-blazecode/tanda --description "KACHKA - a body drift record
 ```bash
 gh repo edit bharath-blazecode/tanda --add-topic kachka --add-topic hackathon --add-topic tanda-hackathon --add-topic brisbane --add-topic claude-code
 ```
+
+---
+
+## Run the app
+
+```bash
+npm install
+npm run dev      # web on http://localhost:5173, API on :3333
+npm run check    # typecheck + unit tests, before every push
+```
+
+Open `/lab` for links to every piece. Working rules, layout and product rules are in [`CLAUDE.md`](CLAUDE.md); the task cards are in [`docs/05-architecture.md`](docs/05-architecture.md). Three Claude Code skills ship with the repo: `card` (how to work a card), `check` (the pre-push gate) and `phone` (test on a real phone over HTTPS).
