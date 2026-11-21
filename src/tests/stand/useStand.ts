@@ -5,6 +5,7 @@ import {
   type MotionReading,
 } from "../../sensors/motion";
 import { analyze, CAPTURE_SECONDS, type StandAnalysis } from "./analyze";
+import { startStandMusic } from "./music";
 export type Phase =
   | "intro"
   | "permission"
@@ -64,6 +65,7 @@ export function useStand(
     let audio: AudioContext | null = null;
     let timer: ReturnType<typeof setInterval> | undefined;
     let unsubscribe = () => {};
+    let stopMusic = () => {};
     const oscillators = new Set<OscillatorNode>();
     try {
       audio = new AudioContext();
@@ -98,6 +100,7 @@ export function useStand(
     cleanup.current = () => {
       unsubscribe();
       clearInterval(timer);
+      stopMusic();
       oscillators.forEach((oscillator) => {
         try {
           oscillator.stop();
@@ -167,6 +170,13 @@ export function useStand(
             setSeconds(CAPTURE_SECONDS);
             setPhase("running");
             beep(990, 0.25);
+            if (audio?.state === "running") {
+              try {
+                stopMusic = startStandMusic(audio, CAPTURE_SECONDS);
+              } catch {
+                setAudioWarning(true);
+              }
+            }
             navigator.vibrate?.(80);
           }
           return;
@@ -176,6 +186,7 @@ export function useStand(
         if (elapsed >= CAPTURE_SECONDS) {
           unsubscribe();
           clearInterval(timer);
+          stopMusic();
           beep(990, 0.4);
           navigator.vibrate?.([80, 70, 80]);
           const result = analyze(captured);

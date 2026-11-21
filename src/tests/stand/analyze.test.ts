@@ -60,13 +60,61 @@ describe("Stand Still analysis", () => {
         .metrics.valid,
     ).toBe(false);
   });
-  it("rejects a shake and a tilt over 25 degrees after settling", () => {
+  it("keeps a complete recording with a brief acceleration spike", () => {
     const shaken = capture();
     shaken[500].acceleration!.x = 25;
-    expect(analyze(shaken).reason).toContain("shaken");
+    const result = analyze(shaken);
+    expect(result.metrics.valid).toBe(true);
+    expect(result.reason).toBeNull();
+    expect(result.warnings).toContain(
+      "A sudden movement was recorded. It is included in your reading.",
+    );
+    expect(result.trace.length).toBeGreaterThan(0);
+  });
+  it("keeps a complete recording with a brief tilt over 25 degrees", () => {
     const tilted = capture();
     tilted[500].gravity = { x: 8, y: 2, z: 0 };
-    expect(analyze(tilted).reason).toContain("chest");
+    const result = analyze(tilted);
+    expect(result.metrics.valid).toBe(true);
+    expect(result.reason).toBeNull();
+    expect(result.warnings.some((warning) => warning.includes("tilted"))).toBe(true);
+  });
+  it("measures pronounced swaying without flattening or discarding it", () => {
+    const ordinary = analyze(capture());
+    const swaying = capture().map((sample) => {
+      const angle = Math.sin(sample.t * 2 * Math.PI * 0.5) * Math.PI / 4;
+      return {
+        ...sample,
+        rotation: {
+          x: sample.rotation!.x * 30,
+          y: sample.rotation!.y * 30,
+          z: 0,
+        },
+        gravity: { x: 9.81 * Math.sin(angle), y: 9.81 * Math.cos(angle), z: 0 },
+      };
+    });
+    const result = analyze(swaying);
+    expect(result.metrics.valid).toBe(true);
+    expect(result.reason).toBeNull();
+    expect(result.metrics.swayRms).toBeCloseTo(ordinary.metrics.swayRms * 30);
+    expect(result.trace).toHaveLength(ordinary.trace.length);
+    expect(result.warnings.some((warning) => warning.includes("tilted"))).toBe(true);
+  });
+  it("includes large acceleration in the fallback reading", () => {
+    const ordinary = capture().map((sample) => ({ ...sample, rotation: null }));
+    const moving = ordinary.map((sample) => ({
+      ...sample,
+      acceleration: {
+        x: sample.acceleration!.x * 250,
+        y: sample.acceleration!.y * 250,
+        z: 0,
+      },
+    }));
+    const result = analyze(moving);
+    expect(result.metrics.valid).toBe(true);
+    expect(result.source).toBe("acceleration");
+    expect(result.metrics.swayRms).toBeCloseTo(analyze(ordinary).metrics.swayRms * 250);
+    expect(result.warnings.some((warning) => warning.includes("sudden"))).toBe(true);
   });
   it("warns on low rate without rejecting a continuous 10 Hz capture", () => {
     const result = analyze(capture(10));
