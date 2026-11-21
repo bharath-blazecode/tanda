@@ -1,7 +1,7 @@
-# 13 — The name: KACHKA
+# 13. The name: KACHKA
 
 > **We're calling it KACHKA.** Said **KATCH-ka**. In Russian it's the rolling and pitching of a ship.
-> In Ukrainian it's a duck. Our instrument measures sway, and our mascot is a bird — the word was
+> In Ukrainian it's a duck. Our instrument measures sway, and our mascot is a bird. The word was
 > already doing both jobs before we found it.
 
 ---
@@ -11,27 +11,26 @@
 | | |
 |---|---|
 | **Written** | KACHKA |
-| **Said** | **KATCH-ka** — two syllables, stress on the first |
+| **Said** | **KATCH-ka** (two syllables, stress on the first) |
 | **Cyrillic** | ка́чка |
 | **Transliteration** | káchka |
 
-### Russian — *качка*
+### Russian: *качка*
 **The rolling, pitching and tossing of a vessel.** It is the ordinary, everyday word for a boat
 moving under you.
 
 > На корабле началась сильная качка.
 > *The ship began to roll heavily.*
 
-It's also the word inside **морская качка** — seasickness. The feeling of the ground not holding
-still. That is precisely the sensation our instrument puts a number on.
+The phrase **морская качка** describes that motion at sea: the feeling of the ground not holding
+still. That is the sensation behind the instrument's name.
 
-### Ukrainian — *качка*
-**A duck.** The bird. Borrowed across the Slavic languages, where the same four letters carry both
-senses.
+### Ukrainian: *качка*
+**A duck.** The bird. The same spelling carries a different meaning in Ukrainian.
 
 ## 2. Why it's the right name
 
-**It names the measurement.** Tier 1's whole left-hand band — sway, 0.1–3 Hz — *is* качка. Not a
+**It names the measurement.** Tier 1's whole left-hand band (sway, 0.1–3 Hz) *is* качка. Not a
 metaphor, the actual word for it. A naval architect measuring a hull's roll and our app measuring a
 body's roll are describing the same thing with the same noun.
 
@@ -52,7 +51,7 @@ Body drift recorder · Model BC-2
 Peer-reviewed by a bin chicken
 ```
 
-**Dr. Kachka** is the instrument's maker and the voice on the receipt — the same deadpan authority as
+**Dr. Kachka** is the instrument's maker and the voice on the receipt, with the same deadpan authority as
 *Dr. Bin Chicken*, one layer deeper. A doctor named after a duck, countersigned by a bin chicken.
 
 | Where | What it says |
@@ -65,10 +64,11 @@ Peer-reviewed by a bin chicken
 | Tagline | *"Steady is a number."* or keep *"Wired or wobbly?"* |
 
 ### Modules keep their names
-- **KACHKA** — the instrument
-- **The Lens** — Tier 2, the camera module
-- **The Ring** — Tier 3, when it lands
-- **The Room** — the live board
+
+- **KACHKA**: the instrument
+- **The Lens**: Tier 2, the camera module
+- **The Ring**: Tier 3, when it lands
+- **The Room**: the live board
 
 So: *"Kachka · The Lens"*, *"Kachka · The Room"*.
 
@@ -86,32 +86,29 @@ The name changes; the writing doesn't. Short, deadpan, honest.
 > *"Kachka is what Russian sailors call it when the ship won't hold still. It's also Ukrainian for
 > duck. We measure one and we're signed off by the other."*
 
-Twelve seconds, gets a laugh, and it's true.
-
 ## 5. Domain
 
 Short and clean, so check a few lanes:
 
 | Candidate | Note |
 |---|---|
-| `kachka.app` | Best fit — `.app` reads as an instrument |
+| `kachka.app` | Best fit: `.app` reads as an instrument |
 | `drkachka.com` | Matches the signature. Likely wide open |
 | `kachka.co` / `kachka.dev` | Clean fallbacks |
 | `kachka.com.au` | Local, fits an Australian room |
 
-There's a well-regarded Portland restaurant trading as Kachka, so `.com` may be spoken for — food,
-not software, and no overlap with what we do. `drkachka` sidesteps it entirely and is the better
-brand anyway.
+There's a well-regarded Portland restaurant trading as Kachka, so `.com` may be spoken for. It is a
+food business, not software. `drkachka` was another domain option considered for the project.
 
 **Don't block the build on this.** Ship on the free host, point the domain at the same deployment
 once it's bought. A name is a DNS change; a working link is the project.
 
 ## 6. Where it needs changing
 
-- [ ] Flow artifact — plate `.name`, title, landing copy
-- [ ] Lens artifact — plate `.name`, title, bench header
+- [ ] Flow artifact: plate `.name`, title, landing copy
+- [ ] Lens artifact: plate `.name`, title, bench header
 - [ ] Receipt signature → **Dr. Kachka**
-- [ ] Slide 1 — the name above the QR
+- [ ] Slide 1: the name above the QR
 - [ ] `#showcase` post
 - [ ] Repo README, `IDEA`, `docs/12`
 
@@ -120,5 +117,5 @@ redesign.**
 
 ---
 
-*Meanings verified against Wiktionary (качка), OpenRussian and Reverso: Russian "rolling, pitching,
-tossing"; Ukrainian "duck", borrowed from the Russian sense of rolling.*
+*Naming references: Wiktionary (качка), OpenRussian and Reverso. Russian: "rolling, pitching,
+tossing". Ukrainian: "duck".*

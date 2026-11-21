@@ -1,7 +1,7 @@
 # src/ui
 
 Card 2 owns this folder. `tokens.css` holds the design tokens; everything else here is a shared
-component. Read [`docs/design/DESIGN.md`](../../docs/design/DESIGN.md) first — it is the authority
+component. Read [`docs/design/DESIGN.md`](../../docs/design/DESIGN.md) first. It is the authority
 and this folder is its implementation.
 
 **See it all at once:** `/lab/kit`. If something looks wrong there it is wrong everywhere, so fix it
@@ -35,7 +35,7 @@ grid and the mascot's mood animations are the prototype's own. `Ibis` and `Logo`
 
 ## Not in this card
 
-`Trace` and `Gauge` are listed in DESIGN.md but belong to Stand Still (card 3) — they need real
+`Trace` and `Gauge` are listed in DESIGN.md but belong to Stand Still (card 3). They need real
 signal to be worth anything. `ChartWindow` holds the canvas they will draw into.
 
 ## Using it

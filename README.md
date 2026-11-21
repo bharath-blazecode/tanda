@@ -2,9 +2,23 @@
 
 **Wired or wobbly?** Log a drink. Stand still, then tap fast. A bin chicken will judge how far you have drifted from your own normal.
 
-A mobile-first **body drift recorder**, built by **Las Nubes** at the Tanda AI Hackathon 2026 in Brisbane. Your phone is the instrument; a printed receipt is the result.
+A mobile-first **body drift recorder**, built by **Las Nubes** (Spanish for **“The Clouds”**) at the Tanda AI Hackathon 2026 in Brisbane. Your phone is the instrument; a printed receipt is the result.
 
 **[Try Kachka](https://kachka.fun)** · [Run locally](#run-locally) · [Documentation](docs/README.md) · [Why Kachka?](#why-kachka)
+
+## Why Kachka?
+
+**KACHKA** is pronounced **KATCH-ka**, with the stress on the first syllable. In Russian, *качка* means the rolling and pitching of a ship. In Ukrainian, *качка* means a duck. Our instrument measures sway, and a bird signs the receipt: the name does both jobs.
+
+```text
+DR. KACHKA
+Body drift recorder · Model BC-2
+Peer-reviewed by a bin chicken
+```
+
+> “Kachka is what Russian sailors call it when the ship won't hold still. It's also Ukrainian for duck. We measure one and we're signed off by the other.”
+
+Read the full [naming story](docs/13-the-name.md) for the pronunciation, mascot and instrument identity.
 
 > A toy, not a test. For adults. Kachka is not a medical or legal measurement and must never be used to decide whether to drive. If you are going anywhere after drinking, get a ride or a friend.
 
@@ -21,7 +35,7 @@ The experience borrows from an old scientific instrument: a dark green casing, g
 3. **Run another check.** Compare body sway and tapping speed/accuracy with your baseline. Add a camera pulse reading if you want to try it.
 4. **Read the receipt.** See the change, a **Steady / Wired / Tipsy / Wobbly** stamp, a line from the bird and a practical nudge. Save the receipt as an image, or share it where your browser supports image sharing.
 
-**The sensors measure the change; the drink log gives that change a label.** These labels do not identify what is in your body. A Steady result is never clearance to drive.
+**The sensors measure the change; the drink log gives that change a label.** These labels are not a measurement of what is in your body. A Steady result is never clearance to drive.
 
 ## A look inside
 
@@ -38,7 +52,7 @@ The experience borrows from an old scientific instrument: a dark green casing, g
   </tr>
 </table>
 
-Screenshots are from the running app at a mobile viewport. The receipt uses the app's **explicit sample-data preview**, not a real person's reading. [Capture details](docs/screenshots/README.md).
+Screenshots show the running app at a mobile viewport. The receipt uses **sample data** from the app's preview screen, not a real person's reading. [Capture details](docs/screenshots/README.md).
 
 ## What is built
 
@@ -52,7 +66,7 @@ Screenshots are from the running app at a mobile viewport. The receipt uses the 
 | **The Room** | A shared board of names, live activity and results. Drink logs are not posted to it. |
 | **Demo modes** | A quick entry from the landing screen, plus an optional challenge using your other hand or a spin where motion is available. |
 
-The quick demo takes a standing baseline, then offers standing, tapping and pulse during the check, with skip controls. Only measurements also present in that baseline contribute to its score. The wearable ring and motion magnifier discussed in early plans are not part of the current app flow.
+The quick demo skips recording a personal baseline. It uses a built-in stock baseline, offers each test once with skip controls, and labels the result **Simulated** and **Stock normal, not yours**. The stock baseline includes standing and tapping values, so a camera pulse reading is shown but does not contribute to that demo's score. The wearable ring and motion magnifier discussed in early plans are not part of the current app flow.
 
 ## How it works
 
@@ -114,17 +128,3 @@ Keep credentials in server-side environment settings. Never commit them or put t
 - [Hackathon event and planning archive](docs/archive/hackathon-2026.md)
 
 Some specifications preserve earlier plans. The source and later decisions show what is implemented today; the archive is context, not a current release checklist.
-
-## Why Kachka?
-
-**KACHKA** is pronounced **KATCH-ka**, with the stress on the first syllable. In Russian, *качка* means the rolling and pitching of a ship. In Ukrainian, *качка* means a duck. Our instrument measures sway, and a bird signs the receipt: the name does both jobs.
-
-```text
-DR. KACHKA
-Body drift recorder · Model BC-2
-Peer-reviewed by a bin chicken
-```
-
-> “Kachka is what Russian sailors call it when the ship won't hold still. It's also Ukrainian for duck. We measure one and we're signed off by the other.”
-
-The full [naming story](docs/13-the-name.md) preserves the word, the instrument's identity and the house voice. Our team is **Las Nubes** — Spanish for **“The Clouds.”**

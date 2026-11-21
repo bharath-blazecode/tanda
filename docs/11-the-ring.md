@@ -1,7 +1,7 @@
-# 11 — The Kmart ring: which one, and what it actually gives you
+# 11. The Kmart ring: which one, and what it actually gives you
 
-> **TL;DR** — **Every ring on that page is the same ring.** Only size and colour differ, all $29. So
-> the only real decision is **size — buy two, in different sizes.**
+> **TL;DR**: **Every ring on that page is the same ring.** Only size and colour differ, all $29. So
+> the only real decision is **size: buy two, in different sizes.**
 > It's the **JRing / 56ff** family, not Colmi. That changes the metric list, mostly in your favour:
 > **HRV ✅ · live heart rate ✅ · SpO₂ ✅ · blood pressure ✅ · fatigue score ✅ · skin temperature ❌.**
 > And the single best news: **it exposes the standard BLE Heart Rate Service `0x180D`**, so live heart
@@ -14,35 +14,35 @@
 From Kmart's own product page: **App: JRing**, IP68, 16 mAh ring + 200 mAh charging case, USB-C,
 ~7 days per charge. Large has an inner diameter of **21.3–21.7 mm** (roughly a US 12).
 
-Every tile on that search page — Small/Medium/Large, Rose Gold/Silver/Black — is the same hardware at
+Every tile on that search page (Small/Medium/Large, Rose Gold/Silver/Black) is the same hardware at
 $29. **Colour is irrelevant. Size is not.**
 
 ### Buy two, in different sizes
 
-Not for redundancy — for **fit**, which is the thing that decides whether the data is any good:
+Buy two for **fit** rather than redundancy. Fit determines whether the data is any good:
 
 - **A loose ring destroys the PPG signal.** The sensor has to stay pressed against skin. Too loose and you get noise, dropouts and nonsense heart rates.
 - **A judge will want to put it on.** If your only ring is sized to one person's finger, your hero demo doesn't work on anyone else. Two sizes covers far more hands.
 - **One ring stays on a wrist all night collecting your dataset** while the other is used for testing and the demo.
 
 **Sizing:** measure with a strip of paper around the finger rather than guessing, and check each
-product page — Kmart lists the inner diameter per size. If in doubt go **snug**, not loose. Wear it
-with the **sensor on the palm side** of the finger, and try the **index finger** — it often gives a
+product page: Kmart lists the inner diameter per size. If in doubt go **snug**, not loose. Wear it
+with the **sensor on the palm side** of the finger, and try the **index finger**; it often gives a
 cleaner PPG than the ring finger on these cheap units.
 
 ---
 
 ## 2. What it actually measures
 
-The Anko ring speaks the **`56ff` protocol** (keeprapid OEM, SXR KeepFit SDK) — the JRing/KeepFit
+The Anko ring speaks the **`56ff` protocol** (keeprapid OEM, SXR KeepFit SDK), the JRing/KeepFit
 family. The protocol is fully reverse-engineered and documented.
 
 | Metric | Available | Notes |
 |---|---|---|
-| **Heart rate** — spot / **live** / history | ✅ | BPM. **Also on the standard BLE `0x180D` service** — see §3 |
+| **Heart rate**: spot / **live** / history | ✅ | BPM. **Also on the standard BLE `0x180D` service**: see §3 |
 | **HRV** | ✅ | **In milliseconds. This is the alcohol metric.** |
-| **SpO₂** — spot and history | ✅ | On-demand, unlike the Colmi family |
-| **Blood pressure** | ✅ | **Direct sensor reading** via `0x23`/`0x24`, no user profile needed — see §4 |
+| **SpO₂**: spot and history | ✅ | On-demand, unlike the Colmi family |
+| **Blood pressure** | ✅ | **Direct sensor reading** via `0x23`/`0x24`, no user profile needed; see §4 |
 | **Stress** | ✅ | 0–100, firmware-derived |
 | **Fatigue** | ✅ | 0–100, firmware-derived |
 | **Steps / distance / calories** | ✅ | |
@@ -64,7 +64,7 @@ family. The protocol is fully reverse-engineered and documented.
 | Fatigue score | ❌ | ✅ **gained** |
 | Continuous sync | ✅ | ❌ lost |
 
-**Net: a win for your project.** You lose skin temperature — one of five alcohol signals — and gain
+**Net: a win for your project.** You lose skin temperature (one of five alcohol signals) and gain
 blood pressure, which is the *most reliable caffeine marker there is*. See §4.
 
 ---
@@ -89,7 +89,7 @@ char.addEventListener('characteristicvaluechanged', e => {
 });
 ```
 
-**That's the whole thing.** Do this first, tonight — it's the fastest possible proof the hardware
+**That's the whole thing.** Do this first, tonight; it's the fastest possible proof the hardware
 works, and it de-risks everything downstream. HRV, SpO₂ and blood pressure need the custom `56ff`
 frames; heart rate does not.
 
@@ -102,7 +102,7 @@ frames; heart rate does not.
 | Notify characteristic | `000033f4-…` |
 | Frame size | Fixed 20 bytes |
 | Encryption | **None, cleartext** |
-| Keepalive | `0x3A` ping/pong — needed, there's a ~20 s idle timeout |
+| Keepalive | `0x3A` ping/pong: needed, there's a ~20 s idle timeout |
 | SoC | Renesas DA14531 (ARM Cortex-M0) |
 | Open reference firmware | `atc1441/ATC_SR08_Ring` |
 
@@ -112,31 +112,31 @@ frames; heart rate does not.
 
 Revised from `docs/10` now that we know it's a JRing:
 
-### Alcohol — still well covered
+### Alcohol: still well covered
 
 | Signal | On this ring? |
 |---|---|
-| **HRV (rMSSD) ⬇️** — strongest signal | ✅ **yes, in ms** |
+| **HRV (rMSSD) ⬇️**: strongest signal | ✅ **yes, in ms** |
 | **Resting HR ⬆️** | ✅ yes, live |
 | **Skin temperature ⬆️** | ❌ **no sensor** |
 | **Respiratory rate ⬆️** | ❌ |
-| **Postural sway ⬆️** | ✅ — but from the *phone*, not the ring |
+| **Postural sway ⬆️** | ✅, but from the *phone*, not the ring |
 
 You keep the two strongest signals (HRV and HR) and lose one of the weaker ones. Fine.
 
-### Caffeine — unexpectedly better covered
+### Caffeine: unexpectedly better covered
 
 In `docs/10` the conclusion was that the ring is a poor caffeine sensor, because the HRV literature
-contradicts itself and **blood pressure is the reliable marker** — which no ring measures.
+contradicts itself and **blood pressure is the reliable marker**, which no ring measures.
 
 **This ring claims to.** The documentation is specific that BP is a *direct sensor reading* via
-`0x23`/`0x24` and needs no user profile — unlike blood sugar on the same ring, which is explicitly a
+`0x23`/`0x24` and needs no user profile, unlike blood sugar on the same ring, which is explicitly a
 profile-derived fabrication. So BP is at least a measurement rather than a guess.
 
 **🔴 Be sceptical anyway.** A ring has no cuff, and cuffless BP from PPG is hard and poorly validated.
 Treat it exactly like everything else here: **relative to the wearer's own baseline, never as an
 absolute reading.** "Your BP index rose 9% after that coffee" is defensible. "Your blood pressure is
-128/84" is not — don't print a number that looks clinical.
+128/84" is not: don't print a number that looks clinical.
 
 If it works even directionally, you have a caffeine channel on the ring that complements tremor on
 the phone. If it's noise, you've lost nothing, because tremor was always the primary caffeine signal.
@@ -158,7 +158,7 @@ the phone. If it's noise, you've lost nothing, because tremor was always the pri
 3. **Web Bluetooth means no iPhones.** Laptop Chrome or Android only. The ring is the stage instrument; phone sensors are what the room uses.
 4. **☠️ Never send `0E 12 34 12 34 12 34 12 34`.** That's a factory reset. Avoid `0x0E` frames entirely.
 5. **Charge it in the case before you need it.** 50–60 minutes to full. Do it the moment you get back.
-6. **Ignore the derived scores.** Stress, fatigue and especially blood sugar are firmware-computed composites. Use HR, HRV, SpO₂ and BP — the things a sensor actually produced.
+6. **Ignore the derived scores.** Stress, fatigue and especially blood sugar are firmware-computed composites. Use HR, HRV, SpO₂ and BP, the things a sensor actually produced.
 7. **Kmart's own page says it plainly:** *"This product is not a medical device. The data and information are provided for reference only."* Put that on your slide. It's their words, it's true, and quoting it is a better look than hoping nobody asks.
 
 ---
@@ -171,14 +171,14 @@ Each comes with its own charging case and USB-C cable.
 **Then, in order:**
 
 1. Unbox, put both on charge.
-2. Install **JRing** on an Android phone. Pair and complete setup for each ring. Take one full reading of each metric in the official app — **this tells you which metrics your specific unit actually reports**, which is the real answer to your question and takes five minutes.
+2. Install **JRing** on an Android phone. Pair and complete setup for each ring. Take one full reading of each metric in the official app; **this tells you which metrics your specific unit actually reports**, which is the real answer to your question and takes five minutes.
 3. On a laptop in Chrome: the `0x180D` snippet in §3. Live BPM in the browser. **If this works you have a hardware channel and the risk is gone.**
 4. Only then go after HRV / SpO₂ / BP over the `56ff` frames.
-5. Put one ring on someone's finger and **leave it there.** Start the labelled log — every coffee, every drink, every hour awake.
+5. Put one ring on someone's finger and **leave it there.** Start the labelled log: every coffee, every drink, every hour awake.
 
 ---
 
 *App name, dimensions, battery and the "not a medical device" line from the Kmart product page for
-Smart Ring – Large, Black (SKU P_43721207). Protocol, capability list, standard-service advertisement,
+Smart Ring: Large, Black (SKU P_43721207). Protocol, capability list, standard-service advertisement,
 keepalive, factory-reset warning and the initialisation requirement from the PulseLoop hardware
 documentation for the Jring/56ff family and its linked BLE teardown.*
