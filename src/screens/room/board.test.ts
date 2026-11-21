@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { create } from 'qrcode'
-import type { RoomState } from '../../../shared/contracts'
+import { RoomStage, type RoomLive, type RoomState } from '../../../shared/contracts'
 import {
   commentaryLine,
   createPoller,
@@ -9,9 +9,13 @@ import {
   initialBoard,
   isStale,
   joinUrl,
+  liveView,
+  POLL_MS,
   qrGeometry,
   QR_QUIET_ZONE,
   reduceBoard,
+  roomMood,
+  STAGE_LABEL,
 } from './board'
 
 const live: RoomState = {
@@ -48,6 +52,60 @@ describe('reduceBoard', () => {
     expect(b.room).toBeNull()
     expect(isStale(b)).toBe(true)
   })
+})
+
+describe('liveView', () => {
+  const person = (nickname: string, at: number, stage: RoomLive['stage'] = 'joined'): RoomLive => ({
+    nickname,
+    stage,
+    at,
+  })
+
+  it('draws every present person in plain words when they fit', () => {
+    const view = liveView({ ...live, liveCount: 2, live: [person('Ann', 2, 'stand'), person('Bea', 1)] }, 12)
+    expect(view).toEqual({
+      count: 2,
+      rows: [
+        { key: 'Ann|stand|2', nickname: 'Ann', doing: 'standing still' },
+        { key: 'Bea|joined|1', nickname: 'Bea', doing: 'just walked in' },
+      ],
+      more: 0,
+    })
+  })
+
+  it('gives the last row to "and N more" when the room outgrows the list', () => {
+    const many = Array.from({ length: 30 }, (_, i) => person(`P${i}`, 100 - i))
+    const view = liveView({ ...live, liveCount: 140, live: many }, 12)
+    expect(view.rows).toHaveLength(11)
+    expect(view.more).toBe(129)
+  })
+
+  it('keeps keys unique when two phones share a name and a moment', () => {
+    const view = liveView({ ...live, liveCount: 2, live: [person('Ann', 5), person('Ann', 5)] }, 12)
+    expect(new Set(view.rows.map((r) => r.key)).size).toBe(2)
+  })
+
+  it('copes with a server that sends no presence', () => {
+    expect(liveView(live, 12)).toEqual({ count: 0, rows: [], more: 0 })
+  })
+
+  it('has a plain label for every stage', () => {
+    for (const stage of RoomStage.options) expect(STAGE_LABEL[stage].length).toBeGreaterThan(0)
+    expect(STAGE_LABEL.choice).toBe('tapping')
+    expect(STAGE_LABEL.result).toBe('reading the ticket')
+  })
+})
+
+describe('roomMood', () => {
+  it('wears the most common verdict, steady when empty or tied', () => {
+    expect(roomMood(emptyRoom)).toBe('steady')
+    expect(roomMood({ ...live, mix: { steady: 1, wired: 3, tipsy: 2, wobbly: 0 } })).toBe('wired')
+    expect(roomMood({ ...live, mix: { steady: 2, wired: 2, tipsy: 0, wobbly: 0 } })).toBe('steady')
+  })
+})
+
+it('polls every 1.5 seconds', () => {
+  expect(POLL_MS).toBe(1500)
 })
 
 describe('commentaryLine', () => {

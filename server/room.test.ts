@@ -1,8 +1,9 @@
 import { Hono } from 'hono'
 import { describe, expect, it } from 'vitest'
-import { RoomState, type RoomResultRequest } from '../shared/contracts'
+import { RoomState, type RoomPresenceRequest, type RoomResultRequest } from '../shared/contracts'
 import { loadConfig } from './config'
-import { DEFAULT_POSTS_PER_MINUTE, roomRoutes } from './room'
+import { isValidNickname } from '../shared/nicknames'
+import { DEFAULT_HEARTBEATS_PER_MINUTE, DEFAULT_POSTS_PER_MINUTE, roomRoutes } from './room'
 import { createRoomStore, DEFAULT_MAX_AGE_MS } from './state'
 
 const TOKEN = 'test-token-0123456789'
@@ -54,12 +55,51 @@ describe('POST /api/room/result', () => {
     expect(state.mix).toEqual({ steady: 0, wired: 1, tipsy: 0, wobbly: 0 })
   })
 
-  it('rejects a free-text nickname', async () => {
-    const { post, board } = setup()
-    for (const nickname of ['Free Text', 'Calm Quokka please', 'calm quokka', 'Quokka Calm']) {
-      expect((await post('/api/room/result', result({ nickname }))).status).toBe(400)
+  // Changed on purpose (live presence): a typed name is sanitised, or replaced, never rejected.
+  it('stores a free-text nickname under a sanitised or generated name', async () => {
+    const { post, board, clock } = setup()
+    const cases = ['Free Text', '  Calm   Quokka\tplease ', 'calm quokka', 'Quokka Calm', 'Twitchy Kookaburra']
+    for (const [i, nickname] of cases.entries()) {
+      clock.t += 1000
+      const res = await post('/api/room/result', result({ nickname, deviceId: `device-${i}-0000000` }))
+      expect(res.status).toBe(204)
     }
-    expect((await board()).total).toBe(0)
+    const names = (await board()).feed.map((e) => e.nickname).reverse()
+    // A generated nickname stays whole even past the 16-character cap for typed names.
+    expect(names).toEqual(['Free Text', 'Calm Quokka plea', 'calm quokka', 'Quokka Calm', 'Twitchy Kookaburra'])
+  })
+
+  it('falls back to a generated nickname for a hateful name, the same one every time', async () => {
+    const { post, board, clock } = setup()
+    await post('/api/room/result', result({ nickname: 'N1gg3r' }))
+    const first = (await board()).feed[0]!.nickname
+    expect(isValidNickname(first)).toBe(true)
+    clock.t += 1000
+    await post('/api/room/result', result({ nickname: 'n i g g e r' }))
+    expect((await board()).feed[0]!.nickname).toBe(first)
+  })
+
+  it('lets a funny or rude name through', async () => {
+    const { post, board } = setup()
+    await post('/api/room/result', result({ nickname: 'Drunk Uncle Bob!' }))
+    expect((await board()).feed[0]!.nickname).toBe('Drunk Uncle Bob!')
+  })
+
+  it('refuses a link as a name', async () => {
+    const { app, post, board, clock } = setup()
+    for (const [i, nickname] of ['kachka.fun', 'www lol', 'me@x', 'http now'].entries()) {
+      clock.t += 1000
+      await post('/api/room/result', result({ nickname, deviceId: `device-${i}-0000000` }))
+    }
+    expect((await board()).feed.every((e) => isValidNickname(e.nickname))).toBe(true)
+    const text = await (await app.request('/api/room')).text()
+    for (const bit of ['kachka', 'www', '@', 'http']) expect(text).not.toContain(bit)
+  })
+
+  it('rejects an empty or overlong nickname', async () => {
+    const { post } = setup()
+    expect((await post('/api/room/result', result({ nickname: '' }))).status).toBe(400)
+    expect((await post('/api/room/result', result({ nickname: 'x'.repeat(41) }))).status).toBe(400)
   })
 
   it('rejects a body outside the contract', async () => {
@@ -182,5 +222,130 @@ describe('POST /api/room/reset', () => {
     const { post } = setup({ withToken: false })
     expect((await post('/api/room/reset', {}, { 'x-admin-token': '' })).status).toBe(403)
     expect((await post('/api/room/reset', {}, { 'x-admin-token': TOKEN })).status).toBe(403)
+  })
+})
+
+describe('POST /api/room/presence', () => {
+  const beat = (over: Partial<RoomPresenceRequest> = {}): RoomPresenceRequest => ({
+    deviceId: '00000000-0000-4000-8000-000000000001',
+    nickname: 'Calm Quokka',
+    stage: 'joined',
+    ...over,
+  })
+
+  it('answers 204 and shows the person in GET /api/room', async () => {
+    const { post, board } = setup()
+    expect((await post('/api/room/presence', beat({ stage: 'baseline' }))).status).toBe(204)
+    const state = await board()
+    expect(state.liveCount).toBe(1)
+    expect(state.live).toEqual([{ nickname: 'Calm Quokka', stage: 'baseline', at: T0 }])
+    // Presence is not a reading: the tallies keep their meaning.
+    expect(state.total).toBe(0)
+  })
+
+  it('lists the most recently changed first, and a plain heartbeat does not move anyone', async () => {
+    const { post, board, clock } = setup()
+    await post('/api/room/presence', beat({ deviceId: 'device-a-0000000', nickname: 'Ann' }))
+    clock.t += 1000
+    await post('/api/room/presence', beat({ deviceId: 'device-b-0000000', nickname: 'Bea' }))
+    clock.t += 1000
+    await post('/api/room/presence', beat({ deviceId: 'device-a-0000000', nickname: 'Ann' }))
+    expect((await board()).live?.map((p) => p.nickname)).toEqual(['Bea', 'Ann'])
+    clock.t += 1000
+    await post('/api/room/presence', beat({ deviceId: 'device-a-0000000', nickname: 'Ann', stage: 'check' }))
+    const live = (await board()).live
+    expect(live?.map((p) => p.nickname)).toEqual(['Ann', 'Bea'])
+    expect(live?.[0]).toEqual({ nickname: 'Ann', stage: 'check', at: T0 + 3000 })
+  })
+
+  it('expires a device 45 seconds after its last heartbeat', async () => {
+    const { post, board, clock } = setup()
+    await post('/api/room/presence', beat())
+    clock.t += 30_000
+    await post('/api/room/presence', beat())
+    clock.t += 45_000
+    expect((await board()).liveCount).toBe(1)
+    clock.t += 1
+    const state = await board()
+    expect(state.liveCount).toBe(0)
+    expect(state.live).toEqual([])
+  })
+
+  it('flips the stage to result when a result is posted, and still counts the person', async () => {
+    const { post, board, clock } = setup()
+    await post('/api/room/presence', beat({ stage: 'check' }))
+    clock.t += 1000
+    await post('/api/room/result', result())
+    const state = await board()
+    expect(state.total).toBe(1)
+    expect(state.liveCount).toBe(1)
+    expect(state.live?.[0]).toEqual({ nickname: 'Calm Quokka', stage: 'result', at: T0 + 1000 })
+  })
+
+  it('uses the same board name for presence and the result', async () => {
+    const { post, board } = setup()
+    await post('/api/room/presence', beat({ nickname: 'w3tback' }))
+    await post('/api/room/result', result({ nickname: 'w3tback' }))
+    const state = await board()
+    expect(isValidNickname(state.live![0]!.nickname)).toBe(true)
+    expect(state.live![0]!.nickname).toBe(state.feed[0]!.nickname)
+  })
+
+  it('never returns a deviceId', async () => {
+    const { app, post } = setup()
+    const deviceId = 'secret-device-id-123456'
+    await post('/api/room/presence', beat({ deviceId }))
+    const text = await (await app.request('/api/room')).text()
+    expect(text).toContain('Calm Quokka')
+    expect(text).not.toContain(deviceId)
+    expect(text).not.toContain('deviceId')
+  })
+
+  it('caps the room at 1,000 devices and the list at 30', async () => {
+    const { post, board, clock } = setup()
+    for (let i = 0; i < 1005; i++) {
+      clock.t += 1
+      await post('/api/room/presence', beat({ deviceId: `device-${String(i).padStart(5, '0')}`, nickname: `P${i}` }))
+    }
+    const state = await board()
+    expect(state.liveCount).toBe(1000)
+    expect(state.live).toHaveLength(30)
+    expect(state.live?.[0]?.nickname).toBe('P1004')
+  })
+
+  it('rejects a body outside the contract', async () => {
+    const { post } = setup()
+    expect((await post('/api/room/presence', { ...beat(), stage: 'drinking' })).status).toBe(400)
+    expect((await post('/api/room/presence', beat({ deviceId: 'short' }))).status).toBe(400)
+    expect((await post('/api/room/presence', beat({ nickname: '' }))).status).toBe(400)
+  })
+
+  it('rate limits heartbeats per IP on their own window', async () => {
+    const clock = { t: T0 }
+    const app = new Hono().route(
+      '/api',
+      roomRoutes(loadConfig({}), createRoomStore(), { now: () => clock.t, postsPerMinute: 1, heartbeatsPerMinute: 2 }),
+    )
+    const send = (path: string, body: unknown) =>
+      app.request(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.9' },
+        body: JSON.stringify(body),
+      })
+    expect((await send('/api/room/presence', beat())).status).toBe(204)
+    expect((await send('/api/room/presence', beat())).status).toBe(204)
+    expect((await send('/api/room/presence', beat())).status).toBe(429)
+    // A flood of heartbeats never costs anyone their result post.
+    expect((await send('/api/room/result', result())).status).toBe(204)
+    clock.t += 60_000
+    expect((await send('/api/room/presence', beat())).status).toBe(204)
+    expect(DEFAULT_HEARTBEATS_PER_MINUTE).toBe(3000)
+  })
+
+  it('is cleared by a reset', async () => {
+    const { post, board } = setup()
+    await post('/api/room/presence', beat())
+    await post('/api/room/reset', {}, { 'x-admin-token': TOKEN })
+    expect((await board()).liveCount).toBe(0)
   })
 })
