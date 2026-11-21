@@ -1,6 +1,6 @@
 // Pure wording for the result ticket. No React, no clock: the screen hands everything in.
 // The engine only gives enums and normalised drift; the words a person reads live here.
-import type { Assessment, Mode, NudgeKind, RunResult, Verdict } from '../../../shared/contracts'
+import type { Assessment, Drink, DrinkKind, Mode, NudgeKind, RunResult, Verdict } from '../../../shared/contracts'
 import type { Mood } from '../../ui'
 
 /** A ratio to the person's own normal, as a signed whole percentage. Never a raw drift number. */
@@ -49,6 +49,36 @@ export function metricRows(
     rows.push(['Pulse', 'Skipped'])
   }
   return rows
+}
+
+const DRINK_WORDS: Record<DrinkKind, [one: string, many: string]> = {
+  coffee: ['coffee', 'coffees'],
+  energy: ['energy drink', 'energy drinks'],
+  beer: ['beer', 'beers'],
+  wine: ['wine', 'wines'],
+  spirit: ['spirit', 'spirits'],
+}
+
+/** The order they read in on the ticket: what is in you first, then what you drank for fun. */
+const DRINK_ORDER: DrinkKind[] = ['beer', 'wine', 'spirit', 'coffee', 'energy']
+
+/**
+ * What was logged today, in words: "2 beers, 1 coffee". Empty when nothing was logged, so the
+ * caller can leave the line off rather than printing "nothing".
+ *
+ * This is the label, not a measurement. How much someone drank never moves the verdict: the
+ * sensors say how far a person is from their own normal, and the log only says what to call it
+ * (D17, D18). A count that could soften a verdict would be a sobriety estimate, which this is not.
+ */
+export function describeDrinks(drinks: readonly Drink[]): string {
+  const counts = new Map<DrinkKind, number>()
+  for (const d of drinks) counts.set(d.kind, (counts.get(d.kind) ?? 0) + 1)
+  return DRINK_ORDER.filter((kind) => counts.get(kind))
+    .map((kind) => {
+      const n = counts.get(kind) as number
+      return `${n} ${DRINK_WORDS[kind][n === 1 ? 0 : 1]}`
+    })
+    .join(', ')
 }
 
 const NUDGE_WORDS: Record<NudgeKind, string> = {
