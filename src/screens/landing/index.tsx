@@ -97,7 +97,7 @@ function NameField({ value, onChange }: { value: string; onChange: (value: strin
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
       <label htmlFor="room-name" className="k-label">
-        Your name for the big screen
+        Your name
       </label>
       <input
         id="room-name"
@@ -127,7 +127,7 @@ function NameField({ value, onChange }: { value: string; onChange: (value: strin
         }}
       />
       <p id="room-name-note" style={{ color: 'var(--housing-dim)', fontSize: 13, margin: 0 }}>
-        This name shows on the room screen. Nothing else leaves your phone.
+        Saved on this phone. It also appears on the room screen.
       </p>
     </div>
   )
