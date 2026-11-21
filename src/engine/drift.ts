@@ -38,8 +38,12 @@ export function driftFor(baseline: RunResult, run: RunResult): Drift {
     drift.sway = ratioDrift(run.stand.swayRms, baseline.stand.swayRms, NOISE_FLOOR.sway)
   }
 
-  drift.choiceRt = ratioDrift(run.choice.medianMs, baseline.choice.medianMs, NOISE_FLOOR.choiceRt)
-  drift.choiceWrong = countDrift(run.choice.wrong, baseline.choice.wrong, NOISE_FLOOR.choiceWrong)
+  // Taps need both runs to have tapped. Skipping the tapping test is allowed when the standing
+  // test was done, so this is no longer guaranteed.
+  if (baseline.choice && run.choice) {
+    drift.choiceRt = ratioDrift(run.choice.medianMs, baseline.choice.medianMs, NOISE_FLOOR.choiceRt)
+    drift.choiceWrong = countDrift(run.choice.wrong, baseline.choice.wrong, NOISE_FLOOR.choiceWrong)
+  }
 
   // The pulse term exists only when both runs have one (D46).
   if (baseline.hr !== undefined && run.hr !== undefined) {

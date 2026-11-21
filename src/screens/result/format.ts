@@ -31,10 +31,10 @@ export function metricRows(
   if (drift.sway !== undefined && run.stand && baseline.stand) {
     rows.push(['Body sway', signedPercent(run.stand.swayRms, baseline.stand.swayRms)])
   }
-  if (drift.choiceRt !== undefined) {
+  if (drift.choiceRt !== undefined && run.choice && baseline.choice) {
     rows.push(['Choice time', signedPercent(run.choice.medianMs, baseline.choice.medianMs)])
   }
-  if (drift.choiceWrong !== undefined) {
+  if (drift.choiceWrong !== undefined && run.choice && baseline.choice) {
     rows.push(['Wrong squares', signedCount(run.choice.wrong, baseline.choice.wrong)])
   }
   // Pulse always gets a row, unlike the others, because it is the one step a person chooses to

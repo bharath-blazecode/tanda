@@ -24,13 +24,22 @@ export type ChoiceMetrics = z.infer<typeof ChoiceMetrics>
 export const HrSource = z.enum(['band', 'camera'])
 export type HrSource = z.infer<typeof HrSource>
 
-export const RunResult = z.object({
-  stand: StandMetrics.optional(), // absent without motion sensors, or if skipped
-  choice: ChoiceMetrics, // always present
-  hr: z.number().min(30).max(220).optional(), // average bpm; a small capped term in drift (D46)
-  hrSource: HrSource.optional(),
-  at: z.number().int(), // epoch ms
-})
+/** At least one of the two scored tests must be present, or there is nothing to compare. */
+export const hasAScoredTest = (r: { stand?: unknown; choice?: unknown }): boolean =>
+  r.stand !== undefined || r.choice !== undefined
+
+export const RunResult = z
+  .object({
+    stand: StandMetrics.optional(), // absent without motion sensors, or if skipped
+    choice: ChoiceMetrics.optional(), // skippable, but only when the standing test was done
+    hr: z.number().min(30).max(220).optional(), // average bpm; a small capped term in drift (D46)
+    hrSource: HrSource.optional(),
+    at: z.number().int(), // epoch ms
+  })
+  // Either test alone can carry a reading, but a run with neither is not a reading at all, so
+  // the contract refuses it rather than leaving every consumer to check. The pulse cannot stand
+  // in for either: it is capped and only ever adjusts a reading the other two produced (D46).
+  .refine(hasAScoredTest, { message: 'A run needs at least one of the standing or tapping test' })
 export type RunResult = z.infer<typeof RunResult>
 
 // ---------- what the engine produces ----------
