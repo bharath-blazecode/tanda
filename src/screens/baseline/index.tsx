@@ -5,12 +5,13 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import type { ChoiceMetrics, StandMetrics } from '../../../shared/contracts'
 import { ChoiceTest } from '../../tests/choice'
+import { PulseTest } from '../../tests/pulse'
 import { StandTest } from '../../tests/stand'
 import { getMotionAvailability } from '../../sensors/motion'
 import { update } from '../../store/local'
 import { Housing, Key, Keys, Label, Plate, Sheet } from '../../ui'
 
-type Step = 'clean' | 'stand' | 'choice' | 'saved'
+type Step = 'clean' | 'stand' | 'choice' | 'pulse' | 'saved'
 
 /** Setup found no motion: go straight to Choice Tap rather than mount Stand Still to stall. */
 const firstTest = (): Step => (getMotionAvailability() === 'unavailable' ? 'choice' : 'stand')
@@ -20,12 +21,20 @@ export function Baseline() {
   const [step, setStep] = useState<Step>('clean')
   const [clean, setClean] = useState(true)
   const [stand, setStand] = useState<StandMetrics | null>(null)
+  const [choice, setChoice] = useState<ChoiceMetrics | null>(null)
 
-  const finish = (choice: ChoiceMetrics) => {
+  // The optional third step (D46). A pulse only ever counts when the baseline has one too,
+  // which is why it is offered here and not only at check time.
+  const finish = (taps: ChoiceMetrics, hr: number | null) => {
     update((current) => ({
       ...current,
       baseline: {
-        run: { stand: stand ?? undefined, choice, at: Date.now() },
+        run: {
+          stand: stand ?? undefined,
+          choice: taps,
+          at: Date.now(),
+          ...(hr === null ? {} : { hr, hrSource: 'camera' as const }),
+        },
         clean,
       },
     }))
@@ -90,9 +99,11 @@ export function Baseline() {
 
   return (
     <Housing>
-      <Plate small serial={`Recording\n${step === 'stand' ? '1' : '2'} of 2`} />
+      <Plate small serial={`Recording\n${step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
       {step === 'stand' && <Label>Test 1 of 2 · Stand still</Label>}
-      {step === 'stand' ? (
+      {step === 'pulse' ? (
+        <PulseTest label="Optional · Pulse" onDone={(hr) => finish(choice!, hr)} />
+      ) : step === 'stand' ? (
         <StandTest
           onDone={(metrics) => {
             setStand(metrics)
@@ -106,7 +117,10 @@ export function Baseline() {
               ? 'No motion sensor here · Choice tap only'
               : 'Test 2 of 2 · Choice tap'
           }
-          onDone={finish}
+          onDone={(metrics) => {
+            setChoice(metrics)
+            setStep('pulse')
+          }}
         />
       )}
     </Housing>
