@@ -208,15 +208,20 @@ The pulse term exists only when both the baseline and the check have a pulse. It
 | Limit | Value | Why |
 |---|---|---|
 | Per device | 12 verdict calls per hour | Normal use is 2 to 5 |
-| Per IP | 600 per hour | The auditorium shares one address; read it from `CF-Connecting-IP` |
-| Global | 5,000 per day | Hard ceiling on spend |
+| Per IP, burst | 150 per minute | Lets a whole room on one address finish at once, and stops one person draining the hour |
+| Per IP | 2,000 per hour | The auditorium shares one address; read it from `CF-Connecting-IP`, accepted only if it looks like an IP |
+| Global | 200 per minute, 6,000 per day | Hard ceiling on spend |
+| Request body | 4 KB | Larger requests get a 413 |
+| Room posts | 600 per minute per IP | One entry per device is what really bounds the board |
 | `max_tokens` | about 150 | One or two sentences |
-| Client timeout | 4 s | After that the canned line stays |
+| Client timeout | 4 s | After that the canned line stays. The server gives Claude 3 s |
 | Kill switch | `VERDICT_ENABLED=false` | Everything goes canned, nothing breaks |
 
-**Voice.** Every Claude call uses one shared system prompt that sets the mascot's voice (D36): Dr. Bin Chicken, an ibis who works as a lab tech; dry, unimpressed, one or two short sentences; teases what the person did, never who they are; never mentions driving, medicine or the law. The prompt lives in `server/verdict.ts` and is the same text for the verdict line, the room commentary and the night receipt.
+**Voice.** Every Claude call uses one shared system prompt that sets the mascot's voice (D36): Dr. Bin Chicken, an ibis who works as a lab tech; dry, unimpressed, one or two short sentences; teases what the person did, never who they are; never mentions driving, medicine or the law. The prompt lives in `server/prompt.ts`, next to the output filter, and is the same text for the verdict line, the room commentary and the night receipt.
 
-Environment variables: `ANTHROPIC_API_KEY`, `VERDICT_MODEL` (default `claude-haiku-5-5`), `VERDICT_ENABLED`, `ROOM_ADMIN_TOKEN`, `APP_VERSION`, `GIT_SHA`. The key goes into Dokploy's environment directly on the server. It never goes in the repo, in chat or in a screenshot.
+Steady with alcohol logged never calls Claude: it always uses the fixed lines.
+
+Environment variables: `ANTHROPIC_API_KEY`, `VERDICT_MODEL` (`claude-haiku-5-5` by default; only that or `claude-sonnet-5-5` is accepted), `VERDICT_ENABLED`, `ROOM_ADMIN_TOKEN`, `APP_VERSION`, `GIT_SHA`. The key goes into Dokploy's environment directly on the server. It never goes in the repo, in chat or in a screenshot.
 
 ## How the work is split
 
