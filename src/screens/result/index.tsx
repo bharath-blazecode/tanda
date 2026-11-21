@@ -1,67 +1,50 @@
-import { useState } from "react";
-import type { Assessment, Verdict } from "../../../shared/contracts";
-import { InkFilter, Key, Label } from "../../ui";
-import { sampleAssessment, sampleRows } from "./fixtures";
-import { ResultTicket } from "./ResultTicket";
-import "./result.css";
+// CARD 7. Result (docs/04-screens-spec.md, section 7).
+// The last reading, printed on the ticket. Everything comes from storage, so a reload prints the
+// same ticket again with no network call (the bird's line was saved with the result).
+import { useRef } from 'react'
+import { Navigate, useLocation } from 'react-router'
+import { load } from '../../store/local'
+import { InkFilter } from '../../ui'
+import { guessFromDrift, guessLine, isDemoHandicap } from '../demo/guess'
+import { metricRows, printedAt, serialFor, ticketTags } from './format'
+import { ResultPreview } from './Preview'
+import { ResultTicket } from './ResultTicket'
+import './result.css'
 
-const lines: Record<Verdict, string> = {
-  steady: "Nothing to report. I have bins to attend to.",
-  wired: "I have seen calmer pigeons.",
-  tipsy: "Your phone noticed before you did.",
-  wobbly: "Off your normal. Bodies keep receipts.",
-};
-
-// Card 7 preview uses explicit fixtures. Real run data can be supplied to ResultTicket.
 export function Result() {
-  const [verdict, setVerdict] = useState<Verdict>("tipsy");
-  const [replay, setReplay] = useState(0);
-  const assessment: Assessment = {
-    ...sampleAssessment,
-    verdict,
-    nudge:
-      verdict === "tipsy"
-        ? "ride-or-friend"
-        : verdict === "wired"
-          ? "no-more-caffeine"
-          : verdict === "wobbly"
-            ? "water"
-            : "carry-on",
-    showSafetyLine: verdict === "tipsy",
-  };
+  const location = useLocation()
+  const stored = useRef(load()).current
+
+  // The four verdict animations on sample data, for the lab page and the pitch.
+  if (new URLSearchParams(location.search).has('preview')) return <ResultPreview />
+
+  const { baseline, lastResult: last } = stored
+  // A ticket compares with a baseline; without either there is nothing to print.
+  if (!baseline) return <Navigate to="/" replace />
+  if (!last) return <Navigate to="/home" replace />
+
+  const { run, assessment, line, mode } = last
+  // What the person picked, handed over by Check. Only used to own up to a wrong guess.
+  const picked = (location.state as { handicap?: unknown } | null)?.handicap
+  // The guess comes from the reading itself, never from the pick.
+  const guess =
+    mode === 'demo'
+      ? guessLine(guessFromDrift(assessment.drift), isDemoHandicap(picked) ? picked : undefined)
+      : undefined
+
   return (
     <>
       <InkFilter />
       <ResultTicket
-        key={`${verdict}-${replay}`}
         assessment={assessment}
-        rows={sampleRows}
-        line={lines[verdict]}
-        readingId="0417"
-        timestamp="SAT 21 NOV · 12:15"
-        sample
+        rows={metricRows(assessment.drift, run, baseline.run)}
+        line={line.trim().replace(/^["“]+|["”]+$/g, '').trim()}
+        readingId={serialFor(run.at).replace(/^No\. /, '')}
+        timestamp={printedAt(run.at)}
+        tags={ticketTags({ mode, assessment, baselineClean: baseline.clean })}
+        extra={guess}
+        againTo={mode === 'demo' ? '/demo' : '/check'}
       />
-      <section className="result-preview" aria-label="Sample result controls">
-        <Label>Preview controls · sample data</Label>
-        <div className="result-presets">
-          {(["steady", "wired", "tipsy", "wobbly"] as const).map((value) => (
-            <button
-              key={value}
-              aria-pressed={verdict === value}
-              onClick={() => setVerdict(value)}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
-        <Key quiet onClick={() => setReplay((value) => value + 1)}>
-          Replay animation
-        </Key>
-        <p>
-          Steady cheers. Wired runs a circle. Tipsy sways and sits. Wobbly
-          attempts a flight and falls.
-        </p>
-      </section>
     </>
-  );
+  )
 }

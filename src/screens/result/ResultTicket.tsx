@@ -24,6 +24,12 @@ export type ResultTicketProps = {
   timestamp: string;
   sample?: boolean;
   animate?: boolean;
+  /** Printed above the rows, e.g. "Simulated". Only the tags that apply. */
+  tags?: string[];
+  /** One extra line under the rows: the demo's guess at the handicap. */
+  extra?: string;
+  /** Where "Run again" goes. A demo reading goes back to the demo. */
+  againTo?: string;
 };
 const nudges: Record<Assessment["nudge"], string> = {
   "carry-on": "Carry on.",
@@ -41,6 +47,9 @@ export function ResultTicket({
   timestamp,
   sample = false,
   animate = true,
+  tags = [],
+  extra,
+  againTo = "/check",
 }: ResultTicketProps) {
   // The data producer owns the verdict. The screen renders the supplied assessment.
   // Keep the fixed safety line visible for every Tipsy presentation as well.
@@ -87,11 +96,13 @@ export function ResultTicket({
               <Axis left="2s" right="15s" />
             </ChartWindow>
           )}
-          <Rows items={rows} />
-          {assessment.partial && (
+          {tags.length > 0 && <p className="result-tag">{tags.join(" · ")}</p>}
+          {rows.length > 0 && <Rows items={rows} />}
+          {extra && <p className="result-extra">{extra}</p>}
+          {tags.length === 0 && assessment.partial && (
             <p className="result-tag">Partial reading · Stand Still skipped</p>
           )}
-          {assessment.confidence !== "high" && (
+          {tags.length === 0 && assessment.confidence !== "high" && (
             <p className="result-tag">
               Loose reading · {assessment.confidence} confidence
             </p>
@@ -112,7 +123,7 @@ export function ResultTicket({
           <Stub label="Next">{nudges[assessment.nudge]}</Stub>
         </Ticket>
         <nav className="k-keys k-keys--2" aria-label="After your reading">
-          <Link className="k-key k-key--quiet result-link" to="/check">
+          <Link className="k-key k-key--quiet result-link" to={againTo}>
             Run again
           </Link>
           <Link className="k-key k-key--quiet result-link" to="/home">
