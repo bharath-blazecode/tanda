@@ -1,4 +1,4 @@
-import type { StandAnalysis } from "./analyze";
+import { CAPTURE_SECONDS, SETTLE_SECONDS, type StandAnalysis } from "./analyze";
 import { useStand } from "./useStand";
 import { Housing, Key, Plate, Sheet, ChartWindow } from "../../ui";
 import { Trace } from "./Trace";
@@ -18,11 +18,11 @@ export function Stand({
   const active = ["permission", "countdown", "running"].includes(test.phase);
   return (
     <Housing className="stand-test">
-      <Plate serial={"Stand Still\n15 second capture"} />
+      <Plate serial={`Stand Still\n${CAPTURE_SECONDS} second capture`} />
       <div className="strip">
         <span>WHOLE-BODY SWAY</span>
         <span className="timer">
-          {test.phase === "running" ? `${test.seconds}s` : "15s"}
+          {test.phase === "running" ? `${test.seconds}s` : `${CAPTURE_SECONDS}s`}
         </span>
       </div>
       {test.phase === "intro" && (
@@ -38,11 +38,11 @@ export function Stand({
             hands. Pick a spot on the wall. Stay still until the end beep.
           </p>
           <p>
-            The first 2 seconds let you settle. The next 13 seconds make the
-            reading.
+            The first {SETTLE_SECONDS} seconds let you settle. The next{" "}
+            {CAPTURE_SECONDS - SETTLE_SECONDS} seconds make the reading.
           </p>
           <p>
-            Turn up your sound. No beep? Count slowly to 20 after the countdown,
+            Turn up your sound. No beep? Count slowly to {CAPTURE_SECONDS} after the countdown,
             then look.
           </p>
         </Sheet>
@@ -121,8 +121,8 @@ export function Stand({
       )}
       {test.audioWarning && (
         <p role="status">
-          Sound is unavailable. The capture still ends automatically after 15
-          seconds.
+          Sound is unavailable. The capture still ends automatically after{" "}
+          {CAPTURE_SECONDS} seconds.
         </p>
       )}
       {active ? (
