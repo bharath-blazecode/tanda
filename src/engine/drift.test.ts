@@ -78,3 +78,22 @@ describe('driftFor', () => {
     }
   })
 })
+
+describe('a run with only one scored test', () => {
+  it('scores sway alone when the tapping test was skipped in both runs', () => {
+    const a = { stand: { swayRms: 1, swayLateralRms: 1, hz: 50, valid: true }, at: 0 }
+    const b = { stand: { swayRms: 2, swayLateralRms: 1, hz: 50, valid: true }, at: 1 }
+    const d = driftFor(a, b)
+    expect(d.sway).toBeGreaterThan(0)
+    expect(d.choiceRt).toBeUndefined()
+    expect(d.choiceWrong).toBeUndefined()
+  })
+
+  it('leaves the tap terms out when only one of the two runs tapped', () => {
+    const taps = { medianMs: 400, wrong: 0, lapses: 0, trials: 8 }
+    const withTaps = { stand: { swayRms: 1, swayLateralRms: 1, hz: 50, valid: true }, choice: taps, at: 0 }
+    const without = { stand: { swayRms: 1, swayLateralRms: 1, hz: 50, valid: true }, at: 1 }
+    expect(driftFor(withTaps, without).choiceRt).toBeUndefined()
+    expect(driftFor(without, withTaps).choiceRt).toBeUndefined()
+  })
+})

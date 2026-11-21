@@ -39,12 +39,12 @@ export function Check() {
   if (!stored.baseline) return null
   const baseline = stored.baseline
 
-  const finish = async (taps: ChoiceMetrics, hr: number | null) => {
+  const finish = async (taps: ChoiceMetrics | null, hr: number | null) => {
     setStep('scoring')
     const now = Date.now()
     const run: RunResult = {
       stand: stand ?? undefined,
-      choice: taps,
+      choice: taps ?? undefined,
       at: now,
       ...(hr === null ? {} : { hr, hrSource: 'camera' as const }),
     }
@@ -150,7 +150,7 @@ export function Check() {
       {step === 'pulse' ? (
         <PulseTest
           label={pulseWillScore ? 'Optional · Pulse' : 'Optional · Pulse · shown, not scored'}
-          onDone={(hr) => void finish(choice!, hr)}
+          onDone={(hr) => void finish(choice, hr)}
         />
       ) : step === 'stand' ? (
         <StandTest
@@ -168,6 +168,11 @@ export function Check() {
             else void finish(metrics, null)
           }}
         />
+      )}
+      {step === 'choice' && stand !== null && (
+        <Key quiet onClick={() => (withPulse ? (setChoice(null), setStep('pulse')) : void finish(null, null))}>
+          Skip this test
+        </Key>
       )}
       {step === 'stand' && (
         <Key quiet onClick={skipStand}>

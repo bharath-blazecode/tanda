@@ -25,10 +25,15 @@ export function Baseline() {
 
   // The normal is saved as soon as both tests are through. The pulse (D46) is opt-in from the
   // saved screen, because it fails often enough on real phones that nobody should meet it unasked.
-  const finish = (taps: ChoiceMetrics) => {
+  // The tapping test may be skipped, but only once the standing test has been recorded: a run
+  // with neither is not a reading, and the contract refuses it (shared/contracts.ts).
+  const finish = (taps: ChoiceMetrics | null) => {
     update((current) => ({
       ...current,
-      baseline: { run: { stand: stand ?? undefined, choice: taps, at: Date.now() }, clean },
+      baseline: {
+        run: { stand: stand ?? undefined, choice: taps ?? undefined, at: Date.now() },
+        clean,
+      },
     }))
     setStep('saved')
   }
@@ -131,6 +136,11 @@ export function Baseline() {
             finish(metrics)
           }}
         />
+      )}
+      {step === 'choice' && stand !== null && (
+        <Key quiet onClick={() => finish(null)}>
+          Skip this test
+        </Key>
       )}
     </Housing>
   )
