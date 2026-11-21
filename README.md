@@ -3,7 +3,15 @@
 **Team workspace for the Tanda AI Hackathon 2026 — Brisbane, 20–21 November.**
 Theme: *Bring an idea to life.* Research, strategy, idea selection and the build plan live here.
 
-**Three ideas, not yet prioritised** — [`UNSEEN`](docs/09-the-three-ideas.md#idea-1--unseen) (camera), [`BUZZ CHECK`](docs/09-the-three-ideas.md#idea-2--buzz-check-phone-sensors) (phone sensors) and [`THE WEARABLE`](docs/09-the-three-ideas.md#idea-3--the-wearable--the-one-the-team-wants) (smart ring). They share one spine: **measure how far a body has drifted from its own baseline.** Each works alone; together they're three channels on one instrument.
+**🎯 We're building [`BUZZ CHECK`](docs/12-current-plan.md)** — a body drift recorder. Log a drink, hold still, find out how far you've moved from your own normal. Steady / Wired / Tipsy / Wobbly, printed on a receipt, signed by a bin chicken.
+
+| Tier | What | Status |
+|---|---|---|
+| **1** | Phone sensors — sway, tremor, tap | ✅ **Building** · [artifact](https://claude.ai/artifact/PxjfUo9T94tEkLCm1eNk3z) |
+| **2** | The lens — camera pulse + magnifier | ✅ **Building** · [artifact](https://claude.ai/artifact/1S1tCjbbQxQF2u7MS4BimT) |
+| **3** | The ring — HR, HRV, SpO₂ | ⏸️ **On hold** — team verifying feasibility · [dossier](https://claude.ai/artifact/R3XmooEsVLgv4nF1oQzKMM) |
+
+🔴 **Neither the camera nor the motion sensors work inside the artifact viewer.** Hosting isn't a finishing touch, it's the project — see [`docs/12`](docs/12-current-plan.md) §4.
 
 📋 **[Team plan page](https://claude.ai/artifact/9XfYmYj56wfpLVB24GecEj)** — the build plan with a live countdown, tickable gates, the pre-mortem and the demo script. *(Ask Bharath for access.)*
 
@@ -54,8 +62,22 @@ Read them in order; later ones correct earlier ones where they disagree.
 | **[`docs/08-three-ideas.md`](docs/08-three-ideas.md)** | Why the three ideas are one instrument, and the wearable feasibility verdicts. |
 | **[`docs/09-the-three-ideas.md`](docs/09-the-three-ideas.md)** | 📋 **The three ideas in full detail** — what each is, how it's built, its honest risks, and how they stack. Not yet prioritised. |
 | **[`docs/10-biosignals.md`](docs/10-biosignals.md)** | 🔬 **What actually detects alcohol and caffeine**, and what a local agent can honestly do. Hardware section superseded by `11`. |
-| **[`docs/11-the-ring.md`](docs/11-the-ring.md)** | 💍 **The Kmart ring** — which to buy, the real metric list (JRing/56ff), the standard-BLE shortcut, and the things that will bite you. |
+| **[`docs/11-the-ring.md`](docs/11-the-ring.md)** | 💍 **The Kmart ring** — which to buy, the real metric list (JRing/56ff), the standard-BLE shortcut, and the things that will bite you. *(Tier 3, on hold.)* |
+| **[`docs/12-current-plan.md`](docs/12-current-plan.md)** | 🎯 **Where we are now.** Both artifacts described in detail, what's on hold, the hosting problem, and the gates for the rest of today. |
 | **[`IDEA`](IDEA)** | The locked idea in one sentence, plus the go/no-go checklist. |
+
+## What's left today
+
+Working backwards from the **16:30** deadline. Full version in [`docs/12`](docs/12-current-plan.md) §6.
+
+| Time | Gate |
+|---|---|
+| **11:30** | 🚨 Public HTTPS URL live. Free host — **don't block on the domain.** |
+| **12:30** | Real motion on a real iPhone, over mobile data |
+| **13:30** | 🔒 Hard feature freeze. Both tiers behind one link |
+| **14:30** | Ten people, their own phones, iOS + Android |
+| **15:00** | Slides done, first rehearsal on a stopwatch |
+| **16:00** | **Post the link.** Keep polishing behind the same URL |
 
 ## The strategy in short
 
