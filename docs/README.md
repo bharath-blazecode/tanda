@@ -14,6 +14,7 @@ Start with the [project README](../README.md) for Kachka's idea, implemented fea
 | [UI components](../src/ui/README.md) | Using the shared interface kit. |
 | [Working guidance](../CLAUDE.md) | Repository layout and development/product rules. |
 | [Screenshot details](screenshots/README.md) | How the README images were captured and which data is illustrative. |
+| [Portfolio and Astra Ultra handoff](portfolio/README.md) | Post-hackathon research, current-state and security memos, the implementation prompt and a formatted PDF. |
 
 These documents were written during a fast-moving hackathon. Some sections still describe proposed work. Read later decisions and the current source alongside them; they are not all statements of shipped functionality.
 

@@ -1,0 +1,489 @@
+{
+  "prepared_date": "2026-11-22",
+  "timezone": "Australia/Brisbane",
+  "repository": "bharath-blazecode/tanda",
+  "main_snapshot": "b3d93a6",
+  "pending_pulse_commit": "5ca2b58",
+  "method": "Source inspection, inherited scientific citations and direct official technical-documentation retrieval. Health/science retrieval was blocked. Not a systematic review or security sign-off.",
+  "sources": [
+    {
+      "id": "S1",
+      "title_or_locator": "Jongen et al., 2014",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC4039994/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "blocked-by-network-policy",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": "2026-11-22",
+      "claim_scope": "Alcohol, laboratory sway and psychomotor tasks. REPO citation. Direct download attempted and blocked.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S2",
+      "title_or_locator": "Caccese et al., 2022",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC9667020/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Chest-held smartphone balance protocol. REPO citation. Population and exact outcomes need checking.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S3",
+      "title_or_locator": "Drunk User Interfaces, year not established here",
+      "urls": [
+        "https://ubicomplab.cs.washington.edu/pdfs/dui.pdf"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Four-choice versus simple reaction task. REPO citation. Verify full publication metadata and whether the product task is comparable.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S4",
+      "title_or_locator": "Woods et al., 2015",
+      "urls": [
+        "https://doi.org/10.3389/fnhum.2015.00540"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Reaction-time variability. REPO citation. Do not repeat numerical trial-count extrapolations without the method.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S5",
+      "title_or_locator": "Burghart et al., 2019, as recorded in repository",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC7309344/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Repeat/practice effects. Verify author/year and exact task.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S6",
+      "title_or_locator": "Pronk et al., 2020",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC7280355/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Browser timing effects. REPO citation. A stable offset cancelling does not remove timing jitter or device variation.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S7",
+      "title_or_locator": "Rogers et al., 2013",
+      "urls": [
+        "https://research-information.bris.ac.uk/ws/files/59709227/Faster_but_not_smarter_Psychopharm_final_revision.pdf"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Caffeine and reaction performance. REPO citation. Verify participant habituation and withdrawal conditions.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S8",
+      "title_or_locator": "Temple et al., 2017",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC5445139/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Caffeine pharmacology and population caveats. REPO citation.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S9",
+      "title_or_locator": "Desbrow et al., 2007",
+      "urls": [
+        "https://pubmed.ncbi.nlm.nih.gov/17412475/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Australian cafe-coffee variability. REPO citation. Not a validated present-day Brisbane average.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S10",
+      "title_or_locator": "EFSA NDA Panel, 2015, Scientific Opinion on the safety of caffeine",
+      "urls": [
+        "https://doi.org/10.2903/j.efsa.2015.4102",
+        "https://www.efsa.europa.eu/en/efsajournal/pub/4102"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "blocked-by-network-policy",
+      "source_origin": "authoritative-guidance-to-verify",
+      "verified_date": null,
+      "attempt_date": "2026-11-22",
+      "claim_scope": "Authoritative opinion to verify for specified populations and dose contexts. Direct page download blocked.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S11",
+      "title_or_locator": "FSANZ, caffeine guidance, current page year/version to verify",
+      "urls": [
+        "https://www.foodstandards.gov.au/consumer/prevention-of-foodborne-illness/caffeine"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "blocked-by-network-policy",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": "2026-11-22",
+      "claim_scope": "Australian/New Zealand consumer information and label context. REPO URL. Direct download blocked.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S12",
+      "title_or_locator": "Australian Government, standard-drinks guide, current page year/version to verify",
+      "urls": [
+        "https://www.health.gov.au/topics/alcohol/about-alcohol/standard-drinks-guide"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "blocked-by-network-policy",
+      "source_origin": "authoritative-guidance-to-verify",
+      "verified_date": null,
+      "attempt_date": "2026-11-22",
+      "claim_scope": "Ten-gram definition and labelled serving counts. GUIDANCE TO VERIFY. Direct download blocked.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S13",
+      "title_or_locator": "NHMRC, Australian Guidelines to Reduce Health Risks from Drinking Alcohol, 2020",
+      "urls": [
+        "https://www.nhmrc.gov.au/health-advice/alcohol"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "blocked-by-network-policy",
+      "source_origin": "authoritative-guidance-to-verify",
+      "verified_date": null,
+      "attempt_date": "2026-11-22",
+      "claim_scope": "Australian risk-reduction guidance and special populations. GUIDANCE TO VERIFY. Parent reported proxy denial.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S14",
+      "title_or_locator": "Buckman et al., 2015, as recorded in repository",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC4971776/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Alcohol and HR/HRV under a study-specific protocol. Verify metadata and avoid individual-detection claims.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S15",
+      "title_or_locator": "Cipryan, 2016, as recorded in repository",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC5260644/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Short-term HRV repeatability. REPO citation.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S16",
+      "title_or_locator": "Banhalmi et al., 2018",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC5832098/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Camera measurement against a reference. Verify acquisition conditions and whether it concerns contact PPG.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S17",
+      "title_or_locator": "Plews et al., 2017",
+      "urls": [
+        "https://pubmed.ncbi.nlm.nih.gov/28290720/"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Smartphone-derived HRV validation under its specific protocol. REPO citation.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S18",
+      "title_or_locator": "Esco and Flatt, 2014",
+      "urls": [
+        "https://www.jssm.org/jssm-13-535.xml-abst"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "Ultra-short versus longer HRV recordings. REPO citation.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "S19",
+      "title_or_locator": "Shaffer et al., 2020",
+      "urls": [
+        "https://doi.org/10.3389/fnins.2020.594880"
+      ],
+      "scope": "physiology-or-health-guidance",
+      "access_status": "repository-citation-not-retrieved",
+      "source_origin": "repository-notes",
+      "verified_date": null,
+      "attempt_date": null,
+      "claim_scope": "HRV recording-length/context review. REPO citation. Verify scope before using a universal minimum duration.",
+      "limitations": "Primary text and exact metadata not verified in this pass. Do not treat as clinical validation of Kachka."
+    },
+    {
+      "id": "T1",
+      "title_or_locator": "OWASP HTTP Headers Cheat Sheet",
+      "urls": [
+        "https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/HTTP_Headers_Cheat_Sheet.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 24145,
+      "sha256": "5f0772d3c1a7cde8f94817e42369f82f9f34c767b4794f3994dd05eb3e922417",
+      "claim_scope": "Security header choices, HSTS conditions and deployment verification.",
+      "limitations": "Technical guidance was retrieved. This is not an implementation/compliance sign-off or clinical evidence."
+    },
+    {
+      "id": "T2",
+      "title_or_locator": "OWASP Input Validation Cheat Sheet",
+      "urls": [
+        "https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/Input_Validation_Cheat_Sheet.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 10895,
+      "sha256": "421efd00219c14510d2a42592701e69f562766de3f74fa83667e4edafbd5e10e",
+      "claim_scope": "Server-side input and schema constraints, not authorization.",
+      "limitations": "Technical guidance was retrieved. This is not an implementation/compliance sign-off or clinical evidence."
+    },
+    {
+      "id": "T3",
+      "title_or_locator": "MDN DeviceMotionEvent source",
+      "urls": [
+        "https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/devicemotionevent/index.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 2811,
+      "sha256": "94697333176ceb8c59e49b8a0cfd2b2354eda45b761587e9cdcf7c7c45ae025c",
+      "claim_scope": "Browser API fields, acceleration and rotation units, permission and interoperability limits.",
+      "limitations": "Technical guidance was retrieved. This is not an implementation/compliance sign-off or clinical evidence."
+    },
+    {
+      "id": "T4",
+      "title_or_locator": "MDN prefers-reduced-motion source",
+      "urls": [
+        "https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/css/reference/at-rules/@media/prefers-reduced-motion/index.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 5730,
+      "sha256": "e88b5fe5612a99f88ec00200bb13e656adf643b9f69ca95b6b7125bc65414a0b",
+      "claim_scope": "Reduced-motion preferences and vestibular-trigger considerations.",
+      "limitations": "Technical guidance was retrieved. This is not an implementation/compliance sign-off or clinical evidence."
+    },
+    {
+      "id": "G1",
+      "title_or_locator": "OAIC privacy and health-information guidance",
+      "urls": [
+        "https://www.oaic.gov.au/"
+      ],
+      "scope": "regulatory-or-accessibility-guidance",
+      "access_status": "not-retrieved-follow-up-required",
+      "source_origin": "official-guidance-to-locate-or-verify",
+      "verified_date": null,
+      "claim_scope": "Verify current applicable guidance and intended scope. Do not declare compliance from this handoff."
+    },
+    {
+      "id": "G2",
+      "title_or_locator": "TGA software and medical-device intended-purpose guidance",
+      "urls": [
+        "https://www.tga.gov.au/"
+      ],
+      "scope": "regulatory-or-accessibility-guidance",
+      "access_status": "not-retrieved-follow-up-required",
+      "source_origin": "official-guidance-to-locate-or-verify",
+      "verified_date": null,
+      "claim_scope": "Verify current applicable guidance and intended scope. Do not declare compliance from this handoff."
+    },
+    {
+      "id": "G3",
+      "title_or_locator": "W3C Web Content Accessibility Guidelines 2.2",
+      "urls": [
+        "https://www.w3.org/TR/WCAG22/"
+      ],
+      "scope": "regulatory-or-accessibility-guidance",
+      "access_status": "not-retrieved-follow-up-required",
+      "source_origin": "official-guidance-to-locate-or-verify",
+      "verified_date": null,
+      "claim_scope": "Verify current applicable guidance and intended scope. Do not declare compliance from this handoff."
+    },
+    {
+      "id": "T5",
+      "title_or_locator": "OWASP ASVS project README",
+      "urls": [
+        "https://raw.githubusercontent.com/OWASP/ASVS/master/README.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 11286,
+      "sha256": "0140389ca679b4e5c677862f75c3377b643194a94cd26da3fd88f6d0f5b96770",
+      "claim_scope": "Security verification, access control, session, browser-storage or CSRF requirements as mapped in SECURITY-AND-PRIVACY.md.",
+      "limitations": "Guidance retrieval is not a claim that Kachka satisfies the standard."
+    },
+    {
+      "id": "T6",
+      "title_or_locator": "OWASP ASVS 5.0.0 release requirements",
+      "urls": [
+        "https://raw.githubusercontent.com/OWASP/ASVS/v5.0.0/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.csv"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 105100,
+      "sha256": "98c8fe911b9edb403af8ee05d3ce8201ecac2659e313b053890a62847cdcf680",
+      "claim_scope": "Security verification, access control, session, browser-storage or CSRF requirements as mapped in SECURITY-AND-PRIVACY.md.",
+      "limitations": "Guidance retrieval is not a claim that Kachka satisfies the standard."
+    },
+    {
+      "id": "T7",
+      "title_or_locator": "OWASP Authorization Cheat Sheet",
+      "urls": [
+        "https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/Authorization_Cheat_Sheet.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 31021,
+      "sha256": "fb8b6e5c60ed783025beefb5049142fd9da02d01f5c95de18a19d26479737975",
+      "claim_scope": "Security verification, access control, session, browser-storage or CSRF requirements as mapped in SECURITY-AND-PRIVACY.md.",
+      "limitations": "Guidance retrieval is not a claim that Kachka satisfies the standard."
+    },
+    {
+      "id": "T8",
+      "title_or_locator": "OWASP Content Security Policy Cheat Sheet",
+      "urls": [
+        "https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/Content_Security_Policy_Cheat_Sheet.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 18946,
+      "sha256": "4d5e2f4d1c42ae58672fabb8088b2254ce5e6990432b58e110604942f14b34d0",
+      "claim_scope": "Security verification, access control, session, browser-storage or CSRF requirements as mapped in SECURITY-AND-PRIVACY.md.",
+      "limitations": "Guidance retrieval is not a claim that Kachka satisfies the standard."
+    },
+    {
+      "id": "T9",
+      "title_or_locator": "OWASP Session Management Cheat Sheet",
+      "urls": [
+        "https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/Session_Management_Cheat_Sheet.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 57688,
+      "sha256": "f4350da6e2922c80dc8312ec69e86749b7bf82512cdd80d5295505472080867d",
+      "claim_scope": "Security verification, access control, session, browser-storage or CSRF requirements as mapped in SECURITY-AND-PRIVACY.md.",
+      "limitations": "Guidance retrieval is not a claim that Kachka satisfies the standard."
+    },
+    {
+      "id": "T10",
+      "title_or_locator": "OWASP HTML5 Security Cheat Sheet",
+      "urls": [
+        "https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/HTML5_Security_Cheat_Sheet.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 16739,
+      "sha256": "e60bd4a55f5233938ffcbb3fdf429f13cdc663b8e659a77aeb633bc1e37d2c96",
+      "claim_scope": "Security verification, access control, session, browser-storage or CSRF requirements as mapped in SECURITY-AND-PRIVACY.md.",
+      "limitations": "Guidance retrieval is not a claim that Kachka satisfies the standard."
+    },
+    {
+      "id": "T11",
+      "title_or_locator": "OWASP Cross-Site Request Forgery Prevention Cheat Sheet",
+      "urls": [
+        "https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.md"
+      ],
+      "scope": "technical-documentation",
+      "access_status": "retrieved-full-text",
+      "source_origin": "official-maintainer-repository",
+      "verified_date": "2026-11-22",
+      "http_status": 200,
+      "bytes": 53866,
+      "sha256": "dfa755756257d3b9f2a0b81679b7c493136cab13254b08dd0f98267807e36bfe",
+      "claim_scope": "Security verification, access control, session, browser-storage or CSRF requirements as mapped in SECURITY-AND-PRIVACY.md.",
+      "limitations": "Guidance retrieval is not a claim that Kachka satisfies the standard."
+    }
+  ]
+}

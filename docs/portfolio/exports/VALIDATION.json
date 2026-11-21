@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-22",
+  "timezone": "Australia/Brisbane",
+  "main_snapshot": "b3d93a6",
+  "pending_pulse_commit": "5ca2b58",
+  "handoff_scope": "Documentation, research JSON/CSV and PDF only",
+  "relative_links_checked": 22,
+  "source_records": 33,
+  "retrieved_official_technical_documents": 11,
+  "fresh_primary_physiological_or_health_documents": 0,
+  "standard_drink_examples_verified": 6,
+  "pdf_pages": 18,
+  "pdf_sha256": "6c20f1503abf8e5a7580d8236e7b4a54eb3d7c2de208f398ca0473cd30fa49cc",
+  "pdf_selectable_text_and_required_sections": "passed",
+  "pdf_text_within_page_bounds": "passed",
+  "pdf_automatic_actions_or_forms": "none found",
+  "new_prose_em_dashes_or_semicolons": 0,
+  "application_source_delta": "none",
+  "known_credential_in_handoff_artifacts": "absent",
+  "known_historical_credential": "still present in older Git blobs, rotation or retirement needs venue confirmation",
+  "health_source_access": "blocked or unverified as recorded in SOURCES.json",
+  "pending_pulse_validation": {
+    "command": "npm run check",
+    "test_files_passed": 42,
+    "tests_passed": 513,
+    "typecheck": "passed",
+    "production_build": "passed",
+    "physical_phone_or_clinical_validation": "not established"
+  },
+  "pdf_markdown_content_lines_verified": 179
+}
