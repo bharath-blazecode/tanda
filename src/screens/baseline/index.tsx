@@ -28,10 +28,10 @@ const firstTest = (): Step => (getMotionAvailability() === 'unavailable' ? 'choi
 
 export function Baseline() {
   const navigate = useNavigate()
-  // Quick demo skips the questions, the tapping test and the pulse: straight to standing still.
-  // It needs motion to have anything to record, so without it this is the full flow.
-  const quick = isQuickDemo() && getMotionAvailability() !== 'unavailable'
-  const [step, setStep] = useState<Step>(quick ? 'stand' : 'clean')
+  // Quick demo records nothing here: a stock normal is already on file (src/store/quick.ts), so
+  // this screen only asks what the person has had and hands over to the reading.
+  const quick = isQuickDemo()
+  const [step, setStep] = useState<Step>(quick ? 'what' : 'clean')
   const [clean, setClean] = useState(true)
   const [stand, setStand] = useState<StandMetrics | null>(null)
   const [counts, setCounts] = useState<Record<DrinkKind, number>>(NONE)
@@ -51,7 +51,7 @@ export function Baseline() {
       Array.from({ length: counts[kind] }, (_, i) => ({ kind, at: at - i })),
     )
     if (drinks.length > 0) update((current) => ({ ...current, drinks: [...current.drinks, ...drinks] }))
-    // Quick demo: the normal is already on file, so this goes straight on to the reading.
+    // Quick demo: the stock normal is on file, so this goes straight on to the reading.
     if (quick) navigate('/check')
     else setStep(firstTest())
   }
@@ -75,8 +75,7 @@ export function Baseline() {
         clean,
       },
     }))
-    // Quick demo runs straight through: normal, what you had, the reading, the ticket.
-    setStep(quick ? 'what' : 'saved')
+    setStep('saved')
   }
 
   if (step === 'clean') {
@@ -142,9 +141,9 @@ export function Baseline() {
       <Housing>
         <Plate small serial={'Setup\nWhat you had'} />
         <Sheet grow>
-          <Label paper>{quick ? 'Normal saved · Now the reading' : 'Before we start'}</Label>
+          <Label paper>{quick ? 'Quick demo · Simulated' : 'Before we start'}</Label>
           <h2>What have you had?</h2>
-          {quick && <p>That was your normal. Log what you have had, then we read you again.</p>}
+          {quick && <p>Three short tests, then your ticket. We compare you with a stock normal, not your own.</p>}
           <p className="k-small">Tap one for each. This is only used to label the reading.</p>
           <div style={{ display: 'grid', gap: 'var(--s3)', marginTop: 'var(--z)' }}>
             {DRINKS.map(({ kind, label }) => (
@@ -181,9 +180,7 @@ export function Baseline() {
         <StandTest
           onDone={(metrics) => {
             setStand(metrics)
-            // Quick demo: the standing test alone is the normal. Passed in, since state has not landed yet.
-            if (quick) finish(null, null, metrics)
-            else setStep('choice')
+            setStep('choice')
           }}
         />
       ) : (

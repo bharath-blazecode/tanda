@@ -14,7 +14,7 @@ import { StandTest } from '../../tests/stand'
 import { getMotionAvailability } from '../../sensors/motion'
 import { drinksToday } from '../../store/day'
 import { load, update } from '../../store/local'
-import { isQuickDemo } from '../../store/quick'
+import { isQuickDemo, isStockBaseline } from '../../store/quick'
 import { Housing, Key, Label, Plate, Sheet } from '../../ui'
 
 type Step = 'intro' | 'stand' | 'choice' | 'pulse' | 'scoring'
@@ -24,8 +24,10 @@ export function Check() {
   const stored = useRef(load()).current
   // Demo hands over its mode and the handicap picked; anything else is a real check.
   const handed = useLocation().state as { mode?: Mode; handicap?: Handicap } | null
-  const mode: Mode = handed?.mode === 'demo' ? 'demo' : 'real'
-  // Quick demo arrives here straight from the normal, so it starts on the first test, with the
+  // A reading against the stock normal is never a real one, whatever route led here.
+  const stock = isStockBaseline(stored.baseline)
+  const mode: Mode = handed?.mode === 'demo' || stock ? 'demo' : 'real'
+  // Quick demo arrives here straight from the drink picker, so it starts on the first test, with the
   // pulse step on, rather than on another screen to tap through.
   const quickStart = isQuickDemo()
   const [step, setStep] = useState<Step>(
@@ -70,7 +72,9 @@ export function Check() {
 
     // The line is the bird's, not the engine's. A canned one shows at once and stays if the
     // server does not answer inside its timeout.
-    let line = cannedLine(assessment.verdict, mode, now, { alcohol, handicap: assessment.guessedHandicap })
+    // No handicap was picked in a quick demo, so the bird is not told to guess one.
+    const handicap = stock ? undefined : assessment.guessedHandicap
+    let line = cannedLine(assessment.verdict, mode, now, { alcohol, handicap })
     const answer = await requestVerdictLine({
       deviceId: stored.deviceId,
       mode,
@@ -80,7 +84,7 @@ export function Check() {
       nudge: assessment.nudge,
       drinks: { caffeineMg, alcohol },
       localHour: new Date(now).getHours(),
-      handicap: assessment.guessedHandicap,
+      handicap,
     })
     if (answer) line = answer.line
 

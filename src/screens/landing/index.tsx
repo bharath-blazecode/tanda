@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { ChartWindow, Housing, Key, Plate, Printed } from '../../ui'
 import { load, reset, update } from '../../store/local'
-import { setQuickDemo } from '../../store/quick'
+import { STOCK_BASELINE, setQuickDemo } from '../../store/quick'
 
 const NAME_MAX = 16
 // Stored.nickname has min(3): a shorter value would fail validation on the next load() and wipe the record.
@@ -32,10 +32,15 @@ export function Landing() {
     navigate('/setup')
   }
 
-  // The short way through: the standing test only, for the normal and for the check.
+  // The short way through: a stock normal on file, so every test runs once and prints a ticket.
   const quickDemo = () => {
     setQuickDemo(true)
-    update((s) => ({ ...s, nickname: chooseName(name, s.nickname), shareToRoom: true }))
+    update((s) => ({
+      ...s,
+      nickname: chooseName(name, s.nickname),
+      shareToRoom: true,
+      baseline: STOCK_BASELINE,
+    }))
     navigate('/setup')
   }
 
