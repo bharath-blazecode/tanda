@@ -1,8 +1,11 @@
-// CARD 5. Stub. drift + the drink log -> verdict, confidence, nudge.
+// CARD 5. drift + the drink log -> verdict, confidence, score, nudge.
 // The sensors give the amount of drift; the log gives it a name (D17, D18).
-import type { Assessment, Drink, Mode, RunResult } from '../../shared/contracts'
-import { driftFor } from './drift'
-import { nudgeFor } from './nudge'
+import type { Assessment, Confidence, Drift, Handicap, RunResult } from '../../shared/contracts'
+import type { Drink, Mode } from '../../shared/contracts'
+import { driftFor, pos } from './drift'
+import { DRIFT_CLIP } from './drift'
+import { DRIFT_THRESHOLD, PULSE_CAP } from './metrics'
+import { hasAlcohol, hasCaffeine, nudgeFor } from './nudge'
 
 export type AssessInput = {
   baseline: RunResult
@@ -13,15 +16,86 @@ export type AssessInput = {
   checksSinceBaseline: number // the first few "faster than baseline" readings are learning, not drift
 }
 
+/** For the first few checks a faster tap is practice, not improvement worth crediting. */
+export const LEARNING_CHECKS = 3
+
+/** Below this sample rate the sway reading is not trustworthy enough to count fully. */
+export const MIN_HZ = 15
+
+/** How far a run's sample rate may sit from the baseline's before confidence drops. */
+export const HZ_TOLERANCE = 0.25
+
+/** One number from the whole drift record. The pulse is capped so it can never decide alone (D46). */
+export function totalDrift(drift: Drift): number {
+  const sensors = pos(drift.sway) + pos(drift.choiceRt) + pos(drift.choiceWrong)
+  const pulse = Math.min(PULSE_CAP, PULSE_CAP * pos(drift.hr))
+  return sensors + pulse
+}
+
+/** 100 is rock steady. The mean is over the metrics actually measured, not over all four. */
+export function scoreFor(drift: Drift): number {
+  const values = Object.values(drift).filter((v): v is number => typeof v === 'number')
+  if (values.length === 0) return 100
+  const mean = values.reduce((sum, v) => sum + pos(v), 0) / values.length
+  return 100 - Math.round(100 * Math.min(1, Math.max(0, mean / DRIFT_CLIP)))
+}
+
+function confidenceFor(input: AssessInput): Confidence {
+  let steps = 0
+  if (!input.run.stand?.valid) steps++
+  if (!input.baselineClean) steps++
+
+  const hz = input.run.stand?.hz
+  const baseHz = input.baseline.stand?.hz
+  if (hz !== undefined) {
+    if (hz < MIN_HZ) steps++
+    else if (baseHz !== undefined && baseHz > 0 && Math.abs(hz / baseHz - 1) > HZ_TOLERANCE) steps++
+  }
+
+  if (steps <= 0) return 'high'
+  if (steps === 1) return 'medium'
+  return 'low'
+}
+
+/**
+ * In demo mode the person chose a handicap and we guess which. A raised pulse points at jumping
+ * jacks; otherwise whichever side of the body drifted more names it.
+ */
+function guessHandicap(drift: Drift, baseline: RunResult, run: RunResult): Handicap | undefined {
+  if (baseline.hr !== undefined && run.hr !== undefined && run.hr >= baseline.hr * 1.25) return 'jacks'
+  const sway = pos(drift.sway)
+  const tapping = pos(drift.choiceRt) + pos(drift.choiceWrong)
+  if (sway === 0 && tapping === 0) return undefined
+  return sway > tapping ? 'spin' : 'offhand'
+}
+
 export function assess(input: AssessInput): Assessment {
-  const { nudge, showSafetyLine } = nudgeFor('steady', input.drinksToday)
+  const drift = driftFor(input.baseline, input.run)
+
+  // Early on, a faster tap is the person learning the test. Do not bank it as improvement.
+  if (input.checksSinceBaseline < LEARNING_CHECKS && drift.choiceRt !== undefined && drift.choiceRt < 0) {
+    drift.choiceRt = 0
+  }
+
+  const total = totalDrift(drift)
+  const alcohol = hasAlcohol(input.drinksToday)
+  const caffeine = hasCaffeine(input.drinksToday)
+
+  // The amount comes from the sensors; the name comes from the log (D17, D18).
+  // Alcohol outranks caffeine, so a night with both reads as tipsy.
+  const verdict =
+    total < DRIFT_THRESHOLD ? 'steady' : alcohol ? 'tipsy' : caffeine ? 'wired' : 'wobbly'
+
+  const { nudge, showSafetyLine } = nudgeFor(verdict, input.drinksToday)
+
   return {
-    verdict: 'steady',
-    confidence: 'low',
-    drift: driftFor(input.baseline, input.run),
-    score: 100,
+    verdict,
+    confidence: confidenceFor(input),
+    drift,
+    score: scoreFor(drift),
     nudge,
     showSafetyLine,
-    partial: !input.run.stand,
+    partial: !input.run.stand?.valid,
+    ...(input.mode === 'demo' ? { guessedHandicap: guessHandicap(drift, input.baseline, input.run) } : {}),
   }
 }
