@@ -103,7 +103,8 @@ export const Stored = z.object({
 export type Stored = z.infer<typeof Stored>
 
 // ---------- server routes ----------
-// Every field is a number or a closed enum. There is no free-text field anywhere (D9).
+// Every field is a number or a closed enum (D9). The one exception is the room nickname, which the
+// server sanitises before it reaches the board.
 
 export const VerdictRequest = z.object({
   deviceId: z.string().min(8).max(64),
@@ -127,9 +128,13 @@ export const VerdictResponse = z.object({
 })
 export type VerdictResponse = z.infer<typeof VerdictResponse>
 
+// A typed name may reach the board: the server sanitises it (shared/nicknames.ts) and falls back to a
+// generated nickname instead of rejecting, so the floor here is just "not empty".
+const RoomNickname = z.string().min(1).max(40)
+
 export const RoomResultRequest = z.object({
   deviceId: z.string().min(8).max(64),
-  nickname: z.string().min(3).max(40),
+  nickname: RoomNickname,
   verdict: Verdict,
   score: z.number().int().min(0).max(100),
   mode: Mode,
@@ -147,6 +152,26 @@ export const RoomEntry = z.object({
 })
 export type RoomEntry = z.infer<typeof RoomEntry>
 
+// What a phone is doing right now, for the "in the lab" list. Route stages plus finer ones a screen
+// may set (stand, choice, pulse).
+export const RoomStage = z.enum(['joined', 'baseline', 'check', 'stand', 'choice', 'pulse', 'result', 'demo', 'idle'])
+export type RoomStage = z.infer<typeof RoomStage>
+
+// A heartbeat, sent every 15 s while the tab is visible. Memory only on the server; expires after 45 s.
+export const RoomPresenceRequest = z.object({
+  deviceId: z.string().min(8).max(64),
+  nickname: RoomNickname,
+  stage: RoomStage,
+})
+export type RoomPresenceRequest = z.infer<typeof RoomPresenceRequest>
+
+export const RoomLive = z.object({
+  nickname: z.string(),
+  stage: RoomStage,
+  at: z.number().int(), // when this person's stage last changed
+})
+export type RoomLive = z.infer<typeof RoomLive>
+
 export const RoomState = z.object({
   total: z.number().int().min(0),
   mix: z.object({
@@ -162,6 +187,8 @@ export const RoomState = z.object({
   }),
   updatedAt: z.number().int(),
   commentary: z.string().nullable().optional(), // room commentator (D32), only if built
+  liveCount: z.number().int().min(0).optional(), // people with a heartbeat in the last 45 s
+  live: z.array(RoomLive).max(30).optional(), // most recently changed first
 })
 export type RoomState = z.infer<typeof RoomState>
 

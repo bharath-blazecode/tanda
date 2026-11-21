@@ -1,9 +1,10 @@
 // CARD 9. Pure helpers for the room board: poll state, join URL, QR geometry, polling loop.
 // No React and no DOM here, so all of it runs under Vitest in the node environment.
 import { create } from 'qrcode'
-import type { RoomState, Verdict } from '../../../shared/contracts'
+import type { RoomLive, RoomStage, RoomState, Verdict } from '../../../shared/contracts'
 
-export const POLL_MS = 2000
+// Faster than the 2 s of D13: the live list is what moves during the demo, and a heartbeat is cheap.
+export const POLL_MS = 1500
 // One dropped poll is normal on venue wifi; flag it only when it keeps happening (spec, screen 10).
 export const STALE_AFTER_FAILURES = 2
 
@@ -40,6 +41,48 @@ export const VERDICT_LABEL: Record<Verdict, string> = {
   wired: 'Wired',
   tipsy: 'Tipsy',
   wobbly: 'Wobbly',
+}
+
+// Plain words for the back row. Never a verdict here: those only come from a result.
+export const STAGE_LABEL: Record<RoomStage, string> = {
+  joined: 'just walked in',
+  baseline: 'recording a baseline',
+  stand: 'standing still',
+  choice: 'tapping',
+  check: 'running a check',
+  pulse: 'taking a pulse',
+  result: 'reading the ticket',
+  demo: 'faking it',
+  idle: 'hanging about',
+}
+
+export type LiveRow = { key: string; nickname: string; doing: string }
+export type LiveView = { count: number; rows: LiveRow[]; more: number }
+
+/**
+ * The live list as the board draws it: at most `max` rows, newest change first, and how many
+ * present people are not drawn. A key changes when the stage does, so a changed row prints in again.
+ */
+export function liveView(room: RoomState, max: number): LiveView {
+  const live: RoomLive[] = room.live ?? []
+  const count = Math.max(room.liveCount ?? live.length, live.length)
+  // With more people than rows, the last row becomes the "and N more" line.
+  const shown = count > max ? live.slice(0, max - 1) : live.slice(0, max)
+  const seen = new Map<string, number>()
+  const rows = shown.map((p) => {
+    const base = `${p.nickname}|${p.stage}|${p.at}`
+    const n = seen.get(base) ?? 0
+    seen.set(base, n + 1)
+    return { key: n === 0 ? base : `${base}#${n}`, nickname: p.nickname, doing: STAGE_LABEL[p.stage] }
+  })
+  return { count, rows, more: count - rows.length }
+}
+
+// The mascot wears the room's most common verdict; an empty or tied room stays steady.
+export function roomMood(room: RoomState): Verdict {
+  let best: Verdict = 'steady'
+  for (const v of VERDICT_ORDER) if (room.mix[v] > room.mix[best]) best = v
+  return best
 }
 
 export function commentaryLine(room: RoomState): string | null {
