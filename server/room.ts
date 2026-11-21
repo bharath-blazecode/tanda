@@ -4,10 +4,12 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { Hono } from 'hono'
 import { RoomPresenceRequest, RoomResultRequest, type RoomState } from '../shared/contracts'
-import { boardName } from '../shared/nicknames'
+import { deviceNickname } from '../shared/nicknames'
 import { clientIp } from './client-ip'
 import type { Config } from './config'
+import { namePolicy } from './room-names'
 import { createPresenceStore, type PresenceStore } from './room-presence'
+import { createRoomThrottle, type RoomThrottle } from './room-throttle'
 import { createRoomStore, type RoomStore } from './state'
 
 export type RoomRouteOptions = {
@@ -15,6 +17,7 @@ export type RoomRouteOptions = {
   postsPerMinute?: number
   presence?: PresenceStore
   heartbeatsPerMinute?: number
+  throttle?: RoomThrottle
 }
 
 const WINDOW_MS = 60_000
@@ -59,36 +62,48 @@ export function roomRoutes(
     postsPerMinute = DEFAULT_POSTS_PER_MINUTE,
     presence = createPresenceStore(),
     heartbeatsPerMinute = DEFAULT_HEARTBEATS_PER_MINUTE,
+    throttle = createRoomThrottle(),
   }: RoomRouteOptions = {},
 ) {
   const routes = new Hono()
+  const policy = namePolicy(config.roomNames)
+  // The contract already bounds the raw name, so the policy cannot refuse it here; the fallback is for types.
+  const nameFor = (raw: string, deviceId: string) => policy(raw, deviceId) ?? deviceNickname(deviceId)
   const allow = createLimiter(postsPerMinute)
   // Separate windows: a burst of heartbeats must never cost anyone their result post.
   const allowBeat = createLimiter(heartbeatsPerMinute)
 
+  // The IP bucket is counted once per request before the device gates, so a throttled request costs
+  // the venue exactly what an accepted one does. Throttled requests get the same 204, on purpose.
   routes.post('/room/result', async (c) => {
-    if (!allow(clientIp((name) => c.req.header(name)), now())) {
+    const ip = clientIp((name) => c.req.header(name))
+    if (!allow(ip, now())) {
       return c.json({ error: 'rate_limited' }, 429)
     }
     const parsed = RoomResultRequest.safeParse(await c.req.json().catch(() => null))
     if (!parsed.success) return c.json({ error: 'bad_request' }, 400)
     // The deviceId is only the key for one-entry-per-device; it is never stored in an entry.
     const { deviceId, nickname: raw, ...rest } = parsed.data
-    const nickname = boardName(raw, deviceId)
     const at = now()
+    if (!throttle.admit(ip, deviceId, at) || !throttle.takeResult(deviceId, at)) return c.body(null, 204)
+    const nickname = nameFor(raw, deviceId)
     store.add({ ...rest, nickname, at }, deviceId)
-    presence.beat(deviceId, nickname, 'result', at)
+    presence.beat(deviceId, nickname, 'result', at, true)
     return c.body(null, 204)
   })
 
   routes.post('/room/presence', async (c) => {
-    if (!allowBeat(clientIp((name) => c.req.header(name)), now())) {
+    const ip = clientIp((name) => c.req.header(name))
+    if (!allowBeat(ip, now())) {
       return c.json({ error: 'rate_limited' }, 429)
     }
     const parsed = RoomPresenceRequest.safeParse(await c.req.json().catch(() => null))
     if (!parsed.success) return c.json({ error: 'bad_request' }, 400)
     const { deviceId, nickname, stage } = parsed.data
-    presence.beat(deviceId, boardName(nickname, deviceId), stage, now())
+    const at = now()
+    if (!throttle.admit(ip, deviceId, at)) return c.body(null, 204)
+    // The store ignores a change inside its 2 s gap and only refreshes the heartbeat on a repeat.
+    presence.beat(deviceId, nameFor(nickname, deviceId), stage, at)
     return c.body(null, 204)
   })
 

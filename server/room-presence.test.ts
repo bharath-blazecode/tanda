@@ -45,3 +45,24 @@ describe('createPresenceStore', () => {
     expect(JSON.stringify(p.snapshot(T0))).not.toContain('secret-device')
   })
 })
+
+describe('presence change gap', () => {
+  it('accepts one change of name or stage per device every 2 s; a repeat only refreshes the heartbeat', () => {
+    const p = createPresenceStore()
+    p.beat('device-a', 'Ann', 'joined', T0)
+    p.beat('device-a', 'Ann', 'check', T0 + 500) // ignored
+    p.beat('device-a', 'Hacker', 'joined', T0 + 1_000) // ignored
+    expect(p.snapshot(T0 + 1_000).live).toEqual([{ nickname: 'Ann', stage: 'joined', at: T0 }])
+    p.beat('device-a', 'Ann', 'joined', T0 + 1_500) // a repeat: heartbeat only
+    expect(p.snapshot(T0 + 1_500 + PRESENCE_TTL_MS).liveCount).toBe(1)
+    p.beat('device-a', 'Ann', 'check', T0 + 2_000)
+    expect(p.snapshot(T0 + 2_000).live).toEqual([{ nickname: 'Ann', stage: 'check', at: T0 + 2_000 }])
+  })
+
+  it('lets a forced change (a result) through inside the gap', () => {
+    const p = createPresenceStore()
+    p.beat('device-a', 'Ann', 'check', T0)
+    p.beat('device-a', 'Ann', 'result', T0 + 100, true)
+    expect(p.snapshot(T0 + 100).live[0]?.stage).toBe('result')
+  })
+})

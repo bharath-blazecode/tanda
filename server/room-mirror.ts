@@ -4,7 +4,15 @@
 import { RoomEntry } from '../shared/contracts'
 import type { Config } from './config'
 import { createRedisMirror } from './redis'
-import { createRoomStore, DEFAULT_MAX_AGE_MS, type RoomStore, type RoomStoreOptions } from './state'
+import { namePolicy, type NamePolicy } from './room-names'
+import {
+  createRoomStore,
+  DEFAULT_MAX_AGE_MS,
+  DEFAULT_MAX_ENTRIES,
+  MAX_FUTURE_MS,
+  type RoomStore,
+  type RoomStoreOptions,
+} from './state'
 
 export const HYDRATE_TIMEOUT_MS = 2_000
 export const SYNC_INTERVAL_MS = 15_000
@@ -88,6 +96,8 @@ export type MirroredRoomOptions = {
   now?: () => number
   log?: MirrorLog
   callTimeoutMs?: number
+  // The same name rule as live requests; defaults to typed names.
+  names?: NamePolicy
 }
 
 export type MirroredRoom = {
@@ -101,9 +111,17 @@ export type MirroredRoom = {
 
 export function createMirroredRoom(
   mirror: RoomMirror,
-  { storeOptions = {}, now = Date.now, log = defaultLog, callTimeoutMs = CALL_TIMEOUT_MS }: MirroredRoomOptions = {},
+  {
+    storeOptions = {},
+    now = Date.now,
+    log = defaultLog,
+    callTimeoutMs = CALL_TIMEOUT_MS,
+    names = namePolicy('typed'),
+  }: MirroredRoomOptions = {},
 ): MirroredRoom {
   const maxAgeMs = storeOptions.maxAgeMs ?? DEFAULT_MAX_AGE_MS
+  // The store never holds more than maxEntries, so a hash far past that was not written by us.
+  const maxFields = 2 * (storeOptions.maxEntries ?? DEFAULT_MAX_ENTRIES)
   let errorCount = 0
   let lastLog = -Infinity
   // Bumped on reset, so a read that started before a reset cannot bring the old board back.
@@ -133,11 +151,23 @@ export function createMirroredRoom(
     try {
       const raw = await withTimeout(() => mirror.readAll(), timeoutMs)
       if (started !== generation) return 0
+      if (raw && typeof raw === 'object' && Object.keys(raw).length > maxFields) {
+        report(Object.assign(new Error('mirror too large'), { name: 'MirrorTooLarge' }))
+        return 0
+      }
       const at = now()
       const { pairs, junk } = parseMirrored(raw)
-      const stale = pairs.filter(([, entry]) => at - entry.at > maxAgeMs).map(([id]) => id)
-      if (junk.length + stale.length > 0) fire(() => mirror.remove([...junk, ...stale]))
-      return inner.merge(pairs, at)
+      // Redis is not trusted more than a request: the live name rule applies, and a planted entry
+      // with an unusable name or a time far ahead is dropped here and removed from the mirror.
+      const kept: Array<[string, RoomEntry]> = []
+      const drop = [...junk]
+      for (const [deviceId, entry] of pairs) {
+        const nickname = names(entry.nickname, deviceId)
+        if (nickname === null || at - entry.at > maxAgeMs || entry.at - at > MAX_FUTURE_MS) drop.push(deviceId)
+        else kept.push([deviceId, { ...entry, nickname }])
+      }
+      if (drop.length > 0) fire(() => mirror.remove(drop))
+      return inner.merge(kept, at)
     } catch (err) {
       report(err)
       return 0
@@ -198,7 +228,7 @@ export type PrepareRoomOptions = {
 // Boot wiring: memory only without REDIS_URL; otherwise hydrate (capped) and start the periodic merge.
 // Never rejects, so a bad Redis can only cost the boot its hydrate timeout.
 export async function prepareRoom(
-  config: Pick<Config, 'redisUrl'>,
+  config: Pick<Config, 'redisUrl'> & Partial<Pick<Config, 'roomNames'>>,
   {
     createMirror = createRedisMirror,
     log = defaultLog,
@@ -217,7 +247,7 @@ export async function prepareRoom(
     log({ msg: 'room mirror disabled', reason: errorReason(err) })
     return memoryOnly()
   }
-  room = createMirroredRoom(mirror, { log })
+  room = createMirroredRoom(mirror, { log, names: namePolicy(config.roomNames ?? 'typed') })
   const loaded = await room.hydrate(hydrateTimeoutMs)
   log({ msg: 'room mirror hydrated', entries: loaded })
   const stopSync = room.startSync(syncIntervalMs)

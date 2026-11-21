@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { RoomState, type RoomEntry } from '../shared/contracts'
-import { createRoomStore, DEFAULT_MAX_AGE_MS } from './state'
+import { createRoomStore, DEFAULT_MAX_AGE_MS, MAX_FUTURE_MS } from './state'
 
 const T0 = 1_763_700_000_000
 
@@ -91,6 +91,19 @@ describe('createRoomStore', () => {
     expect(state.total).toBe(1)
     expect(state.mix.wired).toBe(1)
     expect(store.snapshot(T0 + 60_000 + DEFAULT_MAX_AGE_MS + 1).total).toBe(0)
+  })
+
+  it('refuses to merge an entry more than 60 s in the future', () => {
+    const store = createRoomStore()
+    const changed = store.merge(
+      [
+        ['device-far-xxxx', entry({ nickname: 'Far', at: T0 + MAX_FUTURE_MS + 1 })],
+        ['device-near-xxx', entry({ nickname: 'Near', at: T0 + MAX_FUTURE_MS })],
+      ],
+      T0,
+    )
+    expect(changed).toBe(1)
+    expect(store.snapshot(T0).feed.map((e) => e.nickname)).toEqual(['Near'])
   })
 
   it('keeps at most maxEntries, dropping the oldest', () => {

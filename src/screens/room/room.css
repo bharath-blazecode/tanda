@@ -231,6 +231,8 @@
 }
 
 .room-person-name {
+  /* A typed name may be right-to-left: isolate it so it cannot reorder the text around it. */
+  unicode-bidi: isolate;
   font: 900 calc(var(--u) * 2) / 1.05 var(--display);
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -300,13 +302,17 @@
 }
 
 .room-nick {
+  /* A typed name may be right-to-left: isolate it so it cannot reorder the verdict or score beside it. */
+  unicode-bidi: isolate;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Shares a box with the name, so it is isolated too and always reads after it. */
 .room-demo {
+  unicode-bidi: isolate;
   font-weight: 400;
   color: var(--ink-soft);
 }
