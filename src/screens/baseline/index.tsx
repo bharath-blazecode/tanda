@@ -51,7 +51,9 @@ export function Baseline() {
       Array.from({ length: counts[kind] }, (_, i) => ({ kind, at: at - i })),
     )
     if (drinks.length > 0) update((current) => ({ ...current, drinks: [...current.drinks, ...drinks] }))
-    setStep(firstTest())
+    // Quick demo: the normal is already on file, so this goes straight on to the reading.
+    if (quick) navigate('/check')
+    else setStep(firstTest())
   }
   const [choice, setChoice] = useState<ChoiceMetrics | null>(null)
 
@@ -73,7 +75,8 @@ export function Baseline() {
         clean,
       },
     }))
-    setStep('saved')
+    // Quick demo runs straight through: normal, what you had, the reading, the ticket.
+    setStep(quick ? 'what' : 'saved')
   }
 
   if (step === 'clean') {
@@ -139,8 +142,9 @@ export function Baseline() {
       <Housing>
         <Plate small serial={'Setup\nWhat you had'} />
         <Sheet grow>
-          <Label paper>Before we start</Label>
+          <Label paper>{quick ? 'Normal saved · Now the reading' : 'Before we start'}</Label>
           <h2>What have you had?</h2>
+          {quick && <p>That was your normal. Log what you have had, then we read you again.</p>}
           <p className="k-small">Tap one for each. This is only used to label the reading.</p>
           <div style={{ display: 'grid', gap: 'var(--s3)', marginTop: 'var(--z)' }}>
             {DRINKS.map(({ kind, label }) => (
