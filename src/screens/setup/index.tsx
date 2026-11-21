@@ -21,6 +21,11 @@ type Phase = 'checking' | 'idle' | 'requesting' | 'no-samples' | MotionPermissio
 /** A pause after success, so the screen does not flash past before it can be read. */
 const HANDOVER_MS = 400
 
+/** Brave is the one browser that says no to motion without asking, so only it gets the hint. */
+function isBrave(): boolean {
+  return 'brave' in globalThis.navigator
+}
+
 export function Setup() {
   const navigate = useNavigate()
   const [phase, setPhase] = useState<Phase>('checking')
@@ -97,10 +102,13 @@ export function Setup() {
           <>
             <h2>This browser is not sending motion data.</h2>
             <p>You can still do the tapping test. Your reading will be marked partial.</p>
-            <p className="k-small">
-              In Brave: tap the lion icon and allow motion sensors, or open the site settings and
-              allow Motion sensors. Then tap Try again.
-            </p>
+            {isBrave() && (
+              <p className="k-small">
+                Brave blocks motion sensors for every site, and its Shields switch does not change
+                that. To turn them on: menu, Settings, Site settings, Motion sensors, allow. Then
+                come back and tap Try again.
+              </p>
+            )}
             <p className="k-small">
               Or open the link in another browser, like Safari or Chrome. Apps that show pages
               inside themselves often keep motion to themselves.
@@ -121,10 +129,12 @@ export function Setup() {
                   and tap Allow.
                 </p>
                 {/* Brave says no without ever asking, so the tab trick does not help there. */}
-                <p className="k-small">
-                  In Brave: tap the lion icon and allow motion sensors, or open the site settings and
-                  allow Motion sensors.
-                </p>
+                {isBrave() && (
+                  <p className="k-small">
+                    Brave blocks motion sensors for every site, and its Shields switch does not change
+                    that. To turn them on: menu, Settings, Site settings, Motion sensors, allow.
+                  </p>
+                )}
               </>
             )}
             {unavailable && (
