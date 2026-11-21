@@ -1,0 +1,887 @@
+<title>Kachka Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Courier+Prime:wght@400;700&display=swap">
+<style>
+/* Second prototype: the whole flow, walkable. Same instrument as prototype.html (docs/design/DESIGN.md):
+   dark housing, chart paper for traces, receipt paper for text, one red stamp, blue pencil = baseline. */
+:root{
+  --bench:#121A18; --housing:#1E2A27; --housing-hi:#32433E; --housing-ink:#DCE6DF; --housing-dim:#93A79E;
+  --chart:#EEF2E6; --grid:#C6D6C0; --grid-strong:#9DB897; --receipt:#FAFAF4;
+  --ink:#1C1F25; --ink-soft:#5A606A; --pencil:#2E5FB5; --stamp:#C3273B;
+  --display:"Big Shoulders Display","Arial Narrow","Haettenschweiler",Impact,sans-serif;
+  --mono:"Courier Prime","Courier New",Courier,monospace;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:36px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bench);color:var(--housing-ink);font:400 15px/1.5 var(--mono);
+  padding-block:var(--s5);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+:focus-visible{outline:3px solid var(--pencil);outline-offset:2px}
+.label{font:700 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--housing-dim)}
+
+/* ---------- bench (prototype chrome, not part of the app) ---------- */
+.bench{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:var(--s5)}
+.bench-head{display:flex;flex-direction:column;gap:var(--s3);border-bottom:1px solid var(--housing-hi);padding-bottom:var(--s4)}
+.bench-head h1{margin:0;font:900 34px/0.95 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.bench-head p{margin:0;color:var(--housing-dim);max-width:70ch}
+.tabs,.switch{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center}
+.tabs button,.switch button{background:transparent;border:1px solid var(--housing-hi);padding:8px 12px;font:700 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--housing-dim)}
+.tabs button[aria-pressed="true"],.switch button[aria-pressed="true"]{background:var(--chart);color:var(--ink);border-color:var(--chart)}
+.bench-main{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:var(--s6);align-items:start}
+.bench-main.wide{grid-template-columns:minmax(0,1fr)}
+.notes{min-width:0;display:flex;flex-direction:column;gap:var(--s4)}
+.notes h2{margin:0;font:900 26px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.notes p{margin:0;max-width:60ch}
+.notes ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:var(--s2);max-width:60ch}
+.notes .tag{font:700 11px/1.2 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--housing-dim)}
+@media (max-width:820px){.bench-main{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- the instrument (this is the app) ---------- */
+.device{background:var(--housing);border:1px solid var(--housing-hi);border-radius:6px;min-height:700px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.screen{flex:1;display:flex;flex-direction:column;gap:var(--s4);padding:var(--s5) var(--s4) var(--s4);min-width:0}
+.plate{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--s3);border-bottom:1px solid var(--housing-hi);padding-bottom:var(--s3)}
+.plate .name{font:900 36px/0.9 var(--display);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.plate.small .name{font-size:24px}
+.plate.small .mark{width:36px;height:36px}
+.plate .serial{text-align:right}
+.window{position:relative;background-color:var(--chart);
+  background-image:linear-gradient(var(--grid-strong) 1px,transparent 1px),linear-gradient(90deg,var(--grid-strong) 1px,transparent 1px),linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:40px 40px,40px 40px,8px 8px,8px 8px;border:3px solid var(--bench);color:var(--ink);overflow:hidden}
+.window canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.window .printed{position:relative;padding:var(--s4)}
+.sheet{background:var(--receipt);color:var(--ink);border:3px solid var(--bench);padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3);min-width:0}
+.sheet h2{margin:0;font:900 38px/0.92 var(--display);letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
+.sheet p{margin:0;max-width:36ch}
+.sheet .small{font-size:13px;color:var(--ink-soft)}
+.sheet .lab{font:700 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.key{background:var(--chart);color:var(--ink);border:0;border-bottom:6px solid var(--grid-strong);padding:14px 16px 10px;font:900 30px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;width:100%}
+.key:active{border-bottom-width:2px;transform:translateY(4px)}
+.key.quiet{background:transparent;color:var(--housing-ink);border:1px solid var(--housing-hi);border-bottom-width:1px;font-size:20px;padding:12px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.trio .key.quiet{font-size:16px;padding:10px 4px}
+.fine{color:var(--housing-dim);font-size:13px;text-align:center;margin:0}
+.grow{flex:1}
+.say{font:900 28px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:0;text-wrap:balance;min-height:1em}
+.strip{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s3)}
+.timer{font:900 40px/1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:.03em;white-space:nowrap}
+.legend{position:absolute;left:var(--s3);top:var(--s3);display:flex;flex-direction:column;gap:2px;font:700 11px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;background:var(--chart);padding:4px 6px}
+.legend .b{color:var(--pencil)}
+.axis{position:absolute;left:0;right:0;bottom:2px;display:flex;justify-content:space-between;padding:0 6px;font:400 10px/1 var(--mono);color:var(--ink-soft)}
+.gauge .row{display:flex;justify-content:space-between;align-items:baseline}
+.gauge .val{font:700 20px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--housing-ink)}
+.track{position:relative;height:12px;background:var(--bench);margin-top:6px}
+.track i{position:absolute;inset:0 auto 0 0;background:var(--chart)}
+.track b{position:absolute;top:-3px;bottom:-3px;left:50%;width:2px;background:var(--pencil)}
+.rows{display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
+.rows div{display:flex;align-items:baseline;gap:6px;font:400 15px/1.35 var(--mono)}
+.rows div::before{content:"";order:2;flex:1;border-bottom:2px dotted var(--ink-soft);transform:translateY(-4px)}
+.rows span:last-child{order:3;font-weight:700}
+
+/* mascot and logo */
+.ibis{display:block;width:100%;height:auto;overflow:visible}
+.ibis .wht{fill:var(--receipt);stroke:var(--ink);stroke-width:3}
+.ibis .blk{fill:var(--ink)}
+.ibis .ln{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.ibis .thin{stroke-width:2}
+.ibis .neck{fill:none;stroke:var(--ink);stroke-width:9;stroke-linecap:round}
+.ibis .beak{fill:none;stroke:var(--ink);stroke-width:5;stroke-linecap:round}
+.ibis .eye{fill:var(--receipt)}
+.ibis-wired .bird{animation:jitter .14s steps(2) infinite}
+.ibis-tipsy .bird,.ibis-wobbly .bird{transform-origin:50px 122px;transform:rotate(-9deg);animation:sway 2.6s ease-in-out infinite alternate}
+@keyframes jitter{from{transform:translate(-1px,0)}to{transform:translate(1px,-1px)}}
+@keyframes sway{from{transform:rotate(-11deg)}to{transform:rotate(5deg)}}
+.ibis .lid{transform-box:fill-box;transform-origin:50% 0;animation:blink 4.6s infinite}
+@keyframes blink{0%,91%,100%{transform:scaleY(1)}95%{transform:scaleY(2.2)}}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:56px;height:56px;flex:none;display:block}
+.mark svg{display:block;width:100%;height:100%}
+.t-head .mark{width:30px;height:30px}
+.t-head .brand{gap:8px}
+.mascot{position:absolute;pointer-events:none}
+.badge{flex:none}
+.byline{margin:0;font:700 11px/1.2 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
+
+/* landing */
+#m-landing{width:118px;left:calc(86% - 111px);top:calc(36% - 61px)}
+#s-landing .window{flex:1;min-height:400px;display:flex;flex-direction:column;justify-content:flex-end}
+#s-landing .printed h2{margin:0 0 var(--s2);font:900 54px/0.9 var(--display);letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
+#s-landing .printed p{margin:0;max-width:30ch;background:var(--chart);display:inline}
+
+/* tests */
+#t-window{flex:1;min-height:300px}
+#m-test{width:66px;right:8px;top:8px}
+#t-big{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:900 120px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+#t-big.word{font-size:64px}
+.grid4{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);min-height:340px}
+.sq{background:var(--chart);color:var(--chart);border:0;border-bottom:6px solid var(--grid-strong);font:900 34px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;touch-action:none;user-select:none;-webkit-user-select:none}
+.sq.lit{background:var(--receipt);color:var(--ink);outline:6px solid var(--ink);outline-offset:-6px}
+
+/* home */
+.caf{height:132px}
+.caf .legend{font-size:10px}
+.today{display:flex;flex-direction:column;gap:2px}
+.today b{font:900 24px/1 var(--display);letter-spacing:.03em;text-transform:uppercase}
+
+/* log */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.tile{background:var(--receipt);color:var(--ink);border:2px solid var(--ink);border-bottom-width:6px;padding:12px 10px 8px;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile:active{border-bottom-width:2px;transform:translateY(4px)}
+.tile b{font:900 26px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.tile span{font-size:12px;color:var(--ink-soft)}
+.pad{padding:var(--s3);display:flex;flex-direction:column;gap:var(--s3);position:relative}
+.sw-paper{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sw-paper button{background:var(--receipt);color:var(--ink-soft);border:1px solid var(--ink-soft);padding:6px 8px;font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.sw-paper button[aria-pressed="true"]{background:var(--ink);color:var(--receipt);border-color:var(--ink)}
+.sw-paper .lab{font:700 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);background:var(--chart);padding:2px 4px}
+.toast{background:var(--receipt);color:var(--ink);border:2px solid var(--ink);padding:8px 10px;display:flex;justify-content:space-between;align-items:center;gap:var(--s3);font-weight:700}
+.toast button{background:transparent;border:0;border-bottom:2px solid var(--ink);padding:0;font:700 13px/1.2 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+
+/* result ticket */
+#s-result{gap:0;padding-top:var(--s4)}
+.slot{display:flex;justify-content:space-between;align-items:center;border-bottom:8px solid var(--bench);padding-bottom:var(--s2)}
+.ticket{--z:7px;background:var(--receipt);color:var(--ink);margin:0 var(--s3);padding:var(--s4) var(--s4) calc(var(--s4) + var(--z));display:flex;flex-direction:column;gap:var(--s3);position:relative;
+  -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--z)) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(2*var(--z)) var(--z) repeat-x;
+  mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--z)) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(2*var(--z)) var(--z) repeat-x}
+.ticket.print{animation:feed 1.2s steps(16) both}
+@keyframes feed{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+.t-head{display:flex;justify-content:space-between;gap:var(--s3);font:700 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.t-head strong{font:900 24px/1 var(--display);letter-spacing:.06em}
+.t-head > span:last-child{text-align:right}
+.t-chart{position:relative;height:84px;background-color:var(--chart);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:8px 8px,8px 8px}
+.t-chart canvas{position:absolute;inset:0;width:100%;height:100%}
+.t-tags{margin:0;font:700 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.stamp-wrap{display:flex;justify-content:center;align-items:center;gap:var(--s3);padding:var(--s2) 0}
+.stamp-wrap .badge{width:70px}
+.stamp{font:900 50px/0.9 var(--display);letter-spacing:.07em;color:var(--stamp);border:4px solid var(--stamp);outline:2px solid var(--stamp);outline-offset:3px;padding:8px 16px 4px;transform:rotate(-7deg);mix-blend-mode:multiply;filter:url(#ink);text-transform:uppercase}
+.stamp small{display:block;font:700 11px/1.4 var(--display);letter-spacing:.16em}
+.ticket.print .stamp{animation:thunk .26s cubic-bezier(.2,1.5,.4,1) 1.25s both}
+@keyframes thunk{from{transform:rotate(-7deg) scale(1.9);opacity:0}to{transform:rotate(-7deg) scale(1);opacity:1}}
+.quote{margin:0;font:400 16px/1.4 var(--mono)}
+.drinks{margin:0;font:400 13px/1.3 var(--mono);color:var(--ink-soft)}
+.tear{border:0;border-top:2px dashed var(--ink-soft);margin:0;width:100%}
+.stub{display:flex;flex-direction:column;gap:2px}
+.stub b{font:900 26px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.stub .lab{font:700 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.safety{margin:0;border:2px solid var(--ink);padding:8px 10px;font:700 13px/1.35 var(--mono)}
+.after{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);margin-top:var(--s4)}
+
+/* specimens */
+.spec-list{display:flex;flex-direction:column;gap:var(--s2)}
+.spec{background:var(--receipt);color:var(--ink);border:2px solid var(--ink);display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:var(--s3);padding:8px;align-items:center}
+.spec .thumb{width:64px;height:64px;background:var(--chart);border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font:900 22px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;overflow:hidden}
+.spec .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.spec b{display:block;font:900 22px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;overflow-wrap:anywhere}
+.spec .meta{font-size:12px;color:var(--ink-soft)}
+.spec .score{font:900 30px/1 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.spec .score small{font:700 12px/1 var(--mono);color:var(--ink-soft)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field input[type=text],.field select{background:var(--receipt);color:var(--ink);border:0;border-bottom:2px solid var(--ink);padding:6px 2px;width:100%;min-width:0;border-radius:0;color-scheme:light}
+.preview{width:100%;max-height:180px;object-fit:cover;border:2px solid var(--ink);display:block}
+.scores{display:flex;gap:6px}
+.scores button{flex:1;background:var(--receipt);color:var(--ink);border:2px solid var(--ink);padding:8px 0 5px;font:900 22px/1 var(--display)}
+.scores button[aria-pressed="true"]{background:var(--ink);color:var(--receipt)}
+.check{display:flex;gap:8px;align-items:center;font-size:13px}
+.sheet .key{background:var(--ink);color:var(--receipt);border-bottom-color:var(--ink-soft);font-size:24px}
+.sheet .key.quiet{background:transparent;color:var(--ink);border:2px solid var(--ink);font-size:18px}
+
+/* projector */
+.projector{container-type:inline-size;background:var(--housing);border:1px solid var(--housing-hi);border-radius:6px;aspect-ratio:16/9;max-width:100%;overflow:hidden}
+.proj{height:100%;display:grid;grid-template-columns:23fr 47fr 30fr;gap:2cqw;padding:2.2cqw}
+.proj > *{min-width:0;min-height:0}
+.p-join{background:var(--receipt);color:var(--ink);padding:1.6cqw;display:flex;flex-direction:column;gap:1cqw;align-self:start}
+.p-join canvas{width:100%;aspect-ratio:1;display:block;image-rendering:pixelated}
+.p-join b{font:900 3.4cqw/0.95 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.p-join span{font:700 1.5cqw/1.2 var(--mono)}
+.p-mid{display:flex;flex-direction:column;gap:1.4cqw}
+.p-voice{display:flex;gap:1.2cqw;align-items:center}
+.p-voice .badge{width:7cqw;padding:.4cqw;background:var(--chart)}
+.p-say{margin:0;font:900 2.8cqw/1.02 var(--display);letter-spacing:.02em;text-transform:uppercase;text-wrap:balance;min-height:2.1em;min-width:0}
+.p-mid .window{flex:1;border-width:.4cqw}
+.p-mid .legend{font-size:1.1cqw;left:1cqw;top:1cqw}
+.tally{display:grid;grid-template-columns:repeat(4,1fr);gap:1cqw}
+.tally div{background:var(--chart);color:var(--ink);padding:.8cqw .9cqw;display:flex;justify-content:space-between;align-items:baseline;min-width:0}
+.tally b{font:900 3.8cqw/0.9 var(--display);font-variant-numeric:tabular-nums}
+.tally span{font:900 1.6cqw/1 var(--display);letter-spacing:.06em;color:var(--stamp);text-transform:uppercase}
+.p-side{display:flex;flex-direction:column;gap:1.2cqw;overflow:hidden}
+.p-side h3{margin:0;font:700 1.2cqw/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--housing-dim)}
+.feed{display:flex;flex-direction:column;gap:.7cqw}
+.mini{background:var(--receipt);color:var(--ink);padding:.6cqw 1cqw;display:flex;justify-content:space-between;gap:1cqw;font:700 1.45cqw/1.2 var(--mono)}
+.mini em{font:900 1.7cqw/1 var(--display);font-style:normal;letter-spacing:.08em;color:var(--stamp);text-transform:uppercase}
+.mini.new{animation:feed .5s steps(6) both}
+.top{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.3cqw;font:400 1.4cqw/1.3 var(--mono);font-variant-numeric:tabular-nums}
+.top li{display:flex;justify-content:space-between;border-bottom:1px dotted var(--housing-hi)}
+
+@media (prefers-reduced-motion:reduce){.ticket.print,.ticket.print .stamp,.mini.new,.ibis .bird,.ibis .lid{animation:none}}
+</style>
+
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <filter id="ink" x="-10%" y="-20%" width="120%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -5 3.4" result="m"/>
+    <feComposite in="SourceGraphic" in2="m" operator="in"/>
+  </filter>
+</svg>
+
+<div class="bench">
+  <header class="bench-head">
+    <h1>Kachka: the whole flow</h1>
+    <p>Second prototype, Saturday 21 Nov. Walk it from Start, or jump with the buttons. Choice Tap is real and timed on your device. Body sway and pulse are simulated, because this page cannot read motion sensors or the camera. The name is still a working title.</p>
+    <nav class="tabs" aria-label="Jump to a screen">
+      <button type="button" data-view="landing">Start</button>
+      <button type="button" data-view="home">Home</button>
+      <button type="button" data-view="log">Log</button>
+      <button type="button" data-run="check">Check</button>
+      <button type="button" data-view="result">Result</button>
+      <button type="button" data-view="demo">Demo</button>
+      <button type="button" data-view="specimens">Specimens</button>
+      <button type="button" data-view="room">Room</button>
+    </nav>
+    <div class="switch" role="group" aria-label="Simulated body sway in the next check">
+      <span class="label">Simulated sway, next check</span>
+      <button type="button" data-sim="normal">Normal</button>
+      <button type="button" data-sim="drinks">After drinks</button>
+      <button type="button" data-sim="spin">After a spin</button>
+    </div>
+    <div class="switch" role="group" aria-label="Simulated pulse in the next check">
+      <span class="label">Simulated pulse, next check</span>
+      <button type="button" data-psim="normal">Normal</button>
+      <button type="button" data-psim="raised">Raised</button>
+    </div>
+  </header>
+
+  <main class="bench-main" id="main">
+    <div id="stage">
+      <div class="device" id="device">
+
+        <section class="screen" id="s-landing">
+          <div class="plate">
+            <div class="brand"><span class="mark" data-mark></span><div class="name">Kachka</div></div>
+            <div class="serial label">Body drift recorder<br>Model K-2</div>
+          </div>
+          <div class="window">
+            <canvas id="c-landing" aria-hidden="true"></canvas>
+            <div class="mascot" id="m-landing"></div>
+            <div class="printed">
+              <h2>Wired or wobbly?</h2>
+              <p>Log a drink. Stand still, then tap fast. A bin chicken will judge how far you've drifted from your own normal.</p>
+            </div>
+          </div>
+          <button type="button" class="key" id="land-go">Start</button>
+          <button type="button" class="key quiet" id="land-reset" hidden>Start over</button>
+          <p class="fine">Peer-reviewed by a bin chicken. A toy, not a test. For adults.</p>
+        </section>
+
+        <section class="screen" id="s-setup" hidden>
+          <div class="plate small"><div class="brand"><span class="mark" data-mark></span><div class="name">Kachka</div></div><div class="serial label">Setup<br>1 of 2</div></div>
+          <div class="sheet grow">
+            <span class="lab">Before we start</span>
+            <h2>This instrument needs to feel you move.</h2>
+            <p>One tap lets it read your phone's motion sensors, so it can record how much your body sways when you stand still.</p>
+            <p class="small">Your readings stay on this phone. No account, nothing to sign.</p>
+          </div>
+          <button type="button" class="key" id="setup-allow">Allow motion</button>
+          <button type="button" class="key quiet" id="setup-skip">Continue with one test</button>
+        </section>
+
+        <section class="screen" id="s-clean" hidden>
+          <div class="plate small"><div class="brand"><span class="mark" data-mark></span><div class="name">Kachka</div></div><div class="serial label">Setup<br>2 of 2</div></div>
+          <div class="sheet grow">
+            <span class="lab">Your normal</span>
+            <h2>Had anything yet today?</h2>
+            <p>We record your normal once, in about 50 seconds, plus 30 if you add your pulse. It works best before the first coffee or drink.</p>
+            <p class="small">Either answer is fine. We just label the reading honestly.</p>
+          </div>
+          <div class="pair">
+            <button type="button" class="key" data-clean="1" style="font-size:22px">Nothing yet</button>
+            <button type="button" class="key" data-clean="0" style="font-size:22px">Already had some</button>
+          </div>
+        </section>
+
+        <section class="screen" id="s-test" hidden>
+          <div class="strip"><span class="label" id="t-label">Test 1 of 2</span><span class="timer" id="t-timer"></span></div>
+          <div class="sheet grow" id="t-sheet">
+            <span class="lab" id="t-lab"></span>
+            <h2 id="t-h"></h2>
+            <p id="t-p"></p>
+            <div class="rows" id="t-rows" hidden></div>
+            <p class="small" id="t-small"></p>
+          </div>
+          <div class="window" id="t-window" hidden>
+            <canvas id="c-test" role="img" aria-label="Trace of your body sway over your baseline"></canvas>
+            <div class="legend" id="t-legend"><span class="b">- - your normal</span><span>&mdash;&mdash; just now</span></div>
+            <div class="mascot" id="m-test"></div>
+            <div id="t-big" aria-hidden="true"></div>
+            <div class="axis" id="t-axis"><span>0 s</span><span>6 s</span><span>12 s</span><span>18 s</span></div>
+          </div>
+          <div class="grid4" id="t-grid" hidden>
+            <button type="button" class="sq" data-sq="0" aria-label="Top left square"></button>
+            <button type="button" class="sq" data-sq="1" aria-label="Top right square"></button>
+            <button type="button" class="sq" data-sq="2" aria-label="Bottom left square"></button>
+            <button type="button" class="sq" data-sq="3" aria-label="Bottom right square"></button>
+          </div>
+          <p class="say" id="t-say" aria-live="polite"></p>
+          <div class="gauge" id="t-gauge" hidden>
+            <div class="row"><span class="label">Body sway against your normal</span><span class="val" id="t-gauge-v">1.00x</span></div>
+            <div class="track"><i id="t-gauge-i"></i><b></b></div>
+          </div>
+          <button type="button" class="key" id="t-go">Start</button>
+          <button type="button" class="key quiet" id="t-skip">Skip this test</button>
+        </section>
+
+        <section class="screen" id="s-saved" hidden>
+          <div class="plate small"><div class="brand"><span class="mark" data-mark></span><div class="name">Kachka</div></div><div class="serial label">Baseline<br>on file</div></div>
+          <div class="sheet grow">
+            <span class="lab">Saved on this phone</span>
+            <h2>That's your normal.</h2>
+            <div class="rows" id="saved-rows"></div>
+            <p class="small" id="saved-note"></p>
+          </div>
+          <button type="button" class="key" data-view="demo" style="font-size:24px">No drink in hand? Fake it</button>
+          <button type="button" class="key quiet" data-view="home">I'll log real drinks</button>
+        </section>
+
+        <section class="screen" id="s-home" hidden>
+          <div class="plate small"><div class="brand"><span class="mark" data-mark></span><div class="name">Kachka</div></div><div class="serial label" id="home-serial">Today</div></div>
+          <div class="window caf">
+            <canvas id="c-caf" role="img" aria-label="Estimated caffeine on board, now and through the night"></canvas>
+            <div class="legend"><span>Caffeine on board, rough estimate</span></div>
+            <div class="axis"><span>-3 h</span><span>now</span><span>+3 h</span><span>+6 h</span><span>+9 h</span></div>
+          </div>
+          <div class="today">
+            <span class="label">Logged today</span>
+            <b id="home-drinks">Nothing yet.</b>
+            <span id="home-caf"></span>
+            <span id="home-last"></span>
+          </div>
+          <div class="grow"></div>
+          <button type="button" class="key" data-view="log">Log a drink</button>
+          <button type="button" class="key" data-run="check">Run a check</button>
+          <div class="trio">
+            <button type="button" class="key quiet" data-view="demo">Fake it</button>
+            <button type="button" class="key quiet" data-view="specimens">Specimens</button>
+            <button type="button" class="key quiet" data-view="room">Room</button>
+          </div>
+        </section>
+
+        <section class="screen" id="s-log" hidden>
+          <div class="plate small"><div class="brand"><span class="mark" data-mark></span><div class="name">Log a drink</div></div><div class="serial label">One tap<br>each</div></div>
+          <div class="window grow">
+            <div class="pad">
+              <div class="tiles" id="tiles"></div>
+              <div class="sw-paper" role="group" aria-label="When did you have it">
+                <span class="lab">When</span>
+                <button type="button" data-ago="0">Just now</button>
+                <button type="button" data-ago="60">1 h ago</button>
+                <button type="button" data-ago="180">3 h ago</button>
+              </div>
+              <div class="toast" id="toast" hidden><span id="toast-t"></span><button type="button" id="undo">Undo</button></div>
+            </div>
+          </div>
+          <button type="button" class="key quiet" data-view="specimens">Snap it for the drawer</button>
+          <button type="button" class="key" data-view="home">Done</button>
+        </section>
+
+        <section class="screen" id="s-demo" hidden>
+          <div class="plate small"><div class="brand"><span class="mark" data-mark></span><div class="name">Fake it</div></div><div class="serial label">Demo<br>mode</div></div>
+          <div class="sheet grow" id="demo-pick">
+            <span class="lab">No drink needed</span>
+            <h2>Throw yourself off, then recheck.</h2>
+            <p>Pick one. We'll run the same tests and tell you which one we think you did.</p>
+            <p class="small">Demo readings are stamped as simulated, and they go on the room board unless you turn that off.</p>
+            <label class="check"><input type="checkbox" id="demo-share" checked> Show my reading on the room board</label>
+          </div>
+          <div class="sheet grow" id="demo-do" hidden>
+            <span class="lab" id="demo-lab"></span>
+            <h2 id="demo-h"></h2>
+            <p id="demo-p"></p>
+            <p class="timer" id="demo-count" style="color:var(--ink)"></p>
+          </div>
+          <button type="button" class="key" data-handicap="spin" style="font-size:24px">Spin 5 times</button>
+          <button type="button" class="key" data-handicap="offhand" style="font-size:24px">Use my other hand</button>
+          <button type="button" class="key" data-handicap="jacks" style="font-size:24px">20 jumping jacks</button>
+          <button type="button" class="key quiet" data-view="home">Back</button>
+        </section>
+
+        <section class="screen" id="s-result" hidden>
+          <div class="slot"><span class="label">Reading</span><span class="label">Printed</span></div>
+          <div class="ticket" id="ticket">
+            <div class="t-head"><span class="brand"><span class="mark" data-mark></span><strong>Kachka</strong></span><span id="t-no"></span></div>
+            <div class="t-chart"><canvas id="c-ticket" role="img" aria-label="Your baseline sway and this reading, overlaid"></canvas></div>
+            <p class="t-tags" id="r-tags" hidden></p>
+            <div class="rows" id="rows"></div>
+            <div class="stamp-wrap"><div class="badge" id="m-result"></div><div class="stamp"><span id="stamp"></span><small id="stamp-s">Certified by a bin chicken</small></div></div>
+            <p class="quote" id="quote"></p>
+            <p class="byline">Dr. Bin Chicken, lab tech on duty</p>
+            <p class="drinks" id="drinks"></p>
+            <p class="safety" id="safety" hidden>Not a driving test. If you're going anywhere, get a ride or a friend.</p>
+            <hr class="tear">
+            <div class="stub"><span class="lab">Next</span><b id="next"></b></div>
+          </div>
+          <div class="after">
+            <button type="button" class="key quiet" data-run="again">Run again</button>
+            <button type="button" class="key quiet" data-view="home">Home</button>
+          </div>
+        </section>
+
+        <section class="screen" id="s-specimens" hidden>
+          <div class="plate small"><div class="brand"><span class="mark" data-mark></span><div class="name">Specimens</div></div><div class="serial label" id="sp-count"></div></div>
+          <div class="sheet" id="sp-form" hidden>
+            <span class="lab">New specimen</span>
+            <img class="preview" id="sp-img" alt="Your photo of the drink" hidden>
+            <p class="small" id="sp-guess"></p>
+            <label class="field"><span class="lab">Name</span><input type="text" id="sp-name" maxlength="40" autocomplete="off"></label>
+            <label class="field"><span class="lab">Kind</span>
+              <select id="sp-kind"><option>Beer</option><option>Wine</option><option>Spirit</option><option>Coffee</option><option>Tea</option><option>No alcohol</option><option>Other</option></select></label>
+            <div class="field"><span class="lab">Did you like it?</span>
+              <div class="scores" id="sp-scores" role="group" aria-label="Score from 1 to 5">
+                <button type="button" data-score="1">1</button><button type="button" data-score="2">2</button><button type="button" data-score="3">3</button><button type="button" data-score="4">4</button><button type="button" data-score="5">5</button>
+              </div></div>
+            <label class="field"><span class="lab">Note</span><input type="text" id="sp-note" maxlength="60" autocomplete="off"></label>
+            <label class="check"><input type="checkbox" id="sp-log"> Also log it as a drink now</label>
+            <div class="pair"><button type="button" class="key" id="sp-save">File it</button><button type="button" class="key quiet" id="sp-cancel">Cancel</button></div>
+          </div>
+          <div class="spec-list grow" id="sp-list"></div>
+          <input type="file" id="sp-file" accept="image/*" capture="environment" hidden>
+          <button type="button" class="key" id="sp-add">Snap a drink</button>
+          <div class="pair"><button type="button" class="key quiet" id="sp-manual">Add by hand</button><button type="button" class="key quiet" data-view="home">Home</button></div>
+        </section>
+      </div>
+
+      <div class="projector" id="projector" hidden>
+        <div class="proj">
+          <div class="p-join">
+            <canvas id="qr" width="29" height="29" role="img" aria-label="Placeholder for the join QR code"></canvas>
+            <b>Scan. Stand still.</b>
+            <span>kachka.fun</span>
+          </div>
+          <div class="p-mid">
+            <div class="p-voice"><div class="badge" id="m-room"></div><p class="p-say" id="p-say"></p></div>
+            <div class="window">
+              <canvas id="c-room" aria-hidden="true"></canvas>
+              <div class="legend"><span class="b">- - presenter pulse</span><span>&mdash;&mdash; the room</span></div>
+            </div>
+            <div class="tally">
+              <div><b id="n-steady">38</b><span>Steady</span></div>
+              <div><b id="n-wired">21</b><span>Wired</span></div>
+              <div><b id="n-tipsy">9</b><span>Tipsy</span></div>
+              <div><b id="n-wobbly">6</b><span>Wobbly</span></div>
+            </div>
+          </div>
+          <div class="p-side">
+            <h3>Latest readings</h3>
+            <div class="feed" id="feed"></div>
+            <h3>Dizziest after the spin (demo only)</h3>
+            <ol class="top" id="top"></ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes" id="notes"></aside>
+  </main>
+</div>
+
+<script>
+(function(){
+  var css=function(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()};
+  var C={ink:css('--ink'),soft:css('--ink-soft'),pencil:css('--pencil'),chart:css('--chart'),receipt:css('--receipt'),grid:css('--grid-strong')};
+  var still=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $=function(id){return document.getElementById(id)};
+  var STAND_S=6;                       // the app runs 20 s; the prototype runs 6
+  var PULSE_S=8;                       // the app runs 30 s; the prototype runs 8
+  var F={sway:.30,choiceRt:.12,choiceWrong:1};   // starting noise floors (docs/05-architecture.md)
+  var CAF={coffee:100,energy:80};      // starting doses in mg
+  var ALC={beer:1,wine:1,spirit:1};
+
+  // ---------- signals ----------
+  function n(t){return Math.sin(t*37.1)*.5+Math.sin(t*91.7+1.3)*.3+Math.sin(t*153.3+2.1)*.2}
+  function signal(t,k){
+    if(k==='room')return .5*Math.sin(2*Math.PI*.3*t)+.35*Math.sin(2*Math.PI*5*t)*(.5+.5*Math.sin(t*.9))+.2*n(t);
+    if(k==='pulse'){var p=(t*1.9)%1;return (p<.08?Math.sin(p/.08*Math.PI)*1.6:0)-(p>.1&&p<.18?.35:0)}
+    return .10*n(t)+.12*Math.sin(t*1.1);
+  }
+  function swaySig(t,seed){return .55*Math.sin(2*Math.PI*.33*t+seed)+.3*Math.sin(2*Math.PI*.8*t+seed*2.1)+.15*n(t*.2+seed)}
+
+  // ---------- mascot and logo ----------
+  function ibis(mood){
+    var eye=(mood==='tipsy'||mood==='wobbly')
+      ? '<circle class="eye" cx="89" cy="25" r="4.5"/><path d="M86.5 22.5l5 5m0-5l-5 5" style="fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round"/>'
+      : mood==='wired'
+      ? '<circle class="eye" cx="89" cy="25" r="6"/><circle class="blk" cx="90" cy="25" r="1.3"/><path class="ln thin" d="M79 19l-5-6M85 16l-1-8M92 17l4-7"/>'
+      : '<circle class="eye" cx="89" cy="25" r="4.2"/><circle class="blk" cx="90" cy="26.5" r="1.7"/><path class="blk lid" d="M84.6 25a4.4 4.4 0 0 1 8.8 0z"/>';
+    var extra=mood==='tipsy'?'<circle class="ln thin" cx="112" cy="14" r="3"/><circle class="ln thin" cx="104" cy="6" r="2"/>':'';
+    return '<svg class="ibis ibis-'+mood+'" viewBox="0 0 120 130" role="img" aria-label="Dr. Bin Chicken the ibis, looking '+mood+'"><g class="bird">'
+      +'<path class="ln" d="M46 90L44 108L40 122M40 122l-7 3M40 122l6 4"/><path class="ln" d="M60 90L62 108L60 122M60 122l-7 3M60 122l6 4"/>'
+      +'<path class="blk" d="M24 66L8 60L18 70L6 74L20 78L10 86L28 82Z"/>'
+      +'<ellipse class="wht" cx="52" cy="72" rx="30" ry="21"/><path class="ln thin" d="M36 70Q52 84 70 72"/>'
+      +'<path class="neck" d="M72 62Q84 52 86 34"/><circle class="blk" cx="87" cy="28" r="10"/>'
+      +'<path class="beak" d="M95 27Q116 28 113 62"/>'+eye+extra+'</g></svg>';
+  }
+  var MARK='<svg viewBox="0 0 64 64" role="img" aria-label="Kachka logo: an ibis whose beak draws a trace">'
+    +'<rect x="2" y="2" width="60" height="60" style="fill:var(--chart);stroke:var(--ink);stroke-width:3"/>'
+    +'<path d="M8 50L16 47L24 53L30 41L36 55L42 44L50 50" style="fill:none;stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>'
+    +'<path d="M27 21Q54 20 50 50" style="fill:none;stroke:var(--ink);stroke-width:4.5;stroke-linecap:round"/>'
+    +'<circle cx="20" cy="21" r="11" style="fill:var(--ink)"/>'
+    +'<circle cx="23" cy="18.5" r="4" style="fill:var(--receipt)"/><circle cx="24" cy="19.8" r="1.6" style="fill:var(--ink)"/>'
+    +'<path d="M19 18.5a4 4 0 0 1 8 0z" style="fill:var(--ink)"/></svg>';
+  document.querySelectorAll('[data-mark]').forEach(function(el){el.innerHTML=MARK});
+
+  // ---------- sound: the user cannot see the screen during Stand Still ----------
+  var actx=null;
+  function beep(freq,dur){
+    try{
+      if(!actx){var A=window.AudioContext||window.webkitAudioContext;if(!A)return;actx=new A()}
+      if(actx.state==='suspended')actx.resume();
+      var o=actx.createOscillator(),g=actx.createGain();o.type='square';o.frequency.value=freq;g.gain.value=.06;
+      o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+dur);
+    }catch(e){}
+  }
+
+  // ---------- canvas helpers ----------
+  function fit(c){var r=c.getBoundingClientRect();if(!r.width||!r.height)return null;
+    var dpr=Math.min(window.devicePixelRatio||1,2),W=Math.round(r.width*dpr),H=Math.round(r.height*dpr);
+    if(c.width!==W||c.height!==H){c.width=W;c.height=H}
+    var g=c.getContext('2d');g.clearRect(0,0,W,H);return {g:g,W:W,H:H,dpr:dpr}}
+  function Chart(canvas,o){this.c=canvas;this.kind=o.kind;this.base=o.base||null;this.span=o.span||4;this.gain=o.gain||1;this.mid=o.mid||.5;this.off=0}
+  Chart.prototype.draw=function(t){
+    var f=fit(this.c);if(!f)return;var g=f.g,W=f.W,H=f.H,dpr=f.dpr,penX=W*.86,pps=penX/this.span,mid=H*this.mid,amp=H*.17*this.gain;
+    function line(fn,color,w,dash){g.beginPath();
+      for(var x=0;x<=penX;x+=dpr){var y=mid-fn(t-(penX-x)/pps)*amp;if(x)g.lineTo(x,y);else g.moveTo(x,y)}
+      g.strokeStyle=color;g.lineWidth=w*dpr;g.lineJoin='round';g.setLineDash(dash||[]);g.stroke();g.setLineDash([])}
+    var base=this.base,kind=this.kind;
+    if(base)line(function(tt){return signal(tt+100,base)},C.pencil,1.5,[5*dpr,4*dpr]);
+    line(function(tt){return signal(tt,kind)},C.ink,2);
+    var y=mid-signal(t,kind)*amp;this.off=(y-mid)/dpr;
+    g.fillStyle=C.ink;g.beginPath();g.arc(penX,y,4*dpr,0,7);g.fill();
+  };
+  // a fixed 18 s window: blue baseline in full, black ink up to `prog`
+  function overlay(canvas,baseAmp,nowAmp,prog,seed){
+    var f=fit(canvas);if(!f)return;var g=f.g,W=f.W,H=f.H,dpr=f.dpr,mid=H*.5,unit=H*.15;
+    function line(amp,sd,color,w,dash,upto){g.beginPath();var end=W*upto,a=Math.min(amp,2.9)*unit,y=mid;
+      for(var x=0;x<=end;x+=dpr){y=mid-swaySig(x/W*18,sd)*a;if(x)g.lineTo(x,y);else g.moveTo(x,y)}
+      g.strokeStyle=color;g.lineWidth=w*dpr;g.lineJoin='round';g.setLineDash(dash||[]);g.stroke();g.setLineDash([]);return [end,y]}
+    if(baseAmp)line(baseAmp,1.7,C.pencil,1.5,[5*dpr,4*dpr],1);
+    var p=line(nowAmp,seed,C.ink,2,null,prog);
+    if(prog<1){g.fillStyle=C.ink;g.beginPath();g.arc(p[0],p[1],4*dpr,0,7);g.fill()}
+  }
+
+  // ---------- state (in memory only; the app keeps this in localStorage) ----------
+  var S;
+  function reset(){S={baseline:null,clean:true,motion:true,drinks:[],last:null,checks:0,handicap:null,share:true,sim:'normal',psim:'normal',serial:417,ago:0,
+    specimens:[
+      {name:'Paper Crane pale ale',kind:'Beer',score:4,note:'Citrus. Would again.',sample:true},
+      {name:'Flat white, corner cafe',kind:'Coffee',score:5,note:'The good one before stand-up.',sample:true},
+      {name:'Ginger beer',kind:'No alcohol',score:3,note:'Very ginger.',sample:true}]}}
+  reset();
+  var T=null,timers=[],raf=0;
+  function later(fn,ms){var id=setTimeout(fn,ms);timers.push(id);return id}
+  function stopAll(){timers.forEach(clearTimeout);timers=[];if(raf)cancelAnimationFrame(raf);raf=0}
+  function rnd(a,b){return a+Math.random()*(b-a)}
+  function pos(x){return Math.max(0,x)}
+  function clip(x){return Math.max(-3,Math.min(3,x))}
+  function pct(r){var p=Math.round((r-1)*100);return p===0?'no change':(p>0?'+':'')+p+'%'}
+  function clock(ms){return new Date(ms).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+  function median(a){if(!a.length)return null;var s=a.slice().sort(function(x,y){return x-y}),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2}
+  function sampleBaseline(){return {run:{stand:{sway:1,seed:1.7},choice:{median:430,wrong:0,lapses:0,trials:12},hr:{bpm:68},at:Date.now()},clean:true,sample:true}}
+  function ensureBaseline(){if(!S.baseline)S.baseline=sampleBaseline()}
+
+  // ---------- caffeine on board: arithmetic from the log, never a sensor reading ----------
+  function cafAt(t,half){var sum=0;S.drinks.forEach(function(d){var mg=CAF[d.kind];if(!mg)return;var m=(t-d.at)/60000;if(m<=0)return;
+    sum+=m<50?mg*m/50:mg*Math.pow(.5,((m-50)/60)/half)});return sum}
+  function cafTotal(){return S.drinks.reduce(function(a,d){return a+(CAF[d.kind]||0)},0)}
+  function hasAlc(){return S.drinks.some(function(d){return ALC[d.kind]})}
+  function hasCaf(){return S.drinks.some(function(d){return CAF[d.kind]})}
+  function drawCaf(){
+    var f=fit($('c-caf'));if(!f)return;var g=f.g,W=f.W,H=f.H,dpr=f.dpr,now=Date.now(),t0=now-3*3600e3,t1=now+9*3600e3,top=18*dpr,bot=H-14*dpr,max=260;
+    for(var i=0;i<=60;i++){max=Math.max(max,cafAt(t0+(t1-t0)*i/60,8)*1.15)}
+    function X(t){return (t-t0)/(t1-t0)*W}function Y(v){return bot-(v/max)*(bot-top)}
+    g.beginPath();var x;
+    for(x=0;x<=W;x+=2*dpr){var t=t0+(t1-t0)*x/W;if(x)g.lineTo(x,Y(cafAt(t,8)));else g.moveTo(x,Y(cafAt(t,8)))}
+    for(x=W;x>=0;x-=2*dpr){g.lineTo(x,Y(cafAt(t0+(t1-t0)*x/W,2)))}
+    g.closePath();g.globalAlpha=.55;g.fillStyle=C.grid;g.fill();g.globalAlpha=1;
+    g.beginPath();for(x=0;x<=W;x+=dpr){var v=Y(cafAt(t0+(t1-t0)*x/W,5));if(x)g.lineTo(x,v);else g.moveTo(x,v)}
+    g.strokeStyle=C.ink;g.lineWidth=2*dpr;g.lineJoin='round';g.stroke();
+    g.setLineDash([4*dpr,4*dpr]);g.strokeStyle=C.soft;g.lineWidth=dpr;g.beginPath();g.moveTo(X(now),top);g.lineTo(X(now),bot);g.stroke();g.setLineDash([]);
+    g.fillStyle=C.ink;g.beginPath();g.arc(X(now),Y(cafAt(now,5)),4*dpr,0,7);g.fill();
+  }
+
+  // ---------- drinks ----------
+  var KINDS=[['coffee','Coffee','about 100 mg caffeine'],['energy','Energy drink','about 80 mg caffeine'],['beer','Beer','alcohol'],['wine','Wine','alcohol'],['spirit','Spirit','alcohol'],['water','Water','good idea']];
+  $('tiles').innerHTML=KINDS.map(function(k){return '<button type="button" class="tile" data-drink="'+k[0]+'"><b>'+k[1]+'</b><span>'+k[2]+'</span></button>'}).join('');
+  function label(kind){for(var i=0;i<KINDS.length;i++)if(KINDS[i][0]===kind)return KINDS[i][1].toLowerCase();return kind}
+  function drinksLine(){if(!S.drinks.length)return '';var c={},o=[];S.drinks.forEach(function(d){if(!c[d.kind]){c[d.kind]=0;o.push(d.kind)}c[d.kind]++});
+    return o.map(function(k){return c[k]+' '+label(k)}).join(', ')}
+  var toastId=0;
+  function logDrink(kind){var d={kind:kind,at:Date.now()-S.ago*60000};S.drinks.push(d);
+    $('toast-t').textContent='Logged: '+label(kind)+(S.ago?', '+(S.ago/60)+' h ago':'')+'.';$('toast').hidden=false;
+    clearTimeout(toastId);toastId=setTimeout(function(){$('toast').hidden=true},5000);$('undo').onclick=function(){var i=S.drinks.indexOf(d);if(i>-1)S.drinks.splice(i,1);$('toast').hidden=true}}
+
+  // ---------- home ----------
+  function renderHome(){
+    var line=drinksLine();$('home-drinks').textContent=line?line.charAt(0).toUpperCase()+line.slice(1)+'.':'Nothing yet.';
+    var now=Date.now(),on=Math.round(cafAt(now,5)/10)*10,last=null;S.drinks.forEach(function(d){if(CAF[d.kind]&&(!last||d.at>last.at))last=d});
+    $('home-caf').textContent=last?'About '+on+' mg on board now. Half of your last '+label(last.kind)+' is still with you at '+clock(last.at+50*60000+5*3600e3)+'.':'No caffeine logged. The chart fills in when you log a coffee.';
+    $('home-last').textContent=S.last?'Last reading: '+S.last.stamp+', '+clock(S.last.at)+'.':(S.baseline&&S.baseline.sample?'Using a sample baseline. Press Start to record your own.':'');
+    $('home-serial').innerHTML='Today<br>'+clock(now);
+    requestAnimationFrame(drawCaf);
+  }
+
+  // ---------- the two tests ----------
+  var sq=[].slice.call(document.querySelectorAll('.sq'));
+  function say(t){$('t-say').textContent=t}
+  function startRun(mode){ensureBaselineFor(mode);stopAll();
+    T={mode:mode,phase:S.motion?'stand-intro':'choice-intro',stand:null,choice:null};show('test')}
+  function ensureBaselineFor(mode){if(mode!=='baseline')ensureBaseline()}
+  function renderTest(){
+    var ph=T.phase,stand=ph.indexOf('stand')===0,pulse=ph.indexOf('pulse')===0,intro=ph==='stand-intro'||ph==='choice-intro'||ph==='pulse-intro',done=ph==='choice-done'||ph==='pulse-done';
+    $('t-label').textContent=stand?'Test 1 of 3 · Stand still':pulse?'Test 3 of 3 · Pulse (optional)':'Test 2 of 3 · Choice tap';
+    $('t-sheet').hidden=!(intro||done);$('t-window').hidden=!((stand&&!intro)||ph==='pulse-run');$('t-grid').hidden=ph!=='choice-run';
+    $('t-gauge').hidden=!(ph==='stand-replay'&&T.mode!=='baseline'&&S.baseline.run.stand);
+    $('t-rows').hidden=ph!=='choice-done';$('t-go').hidden=!(intro||done||ph==='stand-replay');
+    $('t-skip').hidden=!(ph==='stand-intro'||ph==='pulse-intro');$('t-skip').textContent=pulse?'Skip this step':'Skip this test';
+    $('t-legend').hidden=T.mode==='baseline'||pulse;$('t-axis').hidden=pulse;$('t-big').hidden=ph==='stand-replay'||pulse;$('m-test').hidden=pulse;
+    if(ph==='stand-intro'){$('t-timer').textContent=STAND_S+' s';$('t-lab').textContent='Whole-body sway';
+      $('t-h').textContent='Stand up. Phone on your chest.';
+      $('t-p').textContent='Feet together. Hold your phone upright against your chest with both hands. Pick a spot on the wall and stay as still as you can until the beep.';
+      $('t-small').textContent='No beep? Count slowly, then look. Prototype: this runs 6 seconds and the sway is simulated. The app runs 20.';
+      $('t-go').textContent='Start';say('')}
+    if(ph==='stand-count'){$('t-big').className='';say('Get it on your chest.')}
+    if(ph==='stand-run'){$('t-big').className='word';$('t-big').textContent='Hold';say('Until the beep.')}
+    if(ph==='stand-replay'){$('t-timer').textContent='Done';$('t-go').textContent='Next';
+      say(T.mode==='baseline'?'That is what still looks like.':'Blue is your normal. Black is just now.')}
+    if(ph==='choice-intro'){$('t-timer').textContent='12 taps';$('t-lab').textContent='Speed and accuracy';
+      $('t-h').textContent='Tap the square that lights up.';
+      $('t-p').textContent='Four squares. One lights up; tap it as fast as you can. The first two do not count.'+(T.mode==='demo'&&S.handicap==='offhand'?' Use your other hand.':'');
+      $('t-small').textContent='This one is real: it is timed on your device.';$('t-go').textContent='Start';say('')}
+    if(ph==='choice-done'){var c=T.choice;$('t-timer').textContent='Done';$('t-lab').textContent='Choice tap';$('t-h').textContent=c.median?Math.round(c.median)+' ms':'No clean taps';
+      $('t-p').textContent='Median of your correct taps.';$('t-small').textContent='';
+      $('t-rows').innerHTML='<div><span>Wrong squares</span><span>'+c.wrong+'</span></div><div><span>Missed</span><span>'+c.lapses+'</span></div>';
+      $('t-go').textContent='Next';say('')}
+    if(ph==='pulse-intro'){$('t-timer').textContent=PULSE_S+' s';$('t-lab').textContent='Counts a little, never decides';
+      $('t-h').textContent='Fingertip on the back camera.';
+      $('t-p').textContent='Rest a fingertip flat over the back camera and its light. Press gently and keep still.'+(T.mode==='demo'&&S.handicap==='jacks'?' This is where the jumping jacks show.':'');
+      $('t-small').textContent='Prototype: this runs 8 seconds and the pulse is simulated. The app runs 30 and reads the camera.';$('t-go').textContent='Start';say('')}
+    if(ph==='pulse-run'){say('Keep your fingertip on the lens.')}
+    if(ph==='pulse-done'){$('t-timer').textContent='Done';$('t-lab').textContent='Pulse';$('t-h').textContent=T.hr.bpm+' bpm';
+      $('t-p').textContent='This goes on your ticket as one row. A raised pulse can nudge your reading a little. It can never decide it.';$('t-small').textContent='';
+      $('t-go').textContent=T.mode==='baseline'?'Save my normal':'Print my reading';say('')}
+  }
+  var pulseChart=new Chart($('c-test'),{kind:'pulse',span:4,gain:1.2,mid:.62});
+  function pulseRun(){var base=T.mode==='baseline'?null:S.baseline.run.hr,f=1;
+    if(base){f=T.mode==='demo'?(S.handicap==='jacks'?rnd(1.35,1.5):S.handicap==='spin'?rnd(1.08,1.15):rnd(.97,1.05)):S.psim==='raised'?rnd(1.2,1.3):rnd(.96,1.06)}
+    var bpm=Math.round(base?base.bpm*f:rnd(62,78));T.phase='pulse-run';renderTest();var D=PULSE_S*1000,t0=performance.now();
+    (function loop(){var e=performance.now()-t0;$('t-timer').textContent=Math.max(0,(D-e)/1000).toFixed(1)+' s';pulseChart.draw(e/1000*bpm/114);
+      if(e>=D){T.hr={bpm:bpm};T.phase='pulse-done';renderTest()}else raf=requestAnimationFrame(loop)})()}
+  function standCount(){T.phase='stand-count';renderTest();var k=3;
+    (function tick(){$('t-big').textContent=String(k);beep(660,.08);overlay($('c-test'),0,0,0,0);if(k===1)later(standRun,800);else{k--;later(tick,800)}})()}
+  function standRun(){T.phase='stand-run';renderTest();beep(990,.25);var D=STAND_S*1000,t0=performance.now();
+    (function loop(){var e=performance.now()-t0;$('t-timer').textContent=Math.max(0,(D-e)/1000).toFixed(1)+' s';
+      if(e>=D){beep(990,.4);standReplay()}else raf=requestAnimationFrame(loop)})()}
+  function standReplay(){
+    var base=T.mode==='baseline'?null:S.baseline.run.stand,factor=1,seed=rnd(0,6);
+    if(base){factor=(T.mode==='demo'&&S.handicap==='spin')||S.sim==='spin'?rnd(1.8,2.3):S.sim==='drinks'&&T.mode!=='demo'?rnd(1.4,1.65):rnd(.92,1.12)}
+    T.stand={sway:(base?base.sway*factor:rnd(.8,1.2)),seed:seed};T.factor=factor;T.phase='stand-replay';renderTest();
+    $('m-test').innerHTML=ibis(factor>1.3?'tipsy':'steady');
+    $('t-gauge-i').style.width=Math.min(100,factor*50)+'%';$('t-gauge-v').textContent=factor.toFixed(2)+'x';
+    var t0=performance.now();
+    (function loop(){var p=still?1:Math.min(1,(performance.now()-t0)/2000);overlay($('c-test'),base?1:0,base?factor:1,p,seed);if(p<1)raf=requestAnimationFrame(loop)})()}
+  function choiceStart(){var seq=[0,0,0,1,1,1,2,2,2,3,3,3];for(var i=seq.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),x=seq[i];seq[i]=seq[j];seq[j]=x}
+    seq.unshift(Math.floor(rnd(0,4)),Math.floor(rnd(0,4)));
+    T.c={i:0,seq:seq,rts:[],wrong:0,lapses:0,repeats:0,state:'wait',lit:-1};T.phase='choice-run';renderTest();nextTrial()}
+  function unlight(){sq.forEach(function(b){b.classList.remove('lit');b.textContent=''})}
+  function nextTrial(){var c=T.c;unlight();if(c.i>=c.seq.length)return choiceDone();c.state='wait';
+    $('t-timer').textContent=c.i<2?'Warm-up '+(c.i+1)+'/2':(c.i-1)+'/12';
+    c.to=later(function(){c.state='lit';c.lit=c.seq[c.i];c.t0=performance.now();sq[c.lit].classList.add('lit');sq[c.lit].textContent='Tap';say('');
+      c.lapse=later(function(){if(c.i>=2)c.lapses++;c.i++;nextTrial()},2000)},rnd(800,2000))}
+  function tapSq(k){if(!T||T.phase!=='choice-run')return;var c=T.c;
+    if(c.state==='wait'){if(c.repeats<3){c.repeats++;clearTimeout(c.to);say('Too soon.');nextTrial()}return}
+    if(c.state!=='lit')return;var rt=performance.now()-c.t0;clearTimeout(c.lapse);
+    if(rt<100&&c.repeats<3){c.repeats++;nextTrial();return}
+    if(c.i>=2){if(k===c.lit)c.rts.push(rt);else c.wrong++}
+    c.state='gap';c.i++;nextTrial()}
+  function choiceDone(){var c=T.c;T.choice={median:median(c.rts),wrong:c.wrong,lapses:c.lapses,trials:12};T.phase='choice-done';renderTest()}
+  sq.forEach(function(b,i){b.addEventListener('pointerdown',function(e){e.preventDefault();tapSq(i)})});
+  $('t-go').addEventListener('click',function(){if(!T)return;var ph=T.phase;
+    if(ph==='stand-intro')standCount();
+    else if(ph==='stand-replay'){T.phase='choice-intro';renderTest()}
+    else if(ph==='choice-intro')choiceStart();
+    else if(ph==='choice-done'){T.phase='pulse-intro';renderTest()}
+    else if(ph==='pulse-intro')pulseRun();
+    else if(ph==='pulse-done')finishRun()});
+  $('t-skip').addEventListener('click',function(){if(!T)return;if(T.phase==='pulse-intro'){T.hr=null;finishRun()}else{T.stand=null;T.phase='choice-intro';renderTest()}});
+  function finishRun(){var run={stand:T.stand,choice:T.choice,hr:T.hr||null,at:Date.now()},mode=T.mode;T=null;
+    if(mode==='baseline'){S.baseline={run:run,clean:S.clean};S.checks=0;S.last=null;show('saved')}
+    else{S.checks++;S.last=assess(run,mode);pushRoom(S.last);show('result',true)}}
+
+  // ---------- scoring: one drift axis, the log names the cause ----------
+  function assess(run,mode){
+    var b=S.baseline.run,d={},partial=!run.stand||!b.stand,bm=b.choice.median||2000,rm=run.choice.median||2000;
+    if(!partial)d.sway=clip((run.stand.sway/b.stand.sway-1)/F.sway);
+    d.choiceRt=clip((rm/bm-1)/F.choiceRt);d.choiceWrong=clip((run.choice.wrong-b.choice.wrong)/F.choiceWrong);
+    var ps=pos(d.sway||0),pc=pos(d.choiceRt)+pos(d.choiceWrong),drift=ps+pc,alc=hasAlc(),caf=hasCaf(),demo=mode==='demo';
+    var pr=run.hr&&b.hr?run.hr.bpm/b.hr.bpm:null;   // pulse adds a small capped term to drift (D46): it can tip a borderline reading, never decide one
+    if(pr){d.hr=clip((pr-1)/.15);drift+=Math.min(.5,.5*pos(d.hr))}
+    var guess=!demo?null:pr&&pr>=1.25?'jacks':drift>=1.5?(ps>=pc?'spin':'offhand'):null,line,next;
+    var verdict=demo?(guess==='jacks'?'wired':guess==='spin'?'tipsy':guess==='offhand'?'wobbly':'steady'):drift<1.5?'steady':alc?'tipsy':caf?'wired':'wobbly';
+    if(demo){line=!guess?'"Barely a wobble. Try again, with feeling."':guess==='spin'?'"We think you spun. Bodies keep receipts."':guess==='jacks'?'"We think you did jumping jacks. Your pulse told on you."':'"We think that was your other hand. It taps like a stranger’s."';
+      if(guess&&guess!==S.handicap)line=line.slice(0,-1)+' If we guessed wrong, bodies are odd."';
+      next=guess==='spin'?'Sit down for a minute.':guess==='jacks'?'Catch your breath.':'Carry on.'}
+    else if(verdict==='tipsy'){line='"Your phone noticed before you did. So did I. I notice everything near a bin."';next='Get a ride or ping a friend.'}
+    else if(verdict==='wired'){line='"Something has shifted, and your log says coffee. I have seen calmer pigeons."';next='No more coffee today. Water.'}
+    else if(verdict==='wobbly'){line='"Off your normal, and nothing in the log. Either you spun, or you are keeping secrets."';next='Water, and a slow breath.'}
+    else if(alc){line='"The tests look steady. That proves you can stand and tap. It proves nothing else."';next='Still not a driving test.'}
+    else if(cafTotal()>=400){line='"Steady, with a great deal of coffee in you. I am impressed and concerned."';next='No more coffee today.'}
+    else{line='"Nothing to report. You are as dull as you were at baseline. I have bins to attend to."';next='Carry on.'}
+    var tags=[];if(demo)tags.push('Simulated: demo handicap');if(partial)tags.push('Partial reading: Stand Still skipped');if(!S.baseline.clean)tags.push('Loose reading: baseline taken after a drink');
+    if(!demo&&pr&&pr>=1.15)tags.push('Raised pulse: you may have just moved, read loosely');
+    if(S.baseline.sample)tags.push('Sample baseline');
+    var rows=[['Body sway',partial?'skipped':pct(run.stand.sway/b.stand.sway)],['Choice time',pct(rm/bm)],
+      ['Wrong squares',(function(x){return x===0?'no change':(x>0?'+':'')+x})(run.choice.wrong-b.choice.wrong)]];
+    if(run.hr)rows.push(['Pulse',run.hr.bpm+' bpm'+(b.hr?(function(x){return ' ('+(x>=0?'+':'')+x+')'})(run.hr.bpm-b.hr.bpm):'')]);
+    if(caf)rows.push(['Caffeine on board','about '+Math.round(cafAt(Date.now(),5)/10)*10+' mg']);
+    return {verdict:verdict,stamp:guess==='jacks'?'puffed':verdict,sim:demo,guess:guess,line:line,next:next,tags:tags,rows:rows,safety:alc,at:run.at,
+      no:++S.serial,factor:partial?1:run.stand.sway/b.stand.sway,seed:run.stand?run.stand.seed:2,partial:partial,score:Math.round(100*Math.min(1,drift/6))}}
+  function sampleResult(){ensureBaseline();var b=S.baseline.run,f=S.sim==='spin'?2:S.sim==='drinks'?1.5:1.04;
+    return assess({stand:{sway:b.stand?b.stand.sway*f:1,seed:3.1},choice:{median:(b.choice.median||430)*1.03,wrong:b.choice.wrong,lapses:0,trials:12},hr:b.hr?{bpm:Math.round(b.hr.bpm*(S.psim==='raised'?1.25:1.03))}:null,at:Date.now()},'real')}
+  function renderResult(print){
+    if(!S.last)S.last=sampleResult();var r=S.last;
+    $('t-no').innerHTML='No. 0'+r.no+'<br>'+new Date(r.at).toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'})+' '+clock(r.at);
+    $('stamp').textContent=r.stamp;$('stamp-s').textContent=r.sim?'Simulated · certified by a bin chicken':'Certified by a bin chicken';
+    $('rows').innerHTML=r.rows.map(function(x){return '<div><span>'+x[0]+'</span><span>'+x[1]+'</span></div>'}).join('');
+    $('r-tags').hidden=!r.tags.length;$('r-tags').textContent=r.tags.join(' · ');
+    $('quote').textContent=r.line;$('next').textContent=r.next;$('safety').hidden=!r.safety;
+    var dl=drinksLine();$('drinks').textContent=dl?'Logged today: '+dl+'.':'Nothing logged today.';
+    $('m-result').innerHTML=ibis(r.verdict);
+    var t=$('ticket');t.classList.remove('print');if(print){void t.offsetWidth;t.classList.add('print')}
+    requestAnimationFrame(function(){overlay($('c-ticket'),r.partial?0:1,r.factor,1,r.seed)});
+  }
+
+  // ---------- demo ----------
+  function renderDemo(){$('demo-pick').hidden=false;$('demo-do').hidden=true;$('demo-share').checked=S.share;
+    document.querySelectorAll('[data-handicap]').forEach(function(b){b.hidden=false})}
+  function startHandicap(h){S.handicap=h;S.share=$('demo-share').checked;$('demo-pick').hidden=true;$('demo-do').hidden=false;
+    document.querySelectorAll('[data-handicap]').forEach(function(b){b.hidden=true});
+    $('demo-lab').textContent=h==='spin'?'Stands in for wobbly legs':h==='jacks'?'Only the pulse step can see this one':'The seated option';
+    $('demo-h').textContent=h==='spin'?'Spin around 5 times.':h==='jacks'?'20 fast jumping jacks.':'Switch hands.';
+    $('demo-p').textContent=h==='spin'?'Hold on to something. Stop if you feel unwell. Then stand still for the test.':h==='jacks'?'Then do the tests, and put a fingertip on the camera when asked. Skip the pulse step and we will have no idea.':'Do the tap test with the hand you do not write with.';
+    var k=5;(function tick(){$('demo-count').textContent=k+' s';if(k===0)startRun('demo');else{k--;later(tick,1000)}})()}
+
+  // ---------- specimens: a tasting drawer. Scored for taste, never counted for volume. ----------
+  var draft=null;
+  function renderSpecimens(){
+    var kinds={};S.specimens.forEach(function(s){kinds[s.kind]=1});
+    $('sp-count').innerHTML=S.specimens.length+' filed<br>'+Object.keys(kinds).length+' kinds';
+    $('sp-list').innerHTML=S.specimens.map(function(s){
+      return '<div class="spec"><div class="thumb">'+(s.img?'<img src="'+s.img+'" alt="">':esc(s.kind.slice(0,2)))+'</div><div><b>'+esc(s.name)+'</b><span class="meta">'+esc(s.kind)+(s.sample?' · sample':'')+(s.note?' · '+esc(s.note):'')+'</span></div><div class="score">'+s.score+'<small>/5</small></div></div>'}).join('');
+  }
+  function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function openForm(img){draft={img:img||null,score:0};$('sp-form').hidden=false;$('sp-list').hidden=true;
+    $('sp-img').hidden=!img;if(img)$('sp-img').src=img;
+    $('sp-guess').textContent=img?'Dr. Bin Chicken squints at the label: "Looks like a beer. Correct me." (In the app, Claude reads the photo. Here the guess is canned.)':'No photo. Fill it in by hand.';
+    $('sp-name').value='';$('sp-note').value='';$('sp-kind').value='Beer';$('sp-log').checked=false;setScore(0);$('sp-name').focus()}
+  function closeForm(){draft=null;$('sp-form').hidden=true;$('sp-list').hidden=false;$('sp-file').value=''}
+  function setScore(v){if(draft)draft.score=v;document.querySelectorAll('[data-score]').forEach(function(b){b.setAttribute('aria-pressed',String(+b.dataset.score===v))})}
+  $('sp-add').addEventListener('click',function(){$('sp-file').click()});
+  $('sp-manual').addEventListener('click',function(){openForm(null)});
+  $('sp-file').addEventListener('change',function(){var f=this.files&&this.files[0];if(!f)return;var u=null;try{u=URL.createObjectURL(f)}catch(e){}openForm(u)});
+  $('sp-cancel').addEventListener('click',closeForm);
+  $('sp-save').addEventListener('click',function(){if(!draft)return;var name=$('sp-name').value.trim()||'Unnamed specimen',kind=$('sp-kind').value;
+    S.specimens.unshift({name:name,kind:kind,score:draft.score||3,note:$('sp-note').value.trim(),img:draft.img});
+    var map={Beer:'beer',Wine:'wine',Spirit:'spirit',Coffee:'coffee'};if($('sp-log').checked&&map[kind])S.drinks.push({kind:map[kind],at:Date.now()});
+    closeForm();renderSpecimens()});
+
+  // ---------- room (sample data, plus your own readings) ----------
+  var names=['Wobbly Quokka','Brisk Ibis','Mellow Wombat','Jittery Gecko','Dizzy Galah','Calm Bilby','Twitchy Numbat','Loose Kookaburra','Steady Echidna'];
+  var verds=['Steady','Wired','Tipsy','Steady','Wobbly','Steady'];
+  var says=['Seventy-four readings in. A third of this room is wired, and it is only five o’clock.','The back rows are holding this room steady. The front rows spun. I saw.','Six of you are off your normal with nothing logged. I am not judging. I am recording.'];
+  var feed=[],sayI=0,roomChart=new Chart($('c-room'),{kind:'room',base:'pulse',span:6,gain:1.2}),landChart=new Chart($('c-landing'),{kind:'calm',span:5,gain:1.1,mid:.36});
+  for(var i=0;i<5;i++)feed.push([names[i],verds[i]]);
+  function drawFeed(fresh){$('feed').innerHTML=feed.slice(0,5).map(function(r,k){return '<div class="mini'+(fresh&&k===0?' new':'')+'"><span>'+r[0]+'</span><em>'+r[1]+'</em></div>'}).join('')}
+  function bump(v){var el=$('n-'+v.toLowerCase());if(el)el.textContent=String(+el.textContent+1)}
+  function pushRoom(r){if(r.sim&&!S.share)return;if(!r.sim)return;feed.unshift(['You'+(r.sim?' (demo)':''),r.stamp]);bump(r.stamp)}
+  $('top').innerHTML=[['Dizzy Galah',94],['Wobbly Quokka',88],['Loose Kookaburra',81],['Twitchy Numbat',77],['Jittery Gecko',70]].map(function(r){return '<li><span>'+r[0]+'</span><span>'+r[1]+'</span></li>'}).join('');
+  $('p-say').textContent=says[0];$('m-room').innerHTML=ibis('steady');$('m-landing').innerHTML=ibis('steady');
+  (function(){var q=$('qr'),g=q.getContext('2d'),N=29,s=7;g.fillStyle=C.receipt;g.fillRect(0,0,N,N);g.fillStyle=C.ink;
+    for(var y=0;y<N;y++)for(var x=0;x<N;x++){s=(s*1103515245+12345)&0x7fffffff;if((s>>16)%2)g.fillRect(x,y,1,1)}
+    [[0,0],[N-7,0],[0,N-7]].forEach(function(p){g.fillStyle=C.receipt;g.fillRect(p[0]-1,p[1]-1,9,9);g.fillStyle=C.ink;g.fillRect(p[0],p[1],7,7);g.fillStyle=C.receipt;g.fillRect(p[0]+1,p[1]+1,5,5);g.fillStyle=C.ink;g.fillRect(p[0]+2,p[1]+2,3,3)});
+  })();
+
+  // ---------- notes beside each screen ----------
+  var NOTE={
+    landing:'<h2>Landing</h2><p>The trace is the brand. In the app it is the phone’s own motion from the first second.</p><ul><li>Start goes to setup the first time, and straight to Home once a baseline is on file.</li><li>The copy now says what the two tests are: stand still, then tap fast.</li></ul>',
+    setup:'<h2>Permissions</h2><p>One tap, with the reason given before the system prompt appears. iPhone only grants motion access from a tap.</p><ul><li>"Continue with one test" is always there: desktop, a denied prompt and in-app browsers all land on Choice Tap alone, marked as a partial reading.</li><li>In this prototype the permission is pretend.</li></ul>',
+    clean:'<h2>Clean baseline</h2><p>One question before recording. "Already had some" still records, but every reading built on it is tagged as loose.</p><ul><li>Proposed and not in this prototype: record the baseline twice and keep the second run, so each person gets their own noise floor (D42).</li></ul>',
+    test:'<h2>The tests</h2><p>These replaced Steady Hand, Reaction Tap and Stroop on Saturday morning, after the research.</p><ul><li><b>Stand Still</b> measures whole-body sway with the phone on the chest. The user cannot see the screen, so beeps run it and the trace replays afterwards over the blue baseline. Simulated here.</li><li><b>Choice Tap</b> is real in this page: 2 warm-up taps, then 12 timed ones. The median uses correct taps only; wrong squares and misses are counted separately.</li><li><b>Pulse</b> is an optional third step: a fingertip over the back camera for 30 seconds. It prints one row on the ticket. A raised pulse adds a small, capped amount to drift, so it can tip a borderline reading and can never decide one alone. Simulated here.</li><li>Use the two "Simulated" switches above to change what the next check shows.</li></ul>',
+    saved:'<h2>Baseline saved</h2><p>Everything is compared with these numbers, never with other people.</p><ul><li>The fork is deliberate: at a demo nobody has a drink, so "Fake it" comes first.</li><li>The sway number has no unit on purpose. Only the ratio to your own normal is shown later.</li></ul>',
+    home:'<h2>Home</h2><p>Two big actions, today’s log, and the caffeine curve.</p><ul><li>The curve is arithmetic from the log: a peak about 50 minutes after each drink, then half gone every 5 hours. The shaded band covers people who clear it in 2 to 8 hours.</li><li>There is no such curve for alcohol, on purpose. It would read as a blood alcohol figure.</li><li>Proposed and not in this prototype: a "when did you wake up" row and a tired verdict (D43).</li></ul>',
+    log:'<h2>Log a drink</h2><p>One tap per drink, with a five second undo. No forms.</p><ul><li>Water is in the list and earns nothing but a kind word.</li><li>"When" is a proposal: people log late, and the caffeine curve is wrong if every coffee counts as just now. The default stays one tap.</li><li>Nothing here counts or celebrates alcohol.</li></ul>',
+    demo:'<h2>Demo mode</h2><p>For a room with no drinks in hand. Three handicaps, each aimed at one test.</p><ul><li>A spin raises body sway. The other hand slows Choice Tap. Jumping jacks raise the pulse. The reading says which one it thinks you did.</li><li>Jumping jacks are back as a proposal: they give the pulse step a job, because exercise moves pulse by tens of beats, far more than any drink does. They stamp PUFFED, not Wired.</li><li>The countdown is 5 seconds here and 15 in the app.</li></ul>',
+    result:'<h2>Result</h2><p>The sensors give the amount of drift. Your log gives it a name.</p><ul><li>No drift: Steady. Drift with alcohol logged: Tipsy. Drift with only caffeine logged: Wired. Drift with nothing logged: Wobbly (working word).</li><li>With any alcohol logged the boxed line appears on every reading, Steady included. With one or two drinks, Steady is the expected reading, so it must never look like clearance.</li><li>Pulse counts a little: a raised pulse adds at most 0.5 to a drift score that needs 1.5. Well above your baseline, the ticket also adds a tag saying you may have just moved.</li><li>The line is canned here. In the app Claude writes it, and code decides the stamp and the nudge.</li><li>Log a beer or a coffee, flip the sway switch, and run a check to see each stamp.</li></ul>',
+    specimens:'<h2>Specimens</h2><p>A new idea from Saturday, shown as a stretch feature: photograph a drink, let Claude read the label, fix it by hand, give it a score.</p><ul><li>It is a tasting drawer, not a tally. It counts different kinds and how much you liked them, never how many you drank.</li><li>Coffee, tea and no-alcohol drinks belong in it as much as beer.</li><li>No badges, no streaks, no comparing with the room: those would reward drinking more.</li><li>Photos stay on the phone. The photo picker here is real; the label guess is canned.</li></ul>',
+    room:'<h2>Room</h2><p>The projector view, 16:9. All figures are sample data, plus any demo reading you make in this page.</p><ul><li>Four tallies now, with Wobbly for drift that has nothing logged.</li><li>The top five ranks demo spins only. Real readings are never ranked by drift.</li><li>The presenter’s pulse from the band is shown in blue. It is display only and is not scored.</li></ul>'
+  };
+
+  // ---------- view switching ----------
+  var VIEWS=['landing','setup','clean','test','saved','home','log','demo','result','specimens','room'],view='landing';
+  function show(v,print){
+    if(VIEWS.indexOf(v)<0)v='landing';
+    if(v==='test'&&!T)v='landing';
+    if(v!=='test'){stopAll();T=null}
+    if(v==='home'||v==='log'||v==='demo'||v==='result')ensureBaseline();
+    view=v;
+    VIEWS.forEach(function(k){var el=$('s-'+k);if(el)el.hidden=k!==v});
+    $('device').hidden=v==='room';$('projector').hidden=v!=='room';$('main').classList.toggle('wide',v==='room');
+    $('notes').innerHTML=NOTE[v]||'';
+    document.querySelectorAll('.tabs [data-view]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.view===v))});
+    if(v==='landing'){var has=S.baseline&&!S.baseline.sample;$('land-go').textContent=has?'Continue':'Start';$('land-reset').hidden=!has}
+    if(v==='test')renderTest();
+    if(v==='saved'){var r=S.baseline.run;$('saved-rows').innerHTML='<div><span>Body sway</span><span>'+(r.stand?'on file':'skipped')+'</span></div><div><span>Choice time</span><span>'+(r.choice.median?Math.round(r.choice.median)+' ms':'n/a')+'</span></div><div><span>Wrong squares</span><span>'+r.choice.wrong+'</span></div>'+(r.hr?'<div><span>Pulse</span><span>'+r.hr.bpm+' bpm</span></div>':'');
+      $('saved-note').textContent=S.baseline.clean?'Recorded clean. Good.':'Recorded after a drink, so readings will be tagged as loose.'}
+    if(v==='home')renderHome();
+    if(v==='log'){$('toast').hidden=true;document.querySelectorAll('[data-ago]').forEach(function(b){b.setAttribute('aria-pressed',String(+b.dataset.ago===S.ago))})}
+    if(v==='demo')renderDemo();
+    if(v==='result')renderResult(!!print);
+    if(v==='specimens'){closeForm();renderSpecimens()}
+    if(v==='room'){drawFeed(false);if(still)requestAnimationFrame(function(){roomChart.draw(12.3)})}
+    if(v==='landing'&&still)requestAnimationFrame(function(){landChart.draw(12.3)});
+    try{var h=v==='test'?'check':v;if(location.hash.slice(1)!==h)history.replaceState(null,'','#'+h)}catch(e){}
+  }
+  function setPsim(s){S.psim=s;document.querySelectorAll('[data-psim]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.psim===s))})}
+  function setSim(s){S.sim=s;document.querySelectorAll('[data-sim]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.sim===s))})}
+
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;var d=b.dataset;
+    if(d.view)show(d.view);
+    else if(d.run)startRun(d.run==='again'&&S.last&&S.last.sim?'demo':'check');
+    else if(d.sim)setSim(d.sim);
+    else if(d.psim)setPsim(d.psim);
+    else if(d.clean){S.clean=d.clean==='1';startRun('baseline')}
+    else if(d.drink)logDrink(d.drink);
+    else if(d.ago){S.ago=+d.ago;document.querySelectorAll('[data-ago]').forEach(function(x){x.setAttribute('aria-pressed',String(+x.dataset.ago===S.ago))})}
+    else if(d.handicap)startHandicap(d.handicap);
+    else if(d.score)setScore(+d.score);
+  });
+  $('land-go').addEventListener('click',function(){show(S.baseline&&!S.baseline.sample?'home':'setup')});
+  $('land-reset').addEventListener('click',function(){reset();setSim('normal');setPsim('normal');show('landing')});
+  $('setup-allow').addEventListener('click',function(){S.motion=true;show('clean')});
+  $('setup-skip').addEventListener('click',function(){S.motion=false;show('clean')});
+  window.addEventListener('hashchange',function(){var h=location.hash.slice(1);if(h==='check'){if(view!=='test')startRun('check')}else if(h&&h!==view)show(h)});
+  window.addEventListener('resize',function(){if(view==='home')drawCaf();if(view==='result'&&S.last)overlay($('c-ticket'),S.last.partial?0:1,S.last.factor,1,S.last.seed)});
+
+  // ---------- animation loop ----------
+  var lastFeed=0,lastSay=0,fi=5;
+  function frame(ms){var t=ms/1000;
+    if(view==='landing'){landChart.draw(t);$('m-landing').style.transform='translateY('+landChart.off.toFixed(1)+'px)'}
+    if(view==='room'){roomChart.draw(t);
+      if(t-lastFeed>2.5){lastFeed=t;feed.unshift([names[fi%names.length],verds[fi%verds.length]]);bump(verds[fi%verds.length]);fi++;drawFeed(true)}
+      if(t-lastSay>8){lastSay=t;sayI=(sayI+1)%says.length;$('p-say').textContent=says[sayI]}}
+    requestAnimationFrame(frame)}
+  setSim('normal');setPsim('normal');
+  var h0=location.hash.slice(1);if(h0==='check')startRun('check');else show(h0||'landing');
+  if(!still)requestAnimationFrame(frame);
+})();
+</script>
