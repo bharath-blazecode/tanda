@@ -166,8 +166,8 @@ describe('GET /api/room', () => {
     const rows: Array<Partial<RoomResultRequest>> = [
       { score: 90, mode: 'real' },
       { score: 70, mode: 'real' },
-      { score: 99, mode: 'demo', handicap: 'spin' },
-      { score: 10, mode: 'demo', handicap: 'offhand' },
+      { score: 99, mode: 'demo', handicap: 'spin', verdict: 'tipsy' },
+      { score: 10, mode: 'demo', handicap: 'offhand', verdict: 'wobbly' },
       { score: 5, mode: 'real', verdict: 'tipsy' },
     ]
     for (const [i, row] of rows.entries()) {
@@ -175,7 +175,8 @@ describe('GET /api/room', () => {
       await post('/api/room/result', result({ ...row, deviceId: `device-${i}-0000000` }))
     }
     const { top } = await board()
-    expect(top.real.map((e) => e.score)).toEqual([90, 70, 5])
+    // The tipsy real reading (score 5) is left out: only Steady verdicts may sit under "steadiest".
+    expect(top.real.map((e) => e.score)).toEqual([90, 70])
     expect(top.demo.map((e) => e.score)).toEqual([10, 99])
   })
 

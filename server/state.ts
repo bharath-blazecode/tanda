@@ -87,11 +87,13 @@ export function createRoomStore({
       for (const { entry } of all) mix[entry.verdict]++
 
       // Real readings rank steadiest first; never by drift, which would reward drinking (D22).
+      // Only Steady verdicts qualify: a Tipsy reading under "steadiest" would read as an all-clear.
       const real = all
-        .filter((s) => s.entry.mode === 'real')
+        .filter((s) => s.entry.mode === 'real' && s.entry.verdict === 'steady')
         .sort((a, b) => b.entry.score - a.entry.score || newestFirst(a, b))
+      // The demo list is for people the handicap actually moved, so Steady readings stay off it.
       const demo = all
-        .filter((s) => s.entry.mode === 'demo')
+        .filter((s) => s.entry.mode === 'demo' && s.entry.verdict !== 'steady')
         .sort((a, b) => a.entry.score - b.entry.score || newestFirst(a, b))
       const pick = (list: Stored[], size: number) => list.slice(0, size).map((s) => ({ ...s.entry }))
 
