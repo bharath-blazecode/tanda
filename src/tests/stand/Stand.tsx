@@ -44,6 +44,9 @@ export function Stand({
             {CAPTURE_SECONDS - SETTLE_SECONDS} seconds make the reading.
           </p>
           <p>
+            Quiet lo-fi plays during the capture and stops before the end beep.
+          </p>
+          <p>
             Turn up your sound. No beep? Count slowly to {CAPTURE_SECONDS} after the countdown,
             then look.
           </p>

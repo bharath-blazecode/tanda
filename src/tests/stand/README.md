@@ -23,11 +23,15 @@ Motion permission and audio initialization start directly inside the Start butto
 
 The user requested a **10-second total capture**, overriding the older 20-second screen specification. Three countdown beeps precede capture. Separate start and end beeps bracket capture. The first 2 seconds are settling time, leaving 8 seconds for metrics and the replay.
 
+An original, quiet 72 BPM lo-fi cue plays during capture, starting after the start beep and stopping before the end beep. `music.ts` synthesizes every note and percussion sound with Web Audio; it contains no third-party recordings, samples, borrowed melodies, streaming services, or additional audio dependencies. There are no external music licenses or attribution requirements introduced by this cue. Cancellation, retry, leaving the page, and sensor errors stop playback. If audio is unavailable, capture can still complete with the existing sound warning.
+
 The analyzer resamples timestamped readings and applies a 0.2–3 Hz first-order high-pass/low-pass cascade to each tilt axis. It filters the settling samples too, then excludes them from RMS calculation. Gyroscope beta and gamma are preferred. Acceleration x and y form the fallback. The two source types have different units and must not be compared against each other.
 
 The result reports combined sway RMS, lateral RMS, measured Hz and sensor source. The side-to-side trace replays in 2 seconds. Reduced-motion preferences show the completed trace immediately. Confidence warnings flag acceleration fallback and rates below 15 Hz.
 
-Missing readings, gaps over 0.5 seconds, interrupted captures, large linear acceleration, a gravity-vector tilt change above 25 degrees after settling, and near-zero traces invalidate a run. Hiding the page, leaving it, cancelling, or unmounting stops collection. The near-zero floors are provisional and need calibration on real phones. These heuristics do not establish measurement accuracy.
+Complete recordings with large linear acceleration or a gravity-vector tilt change above 25 degrees after settling now produce a reading and replay with a warning, rather than forcing a retry. The movement remains in the calculation; it is not clipped or removed. These warnings cannot distinguish body sway from moving the phone separately.
+
+Missing readings, gaps over 0.5 seconds, interrupted captures, discontinuous sensor sources, and near-zero traces still invalidate a run. Hiding the page, leaving it, cancelling, or unmounting stops collection. The near-zero floors are provisional and need calibration on real phones. These heuristics do not establish measurement accuracy.
 
 ## Acceptance status
 

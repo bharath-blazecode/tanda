@@ -56,12 +56,16 @@ export function analyze(samples: readonly MotionReading[]): StandAnalysis {
     return fail(
       "Motion readings stopped or arrived out of order. Start again.",
     );
+  // Movement is the signal being measured. Flag large movements for context
+  // rather than discarding an otherwise complete recording.
   if (
     samples.some(
       (sample) => sample.acceleration && magnitude(sample.acceleration) > 19.62,
     )
   )
-    return fail("The phone was shaken or dropped. Start again.");
+    warnings.push(
+      "A sudden movement was recorded. It is included in your reading.",
+    );
   const reference = settled.find(
     (sample) => sample.gravity && magnitude(sample.gravity) > 5,
   )?.gravity;
@@ -79,7 +83,9 @@ export function analyze(samples: readonly MotionReading[]): StandAnalysis {
       );
     })
   )
-    return fail("Keep the phone on your chest until the beep.");
+    warnings.push(
+      "The phone tilted during capture. Your reading includes this movement; keep it against your chest for a consistent comparison.",
+    );
   const field = gyro ? "rotation" : "acceleration";
   if (samples.some((sample) => !sample[field]))
     return fail(

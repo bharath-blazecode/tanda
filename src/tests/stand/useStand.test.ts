@@ -2,6 +2,8 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { MotionReading } from "../../sensors/motion";
+const music = vi.hoisted(() => ({ start: vi.fn(), stop: vi.fn() }));
+vi.mock("./music", () => ({ startStandMusic: music.start }));
 const sensor = vi.hoisted(() => ({
   listener: null as ((sample: MotionReading) => void) | null,
   permission: vi.fn(),
@@ -28,6 +30,8 @@ beforeEach(() => {
   sensor.stop.mockReset();
   sensor.listener = null;
   beeps = [];
+  music.stop.mockReset();
+  music.start.mockReset().mockReturnValue(music.stop);
   class AudioMock {
     state = "running";
     currentTime = 0;
@@ -62,13 +66,13 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
-function emit() {
+function emit(scale = 1) {
   const t = performance.now() / 1000;
   sensor.listener?.({
     t,
-    rotation: { x: Math.sin(t * 3), y: Math.cos(t * 4), z: 0 },
+    rotation: { x: scale * Math.sin(t * 3), y: scale * Math.cos(t * 4), z: 0 },
     acceleration: { x: 0, y: 0, z: 0 },
-    gravity: { x: 0, y: 9.81, z: 0 },
+    gravity: scale > 1 && t > 6 ? { x: 8, y: 2, z: 0 } : { x: 0, y: 9.81, z: 0 },
   });
 }
 it("finishes a 10 second capture after countdown with three countdown beeps and start/end beeps", async () => {
@@ -83,6 +87,8 @@ it("finishes a 10 second capture after countdown with three countdown beeps and 
   });
   expect(result.current.phase).toBe("running");
   expect(result.current.seconds).toBe(10);
+  expect(music.start).toHaveBeenCalledWith(expect.anything(), 10);
+  expect(music.stop).not.toHaveBeenCalled();
   expect(beeps).toEqual([660, 660, 660, 990]);
   await act(async () => {
     await vi.advanceTimersByTimeAsync(9000);
@@ -97,6 +103,26 @@ it("finishes a 10 second capture after countdown with three countdown beeps and 
   expect(result.current.phase).toBe("done");
   expect(result.current.reading?.metrics.valid).toBe(true);
   expect(complete).toHaveBeenCalledOnce();
+  expect(music.stop).toHaveBeenCalledOnce();
+  expect(beeps).toEqual([660, 660, 660, 990, 990]);
+  expect(sensor.stop).toHaveBeenCalled();
+});
+it("completes a swaying capture with a tilt warning instead of asking for a retry", async () => {
+  const complete = vi.fn();
+  const { result } = renderHook(() => useStand(complete));
+  await act(async () => result.current.start());
+  const feed = setInterval(() => emit(30), 1000 / 60);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(14_000);
+  });
+  clearInterval(feed);
+  expect(result.current.phase).toBe("done");
+  expect(result.current.error).toBe("");
+  expect(result.current.reading?.metrics.valid).toBe(true);
+  expect(result.current.reading?.warnings.some((warning) => warning.includes("tilted"))).toBe(true);
+  expect(result.current.reading?.trace.length).toBeGreaterThan(0);
+  expect(complete).toHaveBeenCalledOnce();
+  expect(music.stop).toHaveBeenCalledOnce();
   expect(beeps).toEqual([660, 660, 660, 990, 990]);
   expect(sensor.stop).toHaveBeenCalled();
 });
@@ -192,10 +218,26 @@ it("discards capture when the page is hidden and detaches the sensor", async () 
   clearInterval(feed);
   expect(result.current.phase).toBe("error");
   expect(result.current.reading).toBeNull();
+  expect(music.stop).toHaveBeenCalledOnce();
   expect(complete).not.toHaveBeenCalled();
   expect(sensor.stop).toHaveBeenCalled();
   Object.defineProperty(document, "hidden", {
     configurable: true,
     value: false,
   });
+});
+
+it("stops the music on cancel and starts it fresh on retry", async () => {
+  const { result } = renderHook(() => useStand());
+  await act(async () => result.current.start());
+  const feed = setInterval(emit, 1000 / 60);
+  await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+  expect(music.start).toHaveBeenCalledOnce();
+  act(() => result.current.abort());
+  expect(music.stop).toHaveBeenCalledOnce();
+  expect(result.current.phase).toBe("intro");
+  await act(async () => result.current.start());
+  await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+  expect(music.start).toHaveBeenCalledTimes(2);
+  clearInterval(feed);
 });
