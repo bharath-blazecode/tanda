@@ -23,18 +23,18 @@ The [hackathon archive](archive/hackathon-2026.md) holds the event schedule, dea
 
 | Document | Historical context |
 |---|---|
-| [01 — Hackathon brief](01-hackathon-brief.md) | The organisers' rules, theme, judging and official schedule. |
-| [02 — Past hackathons](02-past-hackathons.md) | Previous winners and project research. |
-| [03 — Strategy and plan](03-strategy-and-plan.md) | The initial strategy, budget controls, gates and demo plan. |
-| [04 — Idea selection](04-idea-selection.md) | The first idea pool and browser/hardware constraints. |
-| [05 — Merged ideas](05-merged-ideas.md) | The second idea pool and the COOKED concept. |
-| [06 — Patient Zero](06-patient-zero.md) | An earlier concept and its hardware assessment. |
-| [07 — Instruments](07-instruments.md) | Corrections to the brief and five non-game concepts. |
-| [08 — Three ideas](08-three-ideas.md) | The original three-sensor instrument direction. |
-| [09 — Three ideas in detail](09-the-three-ideas.md) | The concepts before prioritisation. |
-| [10 — Biosignals](10-biosignals.md) | Signal research and wearable feasibility. |
-| [11 — The ring](11-the-ring.md) | The optional ring investigation, outside the current app flow. |
-| [12 — Build-day plan](12-current-plan.md) | The prototype-era status and revised gates. |
+| [01. Hackathon brief](01-hackathon-brief.md) | The organisers' rules, theme, judging and official schedule. |
+| [02. Past hackathons](02-past-hackathons.md) | Previous winners and project research. |
+| [03. Strategy and plan](03-strategy-and-plan.md) | The initial strategy, budget controls, gates and demo plan. |
+| [04. Idea selection](04-idea-selection.md) | The first idea pool and browser/hardware constraints. |
+| [05. Merged ideas](05-merged-ideas.md) | The second idea pool and the COOKED concept. |
+| [06. Patient Zero](06-patient-zero.md) | An earlier concept and its hardware assessment. |
+| [07. Instruments](07-instruments.md) | Corrections to the brief and five non-game concepts. |
+| [08. Three ideas](08-three-ideas.md) | The original three-sensor instrument direction. |
+| [09. Three ideas in detail](09-the-three-ideas.md) | The concepts before prioritisation. |
+| [10. Biosignals](10-biosignals.md) | Signal research and wearable feasibility. |
+| [11. The ring](11-the-ring.md) | The optional ring investigation, outside the current app flow. |
+| [12. Build-day plan](12-current-plan.md) | The prototype-era status and revised gates. |
 | [Original brief](../BRIEF.md) | The early Body Check framing and research tasks. |
 | [Idea checklist](../IDEA) | The locked idea, original tiers and go/no-go checklist. |
 
