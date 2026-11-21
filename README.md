@@ -1,154 +1,130 @@
 # KACHKA
 
-**KACHKA** — *KATCH-ka*. Russian for the rolling and pitching of a ship. Ukrainian for duck.
-A body drift recorder, built for the Tanda AI Hackathon 2026 — Brisbane, 20–21 November.
-Theme: *Bring an idea to life.*
+**Wired or wobbly?** Log a drink. Stand still, then tap fast. A bin chicken will judge how far you have drifted from your own normal.
 
+A mobile-first **body drift recorder**, built by **Las Nubes** at the Tanda AI Hackathon 2026 in Brisbane. Your phone is the instrument; a printed receipt is the result.
+
+**[Try Kachka](https://kachka.fun)** · [Run locally](#run-locally) · [Documentation](docs/README.md) · [Why Kachka?](#why-kachka)
+
+> A toy, not a test. For adults. Kachka is not a medical or legal measurement and must never be used to decide whether to drive. If you are going anywhere after drinking, get a ride or a friend.
+
+## The idea
+
+A coffee, a drink, a long day: you might feel different, but what changed? Kachka starts with **your own baseline**, then compares later readings against it. It measures change in a few phone-based tasks, rather than comparing you with somebody else's “normal.”
+
+The experience borrows from an old scientific instrument: a dark green casing, graph paper, physical-looking keys and a thermal-paper receipt. **Dr. Kachka**, our bin chicken, supplies the deadpan commentary.
+
+### From your normal to your receipt
+
+1. **Record your normal.** Take a short standing and/or tapping test. If you have already had something, the baseline is labelled accordingly.
+2. **Log what you have had.** Coffee, energy drink, beer, wine or spirit, in one tap.
+3. **Run another check.** Compare body sway and tapping speed/accuracy with your baseline. Add a camera pulse reading if you want to try it.
+4. **Read the receipt.** See the change, a **Steady / Wired / Tipsy / Wobbly** stamp, a line from the bird and a practical nudge. Save the receipt as an image, or share it where your browser supports image sharing.
+
+**The sensors measure the change; the drink log gives that change a label.** These labels do not identify what is in your body. A Steady result is never clearance to drive.
+
+## A look inside
+
+<table>
+  <tr>
+    <th>Meet the instrument</th>
+    <th>Try Choice Tap</th>
+    <th>Get your receipt</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/landing.png" alt="Kachka landing screen with graph paper, the Wired or wobbly introduction and Start and Quick demo buttons" width="260" /></td>
+    <td valign="top"><img src="docs/screenshots/choice-tap.png" alt="Choice Tap test with four squares and one illuminated target" width="260" /></td>
+    <td valign="top"><img src="docs/screenshots/receipt.png" alt="Sample receipt with illustrative traces, changes from baseline, a Tipsy stamp, the bin chicken and a get-a-ride safety message" width="260" /></td>
+  </tr>
+</table>
+
+Screenshots are from the running app at a mobile viewport. The receipt uses the app's **explicit sample-data preview**, not a real person's reading. [Capture details](docs/screenshots/README.md).
+
+## What is built
+
+| Part | What it does |
+|---|---|
+| **Stand Still** | Uses phone motion data to measure sway during a ten-second standing test. |
+| **Choice Tap** | Measures reaction time and accuracy across four squares, with two warm-ups and eight scored taps. |
+| **Camera pulse** | An optional finger-on-camera pulse estimate. It contributes only when the baseline also has pulse data, and cannot determine a verdict by itself. |
+| **Drink log and caffeine curve** | Records drinks on the device and estimates caffeine remaining through the day, with aftercare prompts. |
+| **Receipt** | Prints the baseline comparison, verdict, bird animation and commentary; supports saving and browser-dependent sharing. |
+| **The Room** | A shared board of names, live activity and results. Drink logs are not posted to it. |
+| **Demo modes** | A quick entry from the landing screen, plus an optional challenge using your other hand or a spin where motion is available. |
+
+The quick demo takes a standing baseline, then offers standing, tapping and pulse during the check, with skip controls. Only measurements also present in that baseline contribute to its score. The wearable ring and motion magnifier discussed in early plans are not part of the current app flow.
+
+## How it works
+
+**React + TypeScript + Vite** render the app. A local, rule-based scoring engine compares sensor metrics with the saved baseline. A **Hono** server provides the room board and the optional Claude commentary endpoint.
+
+Claude writes the short line on the ticket; **it does not decide the verdict or the safety advice**. Without an API key, or when the service fails, the app uses a built-in line instead. The instrument still works.
+
+Baseline readings and drink history are stored in the browser's `localStorage`. The verdict request sends numeric summaries and fixed categories to the server; when Claude is enabled, selected summaries are passed to it for the commentary. Joining the room sends your display name, activity and result to the shared board. Starting from the landing page joins the board by default. There are no user accounts.
+
+## Run locally
+
+Requires **Node.js 22 or newer** and npm.
+
+```bash
+npm ci --no-audit --no-fund
+npm run dev
 ```
+
+Vite serves the web app on port **5173** and proxies `/api` to the Hono server on **3333**. Open `/lab` for links to individual instruments and screens; `/result?preview` shows sample receipts.
+
+```bash
+npm run check   # TypeScript check and unit tests
+npm run build   # Client in dist/; server in dist-server/
+npm start       # Serve the built app and API together on port 3333
+```
+
+Stop the development server before using `npm start` on the same port. `GET /api/health` reports server health.
+
+### Optional server configuration
+
+The default local workflow needs **no API key or Redis service**. [.env.example](.env.example) documents the settings. The server reads its process environment; the npm commands do not automatically load a `.env` file. Export values securely in your shell or configure them in your hosting environment.
+
+| Variable | Purpose |
+|---|---|
+| `ANTHROPIC_API_KEY` | Enables server-side Claude commentary. Leave unset for built-in lines. |
+| `VERDICT_MODEL` | `claude-haiku-5-5` by default; `claude-sonnet-5-5` is also supported. |
+| `VERDICT_ENABLED` | Set to `false` to use built-in commentary for every request. |
+| `REDIS_URL` | Optional room-board persistence across restarts. Without it, the board lives in memory. |
+| `ROOM_ADMIN_TOKEN` | Optional token of at least 16 characters for the room reset endpoint. Unset disables that endpoint. |
+| `ROOM_NAMES` | `typed` by default; `generated` substitutes generated nicknames on the room board. |
+
+Keep credentials in server-side environment settings. Never commit them or put them in the browser bundle.
+
+### Phone and browser notes
+
+- Use **HTTPS on a real phone** for motion and camera access. iOS motion permission must begin with a user tap.
+- When motion data is unavailable, the app can use Choice Tap. A run needs at least one scored standing or tapping test; pulse alone is not enough.
+- Camera pulse is experimental and depends on the camera, lighting and a still finger. It is optional and skippable.
+- Image sharing depends on browser support; saving the receipt is the alternative.
+- A desktop screenshot or unit test cannot establish that a phone's sensors work. Test physical devices separately.
+
+## Explore the project
+
+- [Architecture, contracts and scoring](docs/05-architecture.md)
+- [Screen specifications](docs/04-screens-spec.md)
+- [Seismograph design system](docs/design/DESIGN.md)
+- [Product and engineering decisions](DECISIONS.md)
+- [Full documentation index](docs/README.md)
+- [Hackathon event and planning archive](docs/archive/hackathon-2026.md)
+
+Some specifications preserve earlier plans. The source and later decisions show what is implemented today; the archive is context, not a current release checklist.
+
+## Why Kachka?
+
+**KACHKA** is pronounced **KATCH-ka**, with the stress on the first syllable. In Russian, *качка* means the rolling and pitching of a ship. In Ukrainian, *качка* means a duck. Our instrument measures sway, and a bird signs the receipt: the name does both jobs.
+
+```text
 DR. KACHKA
 Body drift recorder · Model BC-2
 Peer-reviewed by a bin chicken
 ```
 
-Log a drink, hold still, find out how far you've moved from your own normal. Steady / Wired / Tipsy / Wobbly, printed on a receipt. The name means both the sway we measure and the bird that signs it off — see [`docs/13`](docs/13-the-name.md).
+> “Kachka is what Russian sailors call it when the ship won't hold still. It's also Ukrainian for duck. We measure one and we're signed off by the other.”
 
-| Tier | What | Status |
-|---|---|---|
-| **1** | Phone sensors — sway, tremor, tap | ✅ **Building** · [artifact](https://claude.ai/artifact/PxjfUo9T94tEkLCm1eNk3z) |
-| **2** | The lens — camera pulse + magnifier | ✅ **Building** · [artifact](https://claude.ai/artifact/1S1tCjbbQxQF2u7MS4BimT) |
-| **3** | The ring — HR, HRV, SpO₂ | ⏸️ **On hold** — team verifying feasibility · [dossier](https://claude.ai/artifact/R3XmooEsVLgv4nF1oQzKMM) |
-
-🔴 **Neither the camera nor the motion sensors work inside the artifact viewer.** Hosting isn't a finishing touch, it's the project — see [`docs/12`](docs/12-current-plan.md) §4.
-
-📋 **[Team plan page](https://claude.ai/artifact/9XfYmYj56wfpLVB24GecEj)** — the build plan with a live countdown, tickable gates, the pre-mortem and the demo script. *(Ask Bharath for access.)*
-
----
-
-## 🚨 The three things that matter
-
-| | |
-|---|---|
-| ⏰ **Hard deadline** | **Link in `#showcase` by 16:30 Saturday.** Demos at **17:00**, not 19:00. |
-| 📱 **Pass/fail test** | A stranger opens your link **on their own phone, on mobile data,** and it works. |
-| 💸 **Shared budget** | **US$150** Anthropic key per team — **your users spend it too.** Cap requests. |
-
-## Event at a glance
-
-- **When** Fri 20 Nov 17:30 → Sat 21 Nov ~20:00 AEST · **Where** 100 Wickham St, Fortitude Valley
-- **Teams** 2–6 people · `#team-formation` on Slack · register at `hackathon-teams-vxlk.onrender.com`
-- **Provided** Claude Code + Anthropic API access (key from Philip, one per team)
-- **Demo** 2 slides · ~2 min pitch · 2 min for the room to try it · judges try every project
-- **Judged on** Idea & imagination · Execution & craft · Interactivity · Technical ingenuity · Presentation & demo
-- **Prizes** 🥇 a year of Claude for every team member · 🥈 $50 each
-- **Wifi** `Tanda-Guest` / `Guest@Tanda25!` — but never ship anything that only works on it
-
-## Saturday
-
-| | |
-|---|---|
-| 08:00 | Breakfast and kickoff |
-| 12:30 | Lunch |
-| **16:30** | 🚨 **Link due in `#showcase`** · spectators arrive |
-| **17:00** | **Demos (90 min cap)** |
-| 18:30 | Dinner |
-| 19:30 | Winners announced |
-
-## Docs
-
-Read them in order; later ones correct earlier ones where they disagree.
-
-| | |
-|---|---|
-| **[`docs/01-hackathon-brief.md`](docs/01-hackathon-brief.md)** | The rules as given, rewritten against the organisers' kickoff deck — theme, rubric, prizes, full schedule, API-key rules, logistics. |
-| **[`docs/02-past-hackathons.md`](docs/02-past-hackathons.md)** | 10 years of Tanda hackathons, what actually won in 2025, archetype analysis, and where that analysis could be wrong. |
-| **[`docs/03-strategy-and-plan.md`](docs/03-strategy-and-plan.md)** | Architecture defaults, budget controls, the gate structure, demo script and an 11-row pre-mortem. |
-| **[`docs/04-idea-selection.md`](docs/04-idea-selection.md)** | Idea pool 1 critiqued, plus the verified browser and hardware constraints that rule out whole categories of project. |
-| **[`docs/05-merged-ideas.md`](docs/05-merged-ideas.md)** | Idea pool 2 audited for uniqueness, and the merge that folds four of them into one. |
-| **[`docs/06-patient-zero.md`](docs/06-patient-zero.md)** | A crowd-scale merge of 8 of the 12 ideas. Superseded by `07`; kept for the hardware verdict. |
-| **[`docs/07-instruments.md`](docs/07-instruments.md)** | Where the earlier docs over-read the brief, the real prizes and schedule, and five non-game instrument ideas. |
-| **[`docs/08-three-ideas.md`](docs/08-three-ideas.md)** | Why the three ideas are one instrument, and the wearable feasibility verdicts. |
-| **[`docs/09-the-three-ideas.md`](docs/09-the-three-ideas.md)** | 📋 **The three ideas in full detail** — what each is, how it's built, its honest risks, and how they stack. Not yet prioritised. |
-| **[`docs/10-biosignals.md`](docs/10-biosignals.md)** | 🔬 **What actually detects alcohol and caffeine**, and what a local agent can honestly do. Hardware section superseded by `11`. |
-| **[`docs/11-the-ring.md`](docs/11-the-ring.md)** | 💍 **The Kmart ring** — which to buy, the real metric list (JRing/56ff), the standard-BLE shortcut, and the things that will bite you. *(Tier 3, on hold.)* |
-| **[`docs/12-current-plan.md`](docs/12-current-plan.md)** | 🎯 **Where we are now.** Both artifacts described in detail, what's on hold, the hosting problem, and the gates for the rest of today. |
-| **[`docs/13-the-name.md`](docs/13-the-name.md)** | 🦆 **The name.** What Kachka means, the naming system, the twelve-second line for when someone asks, and where it needs changing. |
-| **[`IDEA`](IDEA)** | The locked idea in one sentence, plus the go/no-go checklist. |
-
-## What's left today
-
-Working backwards from the **16:30** deadline. Full version in [`docs/12`](docs/12-current-plan.md) §6.
-
-| Time | Gate |
-|---|---|
-| **11:30** | 🚨 Public HTTPS URL live. Free host — **don't block on the domain.** |
-| **12:30** | Real motion on a real iPhone, over mobile data |
-| **13:30** | 🔒 Hard feature freeze. Both tiers behind one link |
-| **14:30** | Ten people, their own phones, iOS + Android |
-| **15:00** | Slides done, first rehearsal on a stopwatch |
-| **16:00** | **Post the link.** Keep polishing behind the same URL |
-
-## The strategy in short
-
-Four of the five judging criteria are about the audience, not the code — and the one engineering
-criterion is explicitly fenced: *"clever answers to hard problems, not complexity for its own sake."*
-In 2025 a productivity app that **electrically shocked you when you went off task** beat an AI
-video-generation platform and a VR mood detector.
-
-But the brief says *"pick up, try, experience **or use**"*, and *"a link the judges open on their own
-phone"* is its own bullet. **A single-user instrument qualifies.** So: build one instrument, flawless
-at the one thing it does, that a judge can use on themselves and immediately understand. Not an AI
-chat wrapper — that will be the most common project in the room.
-
-Buzz Check measures one thing through three sensors: **how far your body has drifted from its own
-baseline.** Phone accelerometer is the floor and works on every device; the camera is the showpiece;
-the ring is the hero instrument. Because it's all baseline-relative, a $20 ring is good enough.
-
-Full reasoning and counter-arguments: `docs/02` §3 and §5, `docs/07` §1, `docs/08`.
-
-## Constraints we verified, so nobody rediscovers them at 2am
-
-- **Web Bluetooth does not exist on iOS Safari** — so on any iPhone — or in Firefox. The crowd's phones cannot read a wearable; the ring is read from laptop Chrome or Android.
-- **Mi Band 8 is a dead end.** Gadgetbridge: third-party real-time heart rate is not supported on Xiaomi protobuf bands *even with the vendor app*. Auth token needs extracting from Mi Fitness logs, often from a rooted device.
-- **Mi Band 10 has a "Share HR" broadcast mode** that may expose the standard BLE Heart Rate Service. One 15-minute test, then move on either way.
-- **The Kmart (Anko) ring is a JRing/56ff device**, $29, all sizes the same hardware. HRV ✅, live HR ✅, SpO₂ ✅, blood pressure ✅, **skin temperature ❌**. It advertises the **standard BLE Heart Rate Service `0x180D`**, so live BPM in the browser is ~20 lines. Kmart at 10 James St is ~500 m from the venue.
-- **Cheap ring HR can be ~30 bpm off.** Fine, because we measure drift from your own baseline, not absolute values.
-- **`DeviceMotionEvent.requestPermission()` must be called from a user gesture on iOS 13+**, or motion silently does nothing.
-- **Torch control is unsupported on Safari everywhere**; `navigator.vibrate` is Android-only. Neither can carry a signal.
-- Details and sources: `docs/04` §3 and `docs/08` §2.
-
-## Working agreements
-
-- **Gates, not tasks.** Miss a gate → cut scope immediately, never push the gate.
-- **Feature freeze 10:00 Saturday.** Polish, hardening and rehearsal only after that.
-- **Deploy publicly on Friday night, before any features.** No `localhost`, no laptop servers, no tunnels.
-- **Test with wifi off** on a real phone, iOS and Android, after every deploy.
-- **Never call the Anthropic API from the browser.** Server-side proxy, hard caps, kill switch, cached fallback.
-- **🔒 Never commit the key.** `.env` is gitignored — keep it that way.
-
-## Repo setup
-
-The repo still has no description or topics, and I can't set those from this session. One of you can:
-
-**Web:** repo home → ⚙️ next to *About* → paste the description and topics below.
-
-**Or from your terminal:**
-
-```bash
-gh repo edit bharath-blazecode/tanda --description "KACHKA - a body drift recorder. Hold still, find out how far you have drifted from your own normal. Built at the Tanda AI Hackathon 2026."
-```
-
-```bash
-gh repo edit bharath-blazecode/tanda --add-topic kachka --add-topic hackathon --add-topic tanda-hackathon --add-topic brisbane --add-topic claude-code
-```
-
----
-
-## Run the app
-
-```bash
-npm install
-npm run dev      # web on http://localhost:5173, API on :3333
-npm run check    # typecheck + unit tests, before every push
-```
-
-Open `/lab` for links to every piece. Working rules, layout and product rules are in [`CLAUDE.md`](CLAUDE.md); the task cards are in [`docs/05-architecture.md`](docs/05-architecture.md). Three Claude Code skills ship with the repo: `card` (how to work a card), `check` (the pre-push gate) and `phone` (test on a real phone over HTTPS).
+The full [naming story](docs/13-the-name.md) preserves the word, the instrument's identity and the house voice. Our team is **Las Nubes** — Spanish for **“The Clouds.”**

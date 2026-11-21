@@ -37,7 +37,6 @@ when judges try it later. None of that requires a game.
 | **Spectators arrive** | 4:30pm |
 | **Winners announced** | 7:30pm (dinner 6:30, drinks at The Osborne after) |
 | **Saturday** | 8:00am breakfast · "demo-ready by 5pm" · lunch 12:30 |
-| **Venue wifi** | `Tanda-Guest` / `Guest@Tanda25!` |
 | **Team registration** | `hackathon-teams-vxlk.onrender.com` — one person creates, the rest join |
 
 **Note the 90-minute cap.** At ~4 minutes a team that's roughly 22 slots. The field may be smaller
