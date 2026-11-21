@@ -1,0 +1,55 @@
+.stand-test .strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s3);
+}
+.stand-test .timer {
+  font: 900 40px/1 var(--display);
+}
+.stand-test .fine {
+  font-size: 13px;
+  color: var(--housing-dim);
+}
+.stand-test dl {
+  margin: 0;
+}
+.stand-test dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2);
+  border-bottom: 1px dotted var(--ink-soft);
+  padding: var(--s1) 0;
+}
+.stand-test dd {
+  margin: 0;
+  font-weight: 700;
+}
+.stand-test .stand-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.stand-countdown strong {
+  font: 900 100px/1 var(--display);
+}
+.stand-test .legend {
+  position: absolute;
+  top: var(--s2);
+  left: var(--s2);
+  background: var(--chart);
+  font-size: 12px;
+  padding: var(--s1);
+}
+.stand-test .baseline {
+  display: block;
+  color: var(--pencil);
+}
+.stand-test .axis {
+  position: absolute;
+  bottom: var(--s1);
+  left: var(--s2);
+  background: var(--chart);
+  font-size: 12px;
+}

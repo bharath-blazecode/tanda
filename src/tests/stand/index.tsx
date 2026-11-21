@@ -1,15 +1,27 @@
-// CARD 3. Stub component with the final props. Returns canned numbers so other cards can build on it.
-// onDone(null) means the user skipped the test or the phone has no motion sensors.
-import type { StandMetrics } from '../../../shared/contracts'
-import { analyzeStand } from './analyze'
+import { useState } from "react";
+import type { StandMetrics } from "../../../shared/contracts";
+import type { StandAnalysis } from "./analyze";
+import { Stand } from "./Stand";
+import { Key } from "../../ui";
 
-type Props = { onDone: (metrics: StandMetrics | null) => void }
-
-export function StandTest({ onDone }: Props) {
+// Keep the contract used by the existing lab, baseline and check flow.
+// The user sees the replay before choosing to return the completed metrics.
+export function StandTest({
+  onDone,
+}: {
+  onDone: (metrics: StandMetrics | null) => void;
+}) {
+  const [reading, setReading] = useState<StandAnalysis | null>(null);
   return (
-    <p>
-      <button type="button" onClick={() => onDone(analyzeStand([]))}>Stand Still (stub): finish</button>{' '}
-      <button type="button" onClick={() => onDone(null)}>Skip</button>
-    </p>
-  )
+    <>
+      <Stand
+        onComplete={setReading}
+        onSkip={() => onDone(null)}
+        onReset={() => setReading(null)}
+      />
+      {reading && (
+        <Key onClick={() => onDone(reading.metrics)}>Use this reading</Key>
+      )}
+    </>
+  );
 }
