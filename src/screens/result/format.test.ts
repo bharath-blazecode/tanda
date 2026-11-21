@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { NudgeKind, type RunResult } from '../../../shared/contracts'
 import { SAFETY_TEXT } from '../../ui/SafetyLine'
 import {
+  describeDrinks,
   metricRows,
   moodFor,
   nudgeWords,
@@ -142,5 +143,35 @@ describe('copy rules', () => {
       SAFETY_TEXT,
     ]
     for (const words of copy) expect(words).not.toMatch(BANNED)
+  })
+})
+
+describe('describeDrinks', () => {
+  const at = Date.now()
+  it('is empty when nothing was logged, so the line can be left off', () => {
+    expect(describeDrinks([])).toBe('')
+  })
+
+  it('counts each kind and pluralises', () => {
+    expect(describeDrinks([{ kind: 'beer', at }, { kind: 'beer', at }])).toBe('2 beers')
+    expect(describeDrinks([{ kind: 'coffee', at }])).toBe('1 coffee')
+    expect(describeDrinks([{ kind: 'energy', at }, { kind: 'energy', at }])).toBe('2 energy drinks')
+  })
+
+  it('puts alcohol before caffeine, whatever order it was logged in', () => {
+    const drinks = [
+      { kind: 'coffee' as const, at },
+      { kind: 'beer' as const, at },
+      { kind: 'wine' as const, at },
+    ]
+    expect(describeDrinks(drinks)).toBe('1 beer, 1 wine, 1 coffee')
+  })
+
+  it('never states a quantity of alcohol in the body, only what was logged', () => {
+    // The ticket says what you told it. It does not convert that into units, grams or a level,
+    // because that is a sobriety estimate and this is not one (D17, D18).
+    const text = describeDrinks([{ kind: 'spirit', at }, { kind: 'spirit', at }])
+    expect(text).toBe('2 spirits')
+    expect(text).not.toMatch(/standard|unit|g\b|%|BAC/i)
   })
 })
