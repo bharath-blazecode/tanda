@@ -1,12 +1,14 @@
 // CARD 6. Home (docs/04-screens-spec.md, section 4).
-// Two actions and today's log. The caffeine-on-board strip is card 14 and is not here yet.
+// Two actions and today's log, with card 14's caffeine strip and aftercare underneath.
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import type { Drink, Stored } from '../../../shared/contracts'
+import { careFor } from '../../engine/aftercare'
+import { caffeineCurve } from '../../engine/caffeine'
 import { CAFFEINE_MG, hasAlcohol } from '../../engine/nudge'
-import { drinksToday } from '../../store/day'
+import { dayStart, drinksToday } from '../../store/day'
 import { load, update } from '../../store/local'
-import { Housing, Key, Keys, Label, Plate, Rows, SafetyLine, Sheet } from '../../ui'
+import { CaffeineChart, CareCard, Housing, Key, Keys, Label, Plate, Rows, SafetyLine, Sheet } from '../../ui'
 
 const LABELS: Record<Drink['kind'], string> = {
   coffee: 'Coffee',
@@ -61,9 +63,16 @@ export function Home() {
     setUndoable(undefined)
   }
 
-  const today = drinksToday(stored.drinks, Date.now())
+  // One reading of the clock for the whole render, so the log, the curve and the bedtime agree.
+  const now = Date.now()
+  const today = drinksToday(stored.drinks, now)
   const alcoholCount = today.filter((d) => CAFFEINE_MG[d.kind] === undefined).length
   const showSafety = hasAlcohol(today) && alcoholCount >= PERSISTENT_SAFETY_DRINKS
+
+  const care = careFor(today, now)
+  // An hour past bedtime, so the marker is not jammed against the right edge.
+  const curve = caffeineCurve(today, dayStart(now), care.bedtime + 3600000, 10)
+  const showCurve = care.caffeineAtBedtimeMg !== null
 
   return (
     <Housing>
@@ -86,6 +95,12 @@ export function Home() {
 
         {showSafety && <SafetyLine />}
       </Sheet>
+
+      {showCurve && (
+        <CaffeineChart points={curve} bedtime={care.bedtime} atBedtimeMg={care.caffeineAtBedtimeMg} />
+      )}
+
+      <CareCard tags={care.tags} />
 
       {undoable !== undefined && (
         <Key quiet onClick={() => removeDrink(undoable)}>
