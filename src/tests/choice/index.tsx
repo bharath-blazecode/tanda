@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChoiceMetrics } from '../../../shared/contracts'
 import { Key, Label, Rows, Sheet } from '../../ui'
 import { hasCleanTaps, SCORED_TRIALS, summariseChoice, type ChoiceTrial } from './analyze'
+import { createTapSound } from './sound'
 import './choice.css'
 
 /** `onDone` fires from the Next key on the results sheet, so the person sees their taps first.
@@ -49,6 +50,7 @@ export function ChoiceTest({ onDone, label = 'Choice tap' }: Props) {
   const timers = useRef<number[]>([])
   const phaseRef = useRef<Phase>('intro')
   const indexRef = useRef(0)
+  const sound = useRef<ReturnType<typeof createTapSound> | null>(null)
 
   const setPhaseBoth = (next: Phase) => {
     phaseRef.current = next
@@ -63,7 +65,10 @@ export function ChoiceTest({ onDone, label = 'Choice tap' }: Props) {
     timers.current.push(window.setTimeout(fn, ms))
   }
 
-  useEffect(() => clearTimers, [])
+  useEffect(() => () => {
+    clearTimers()
+    sound.current?.close()
+  }, [])
 
   const finish = useCallback(() => {
     clearTimers()
@@ -100,6 +105,8 @@ export function ChoiceTest({ onDone, label = 'Choice tap' }: Props) {
   }, [finish])
 
   const start = useCallback(() => {
+    sound.current?.close()
+    sound.current = createTapSound()
     clearTimers()
     sequence.current = buildSequence()
     trials.current = []
@@ -115,6 +122,8 @@ export function ChoiceTest({ onDone, label = 'Choice tap' }: Props) {
     const onHidden = () => {
       if (document.visibilityState === 'hidden' && phaseRef.current !== 'intro' && phaseRef.current !== 'done') {
         clearTimers()
+        sound.current?.close()
+        sound.current = null
         setLit(-1)
         setPhaseBoth('intro')
         setMessage('That restarted when you left the page.')
@@ -148,6 +157,7 @@ export function ChoiceTest({ onDone, label = 'Choice tap' }: Props) {
     }
 
     if (i >= WARM_UPS) trials.current.push({ lit: sequence.current[i], tapped: square, ms })
+    sound.current?.play(square === sequence.current[i])
     indexRef.current = i + 1
     nextTrial()
   }
@@ -178,6 +188,7 @@ export function ChoiceTest({ onDone, label = 'Choice tap' }: Props) {
             <Label paper>Speed and accuracy</Label>
             <h2>Tap the square that lights up.</h2>
             <p>Four squares. One lights up; tap it as fast as you can. The first two do not count.</p>
+            <p>Correct taps chime. Wrong squares buzz. You can still take the test with sound off.</p>
           </Sheet>
           {message && (
             <div className="choice-status" role="status" aria-live="polite">
