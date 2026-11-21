@@ -2,16 +2,16 @@ import { Hono } from 'hono'
 import { describe, expect, it } from 'vitest'
 import { RoomState, type RoomPresenceRequest, type RoomResultRequest } from '../shared/contracts'
 import { loadConfig } from './config'
-import { isValidNickname } from '../shared/nicknames'
+import { deviceNickname, isValidNickname } from '../shared/nicknames'
 import { DEFAULT_HEARTBEATS_PER_MINUTE, DEFAULT_POSTS_PER_MINUTE, roomRoutes } from './room'
 import { createRoomStore, DEFAULT_MAX_AGE_MS } from './state'
 
 const TOKEN = 'test-token-0123456789'
 const T0 = 1_763_700_000_000
 
-function setup({ withToken = true, postsPerMinute = 30 } = {}) {
+function setup({ withToken = true, postsPerMinute = 30, env = {} as Record<string, string> } = {}) {
   const clock = { t: T0 }
-  const config = loadConfig(withToken ? { ROOM_ADMIN_TOKEN: TOKEN } : {})
+  const config = loadConfig({ ...(withToken ? { ROOM_ADMIN_TOKEN: TOKEN } : {}), ...env })
   const app = new Hono().route(
     '/api',
     roomRoutes(config, createRoomStore(), { now: () => clock.t, postsPerMinute }),
@@ -48,7 +48,8 @@ describe('POST /api/room/result', () => {
   it('keeps one entry per device', async () => {
     const { post, board, clock } = setup()
     await post('/api/room/result', result({ verdict: 'steady' }))
-    clock.t += 1000
+    // Changed for the per-device throttle: a rerun counts only 15 s after the last accepted one.
+    clock.t += 15_000
     await post('/api/room/result', result({ verdict: 'wired', score: 61 }))
     const state = await board()
     expect(state.total).toBe(1)
@@ -74,7 +75,8 @@ describe('POST /api/room/result', () => {
     await post('/api/room/result', result({ nickname: 'N1gg3r' }))
     const first = (await board()).feed[0]!.nickname
     expect(isValidNickname(first)).toBe(true)
-    clock.t += 1000
+    // Changed for the per-device throttle: past the 15 s gap, so the second post really lands.
+    clock.t += 15_000
     await post('/api/room/result', result({ nickname: 'n i g g e r' }))
     expect((await board()).feed[0]!.nickname).toBe(first)
   })
@@ -305,7 +307,9 @@ describe('POST /api/room/presence', () => {
     const { post, board, clock } = setup()
     for (let i = 0; i < 1005; i++) {
       clock.t += 1
-      await post('/api/room/presence', beat({ deviceId: `device-${String(i).padStart(5, '0')}`, nickname: `P${i}` }))
+      // Changed for the new-identity cap (800 per IP): spread over IPs so this tests the store cap.
+      const ip = { 'cf-connecting-ip': `198.51.100.${i % 2}` }
+      await post('/api/room/presence', beat({ deviceId: `device-${String(i).padStart(5, '0')}`, nickname: `P${i}` }), ip)
     }
     const state = await board()
     expect(state.liveCount).toBe(1000)
@@ -347,5 +351,110 @@ describe('POST /api/room/presence', () => {
     await post('/api/room/presence', beat())
     await post('/api/room/reset', {}, { 'x-admin-token': TOKEN })
     expect((await board()).liveCount).toBe(0)
+  })
+})
+
+describe('per-device throttles', () => {
+  const venue = { 'cf-connecting-ip': '203.0.113.60' }
+  const id = (i: number) => `device-${String(i).padStart(5, '0')}-x`
+  const beat = (deviceId: string, over: Partial<RoomPresenceRequest> = {}): RoomPresenceRequest => ({
+    deviceId,
+    nickname: 'Calm Quokka',
+    stage: 'joined',
+    ...over,
+  })
+
+  it('takes one result per device every 15 s, silently, and a second device on the IP still lands', async () => {
+    const { post, board, clock } = setup({ postsPerMinute: 600 })
+    const accepted: number[] = []
+    let last = -1
+    for (let i = 0; i < 100; i++) {
+      const res = await post('/api/room/result', result({ score: i }), venue)
+      expect(res.status).toBe(204)
+      const shown = (await board()).feed[0]!.score
+      if (shown !== last) accepted.push(i)
+      last = shown
+      clock.t += 600 // 100 posts inside one minute
+    }
+    // 0, 15, 30 and 45 seconds in: the board changed only for those.
+    expect(accepted).toEqual([0, 25, 50, 75])
+    expect((await board()).total).toBe(1)
+    const other = await post('/api/room/result', result({ deviceId: id(2), score: 7 }), venue)
+    expect(other.status).toBe(204)
+    const state = await board()
+    expect(state.total).toBe(2)
+    expect(state.feed[0]!.score).toBe(7)
+  })
+
+  it('counts a throttled request against the IP bucket exactly once, like an accepted one', async () => {
+    const { post } = setup({ postsPerMinute: 3 })
+    for (let i = 0; i < 3; i++) expect((await post('/api/room/result', result(), venue)).status).toBe(204)
+    expect((await post('/api/room/result', result(), venue)).status).toBe(429)
+  })
+
+  it('ignores a presence change inside 2 s and keeps the first', async () => {
+    const { post, board, clock } = setup()
+    await post('/api/room/presence', beat(id(1), { stage: 'baseline' }))
+    clock.t += 500
+    expect((await post('/api/room/presence', beat(id(1), { stage: 'check', nickname: 'Other Name' }))).status).toBe(204)
+    expect((await board()).live).toEqual([{ nickname: 'Calm Quokka', stage: 'baseline', at: T0 }])
+    clock.t += 1_500
+    await post('/api/room/presence', beat(id(1), { stage: 'check' }))
+    expect((await board()).live?.[0]).toEqual({ nickname: 'Calm Quokka', stage: 'check', at: T0 + 2_000 })
+  })
+
+  it('admits 800 new devices per IP in 10 minutes across presence and results; seen ones keep working', async () => {
+    const { post, board, clock } = setup({ postsPerMinute: 600 })
+    for (let i = 0; i < 900; i++) {
+      // Every tenth newcomer arrives with a result, so both routes share the count.
+      const res =
+        i % 10 === 0
+          ? await post('/api/room/result', result({ deviceId: id(i) }), venue)
+          : await post('/api/room/presence', beat(id(i), { nickname: `P${i}` }), venue)
+      expect(res.status).toBe(204)
+      clock.t += 40 // 900 inside a minute, and inside the 45 s presence TTL
+    }
+    let state = await board()
+    expect(state.liveCount).toBe(800)
+    expect(state.total).toBe(80)
+    expect(state.live?.[0]?.nickname).toBe('P799')
+    // A device seen earlier still gets through; a refused one is still refused.
+    clock.t += 1_000
+    await post('/api/room/presence', beat(id(1), { nickname: 'P1', stage: 'check' }), venue)
+    await post('/api/room/presence', beat(id(850), { nickname: 'P850', stage: 'check' }), venue)
+    expect((await post('/api/room/result', result({ deviceId: id(3), score: 42 }), venue)).status).toBe(204)
+    expect((await post('/api/room/result', result({ deviceId: id(851), score: 43 }), venue)).status).toBe(204)
+    state = await board()
+    expect(state.total).toBe(81)
+    expect(state.feed[0]!.score).toBe(42)
+    expect(state.live?.map((p) => p.nickname)).not.toContain('P850')
+    // Another IP has its own quota.
+    await post('/api/room/presence', beat(id(950), { nickname: 'Elsewhere' }), { 'cf-connecting-ip': '203.0.113.61' })
+    expect((await board()).live?.map((p) => p.nickname)).toContain('Elsewhere')
+  })
+})
+
+describe('ROOM_NAMES=generated', () => {
+  it('replaces a typed name with the device nickname for presence and results', async () => {
+    const { app, post, board, clock } = setup({ env: { ROOM_NAMES: 'generated' } })
+    const deviceId = '00000000-0000-4000-8000-000000000001'
+    await post('/api/room/presence', { deviceId, nickname: 'Big Kev', stage: 'check' })
+    clock.t += 1000
+    await post('/api/room/result', result({ deviceId, nickname: 'Big Kev' }))
+    await post('/api/room/presence', { deviceId: 'device-other-00', nickname: 'Shit Faced', stage: 'joined' })
+    const state = await board()
+    expect(state.feed[0]!.nickname).toBe(deviceNickname(deviceId))
+    expect(state.live?.map((p) => p.nickname).sort()).toEqual(
+      [deviceNickname(deviceId), deviceNickname('device-other-00')].sort(),
+    )
+    const text = await (await app.request('/api/room')).text()
+    expect(text).not.toContain('Big Kev')
+    expect(text).not.toContain('Shit Faced')
+  })
+
+  it('keeps typed names by default', async () => {
+    const { post, board } = setup()
+    await post('/api/room/result', result({ nickname: 'Big Kev' }))
+    expect((await board()).feed[0]!.nickname).toBe('Big Kev')
   })
 })

@@ -22,6 +22,9 @@ export const FEED_SIZE = 12
 export const TOP_SIZE = 5
 export const DEFAULT_MAX_ENTRIES = 2000
 export const DEFAULT_MAX_AGE_MS = 12 * 60 * 60 * 1000
+// Clock skew between containers is seconds; an entry further ahead was planted, and would sit on top
+// of the feed (and never expire) until its time came.
+export const MAX_FUTURE_MS = 60_000
 
 // `seq` orders entries that share a timestamp, so "most recent first" is stable.
 type Stored = { entry: RoomEntry; seq: number }
@@ -109,7 +112,7 @@ export function createRoomStore({
     merge(pairs, now) {
       const incoming = [...pairs]
         .filter(([deviceId, entry]) => {
-          if (now - entry.at > maxAgeMs) return false
+          if (now - entry.at > maxAgeMs || entry.at - now > MAX_FUTURE_MS) return false
           const current = byDevice.get(deviceId)
           // Ties keep what memory has: memory is the source of truth.
           return !current || entry.at > current.entry.at

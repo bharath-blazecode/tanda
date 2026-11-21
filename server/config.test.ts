@@ -13,3 +13,17 @@ describe('loadConfig VERDICT_MODEL', () => {
     }
   })
 })
+
+describe('loadConfig ROOM_NAMES', () => {
+  it('defaults to typed and accepts generated', () => {
+    expect(loadConfig({}).roomNames).toBe('typed')
+    expect(loadConfig({ ROOM_NAMES: '' }).roomNames).toBe('typed')
+    expect(loadConfig({ ROOM_NAMES: 'generated' }).roomNames).toBe('generated')
+  })
+
+  it('refuses to boot with any other value', () => {
+    for (const value of ['Generated', 'off', 'true', 'none']) {
+      expect(() => loadConfig({ ROOM_NAMES: value })).toThrow(/ROOM_NAMES must be one of/)
+    }
+  })
+})

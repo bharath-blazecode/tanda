@@ -5,6 +5,8 @@ import { z } from 'zod'
 import pkg from '../package.json'
 
 export const VERDICT_MODELS = ['claude-haiku-5-5', 'claude-sonnet-5-5'] as const
+export const ROOM_NAME_MODES = ['typed', 'generated'] as const
+export type RoomNameMode = (typeof ROOM_NAME_MODES)[number]
 
 const Env = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3333),
@@ -22,6 +24,10 @@ const Env = z.object({
     .transform((v) => v === 'true'),
   // Without a token the room reset route is disabled.
   ROOM_ADMIN_TOKEN: z.string().min(16).optional(),
+  // The panic switch: `generated` ignores every typed name and shows only generated nicknames.
+  ROOM_NAMES: z
+    .enum(ROOM_NAME_MODES, { error: `ROOM_NAMES must be one of: ${ROOM_NAME_MODES.join(', ')}` })
+    .default('typed'),
   // Optional durable mirror for the room board. Without it the board lives in memory only.
   // Not validated beyond being a string: a bad URL degrades to memory only, it never stops the boot.
   REDIS_URL: z.string().optional(),
@@ -37,6 +43,7 @@ export type Config = {
   verdictModel: (typeof VERDICT_MODELS)[number]
   verdictEnabled: boolean
   roomAdminToken: string | undefined
+  roomNames: RoomNameMode
   redisUrl: string | undefined
   version: string
   sha: string
@@ -63,6 +70,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     verdictModel: parsed.VERDICT_MODEL,
     verdictEnabled: parsed.VERDICT_ENABLED,
     roomAdminToken: parsed.ROOM_ADMIN_TOKEN,
+    roomNames: parsed.ROOM_NAMES,
     redisUrl: parsed.REDIS_URL,
     version: parsed.APP_VERSION ?? pkg.version,
     sha: parsed.GIT_SHA ?? shaFromFile() ?? 'dev',

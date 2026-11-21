@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RoomState, type RoomEntry, type RoomResultRequest } from '../shared/contracts'
+import { deviceNickname } from '../shared/nicknames'
 import { createApp } from './app'
 import { loadConfig } from './config'
 import {
@@ -122,6 +123,59 @@ describe('mirrored room store', () => {
     expect(room.store.snapshot(T0).total).toBe(1)
     await flush()
     expect([...hash.keys()]).toEqual(['device-good-0000'])
+  })
+
+  it('never lets a planted huge name or a far-future entry reach the snapshot, and removes them', async () => {
+    const { mirror, hash } = fakeMirror({
+      'device-good-0000': JSON.stringify(entry({ nickname: 'Big Kev' })),
+      'device-huge-0000': JSON.stringify(entry({ nickname: 'x'.repeat(100_000) })),
+      'device-empty-000': JSON.stringify(entry({ nickname: '' })),
+      'device-future-00': JSON.stringify(entry({ nickname: 'Time Lord', at: T0 + 365 * 24 * 3600_000 })),
+      'device-skew-0000': JSON.stringify(entry({ nickname: 'Skewed', at: T0 + 30_000 })),
+    })
+    const room = createMirroredRoom(mirror, { now: () => T0, log: quietLog().log })
+    expect(await room.hydrate()).toBe(2)
+    const state = room.store.snapshot(T0)
+    expect(state.feed.map((e) => e.nickname).sort()).toEqual(['Big Kev', 'Skewed'])
+    expect(JSON.stringify(state)).not.toContain('xxxxxxxx')
+    expect(JSON.stringify(state)).not.toContain('Time Lord')
+    await flush()
+    expect([...hash.keys()].sort()).toEqual(['device-good-0000', 'device-skew-0000'])
+  })
+
+  it('cleans a mirrored name with the live name rule', async () => {
+    const { mirror } = fakeMirror({
+      'device-hate-0000': JSON.stringify(entry({ nickname: 'n-a-z-i' })),
+      'device-long-0000': JSON.stringify(entry({ nickname: 'Sixteen chars and more' })),
+    })
+    const room = createMirroredRoom(mirror, { now: () => T0, log: quietLog().log })
+    await room.hydrate()
+    const names = room.store.snapshot(T0).feed.map((e) => e.nickname)
+    expect(names).toContain(deviceNickname('device-hate-0000'))
+    expect(names).toContain('Sixteen chars an')
+  })
+
+  it('shows only generated nicknames for mirrored entries with ROOM_NAMES=generated', async () => {
+    const fake = fakeMirror({ 'device-aaaa-1111': JSON.stringify(entry({ nickname: 'Big Kev', at: Date.now() })) })
+    const room = await prepareRoom(loadConfig({ REDIS_URL: 'redis://127.0.0.1:1', ROOM_NAMES: 'generated' }), {
+      createMirror: () => fake.mirror,
+      log: quietLog().log,
+    })
+    expect(room.store.snapshot(Date.now()).feed.map((e) => e.nickname)).toEqual([deviceNickname('device-aaaa-1111')])
+    await room.close()
+  })
+
+  it('skips a hash with more than twice maxEntries fields and counts it as an error', async () => {
+    const planted = Object.fromEntries(
+      Array.from({ length: 9 }, (_, i) => [`device-${i}-xxxxxxx`, JSON.stringify(entry({ at: T0 + i }))]),
+    )
+    const { mirror } = fakeMirror(planted)
+    const { lines, log } = quietLog()
+    const room = createMirroredRoom(mirror, { now: () => T0 + 10, storeOptions: { maxEntries: 4 }, log })
+    expect(await room.hydrate()).toBe(0)
+    expect(room.store.snapshot(T0 + 10).total).toBe(0)
+    expect(room.errors()).toBe(1)
+    expect(lines).toEqual([{ msg: 'room mirror unavailable', reason: 'MirrorTooLarge' }])
   })
 
   it('treats a non-object reply as an empty board', () => {
