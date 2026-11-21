@@ -98,7 +98,7 @@ describe('mirrored room store', () => {
   it('hydrates memory from the mirror, and the snapshot shows those entries', async () => {
     const { mirror } = fakeMirror({
       'device-aaaa-1111': JSON.stringify(entry({ nickname: 'Calm Ibis', score: 90, at: T0 })),
-      'device-bbbb-2222': JSON.stringify(entry({ nickname: 'Brisk Emu', score: 70, mode: 'demo', handicap: 'spin', at: T0 + 5 })),
+      'device-bbbb-2222': JSON.stringify(entry({ nickname: 'Brisk Emu', score: 70, verdict: 'tipsy', mode: 'demo', handicap: 'spin', at: T0 + 5 })),
     })
     const room = createMirroredRoom(mirror, { now: () => T0 + 10, log: quietLog().log })
     expect(await room.hydrate()).toBe(2)

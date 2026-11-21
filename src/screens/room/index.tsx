@@ -124,7 +124,7 @@ export function Room() {
             <TopList entries={room.top.real} />
 
             <h2 className="room-h">Dizziest after the handicap (demo only)</h2>
-            <TopList entries={room.top.demo} />
+            <TopList entries={room.top.demo} wobble />
           </section>
         </div>
         {stale && <p className="room-reconnecting">reconnecting</p>}
@@ -133,14 +133,15 @@ export function Room() {
   )
 }
 
-function TopList({ entries }: { entries: RoomEntry[] }) {
+/** `wobble` flips the number to "how far off" (100 minus steadiness), which is what a dizziest list means. */
+function TopList({ entries, wobble = false }: { entries: RoomEntry[]; wobble?: boolean }) {
   if (entries.length === 0) return <p className="room-none">None yet.</p>
   return (
     <ol className="room-top">
       {entries.map((e) => (
         <li key={entryKey(e)}>
           <span className="room-nick">{e.nickname}</span>
-          <span className="room-num">{e.score}</span>
+          <span className="room-num">{wobble ? 100 - e.score : e.score}</span>
         </li>
       ))}
     </ol>

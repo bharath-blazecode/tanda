@@ -66,11 +66,28 @@ describe('createRoomStore', () => {
   it('ranks top.demo dizziest first and leaves real entries out', () => {
     const store = createRoomStore()
     const scores = [40, 12, 77, 25, 5, 60]
-    scores.forEach((score, i) => store.add(entry({ score, mode: 'demo', handicap: 'spin', at: T0 + i }), `demo-${i}-xxxx`))
+    scores.forEach((score, i) =>
+      store.add(entry({ score, verdict: 'tipsy', mode: 'demo', handicap: 'spin', at: T0 + i }), `demo-${i}-xxxx`),
+    )
     store.add(entry({ score: 0, mode: 'real', verdict: 'tipsy', at: T0 + 10 }), 'real-low-xxxx')
     const { top } = store.snapshot(T0 + 100)
     expect(top.demo.map((e) => e.score)).toEqual([5, 12, 25, 40, 60])
     expect(top.demo.every((e) => e.mode === 'demo')).toBe(true)
+  })
+
+  it('never lists a non-steady real reading under steadiest, whatever its score', () => {
+    const store = createRoomStore()
+    store.add(entry({ nickname: 'Calm Ibis', score: 80, verdict: 'steady', at: T0 }), 'device-s-xxxx')
+    store.add(entry({ nickname: 'Woozy Emu', score: 99, verdict: 'tipsy', at: T0 + 1 }), 'device-t-xxxx')
+    store.add(entry({ nickname: 'Zippy Emu', score: 95, verdict: 'wired', at: T0 + 2 }), 'device-w-xxxx')
+    expect(store.snapshot(T0 + 100).top.real.map((e) => e.nickname)).toEqual(['Calm Ibis'])
+  })
+
+  it('keeps a steady demo reading off the dizziest list', () => {
+    const store = createRoomStore()
+    store.add(entry({ nickname: 'Calm Ibis', score: 97, verdict: 'steady', mode: 'demo', at: T0 }), 'device-d1-xxx')
+    store.add(entry({ nickname: 'Dizzy Galah', score: 30, verdict: 'tipsy', mode: 'demo', at: T0 + 1 }), 'device-d2-xxx')
+    expect(store.snapshot(T0 + 100).top.demo.map((e) => e.nickname)).toEqual(['Dizzy Galah'])
   })
 
   it('breaks score ties by most recent first, including equal timestamps', () => {
