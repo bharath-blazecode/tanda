@@ -10,7 +10,7 @@
 |---|---|
 | ✅ **Building** | **Buzz Check** — Tier 1 (phone sensors) + Tier 2 (the lens). Both prototypes exist and work. |
 | ⏸️ **On hold** | **Tier 3, the ring.** Team is still verifying whether the data is really there. Explicitly off the critical path. |
-| ❓ **Open** | **The name.** "Buzz Check" is a working title. Domain to be bought once it's settled. |
+| ✅ **Named** | **KACHKA** — *KATCH-ka*. Russian for a ship's roll, Ukrainian for duck. See [`13-the-name.md`](13-the-name.md). Domain next. |
 | 🔴 **The risk** | **Neither Tier 1's motion sensors nor Tier 2's camera work inside the claude.ai artifact viewer.** Hosting is not a finishing touch. It *is* the project. See §4. |
 
 ## 2. The two artifacts
@@ -99,7 +99,7 @@ custom domain every time.
 | **4** | **Merge the two into one link** | Judges get one URL. Fold the lens in as Test 3 of 3, or at minimum one page that opens both. |
 | **5** | **Seed a demo state** | A judge opening it cold must not see an empty shell. Example readings, clearly marked. |
 | **6** | **Slides + two rehearsals on a stopwatch** | 2 slides, ~2 min pitch, 2 min for the room. Rehearse at 15:00 at the latest. |
-| **7** | **Name + domain** | Nice to have. Only after 1–6. |
+| **7** | **Domain** | Name is settled. Point it at the same deployment later — don't block on DNS. |
 
 ## 6. Revised gates for the rest of today
 
@@ -119,7 +119,7 @@ The original 10:00 feature freeze has passed. Replacement, working backwards fro
 ## 7. Two decisions to make before 13:30
 
 1. **Does the lens merge into the flow, or stay a second link?** Merging is better for judging, and the flow already has a "Test 1 of 2" idiom that becomes "1 of 3". Costs maybe an hour.
-2. **The name.** "Buzz Check" is already on every screen and in the voice. **Changing it now costs time and buys nothing today.** Recommendation: ship as Buzz Check, rename later if the domain forces it.
+2. ~~The name.~~ **Settled: KACHKA.** It's a text change, not a redesign — plate, title, receipt signature, slide 1. Do it in the same pass as the merge, not as a separate job.
 
 ---
 

@@ -1,9 +1,16 @@
-# tanda
+# KACHKA
 
-**Team workspace for the Tanda AI Hackathon 2026 — Brisbane, 20–21 November.**
-Theme: *Bring an idea to life.* Research, strategy, idea selection and the build plan live here.
+**KACHKA** — *KATCH-ka*. Russian for the rolling and pitching of a ship. Ukrainian for duck.
+A body drift recorder, built for the Tanda AI Hackathon 2026 — Brisbane, 20–21 November.
+Theme: *Bring an idea to life.*
 
-**🎯 We're building [`BUZZ CHECK`](docs/12-current-plan.md)** — a body drift recorder. Log a drink, hold still, find out how far you've moved from your own normal. Steady / Wired / Tipsy / Wobbly, printed on a receipt, signed by a bin chicken.
+```
+DR. KACHKA
+Body drift recorder · Model BC-2
+Peer-reviewed by a bin chicken
+```
+
+Log a drink, hold still, find out how far you've moved from your own normal. Steady / Wired / Tipsy / Wobbly, printed on a receipt. The name means both the sway we measure and the bird that signs it off — see [`docs/13`](docs/13-the-name.md).
 
 | Tier | What | Status |
 |---|---|---|
@@ -64,6 +71,7 @@ Read them in order; later ones correct earlier ones where they disagree.
 | **[`docs/10-biosignals.md`](docs/10-biosignals.md)** | 🔬 **What actually detects alcohol and caffeine**, and what a local agent can honestly do. Hardware section superseded by `11`. |
 | **[`docs/11-the-ring.md`](docs/11-the-ring.md)** | 💍 **The Kmart ring** — which to buy, the real metric list (JRing/56ff), the standard-BLE shortcut, and the things that will bite you. *(Tier 3, on hold.)* |
 | **[`docs/12-current-plan.md`](docs/12-current-plan.md)** | 🎯 **Where we are now.** Both artifacts described in detail, what's on hold, the hosting problem, and the gates for the rest of today. |
+| **[`docs/13-the-name.md`](docs/13-the-name.md)** | 🦆 **The name.** What Kachka means, the naming system, the twelve-second line for when someone asks, and where it needs changing. |
 | **[`IDEA`](IDEA)** | The locked idea in one sentence, plus the go/no-go checklist. |
 
 ## What's left today
@@ -126,9 +134,9 @@ The repo still has no description or topics, and I can't set those from this ses
 **Or from your terminal:**
 
 ```bash
-gh repo edit bharath-blazecode/tanda --description "Team workspace for the Tanda AI Hackathon 2026 (Brisbane, 20-21 Nov) - research, strategy and the build plan for UNSEEN."
+gh repo edit bharath-blazecode/tanda --description "KACHKA - a body drift recorder. Hold still, find out how far you have drifted from your own normal. Built at the Tanda AI Hackathon 2026."
 ```
 
 ```bash
-gh repo edit bharath-blazecode/tanda --add-topic hackathon --add-topic tanda-hackathon --add-topic brisbane --add-topic claude-code --add-topic anthropic-api
+gh repo edit bharath-blazecode/tanda --add-topic kachka --add-topic hackathon --add-topic tanda-hackathon --add-topic brisbane --add-topic claude-code
 ```
