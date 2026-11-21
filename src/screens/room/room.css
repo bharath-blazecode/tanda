@@ -1,0 +1,322 @@
+/* CARD 9. The room board's own stylesheet.
+   The one screen allowed one for now (screens normally never style themselves, D28): the shared kit in
+   src/ui does not exist yet. Only token variables from src/ui/tokens.css; no colour, font or hex of its own.
+   Sizes are in container units (--u is 1% of the frame width) so the board scales with the projector. */
+
+.room {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: var(--bench);
+}
+
+/* Largest 16:9 box that fits the viewport, letterboxed on the bench colour. */
+.room-frame {
+  position: relative;
+  container-type: inline-size;
+  width: min(100vw, calc(100dvh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--housing);
+  border: 1px solid var(--housing-hi);
+}
+
+.room-board {
+  --u: 1cqw;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 23fr 47fr 30fr;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2.2);
+  font: 400 calc(var(--u) * 1.4) / 1.3 var(--mono);
+  color: var(--housing-ink);
+}
+
+.room-board > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+.room-board p,
+.room-board h1,
+.room-board h2,
+.room-board ul,
+.room-board ol {
+  margin: 0;
+}
+
+.room-board ul,
+.room-board ol {
+  padding: 0;
+  list-style: none;
+}
+
+.room-num {
+  font-family: var(--display);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.room-verdict {
+  font: 900 calc(var(--u) * 1.7) / 1 var(--display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stamp);
+}
+
+/* ---------- left: join ---------- */
+
+.room-join {
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1);
+  padding: calc(var(--u) * 1.6);
+  background: var(--receipt);
+  color: var(--ink);
+}
+
+.room-qr {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.room-qr-light {
+  fill: var(--receipt);
+}
+
+.room-qr-dark {
+  fill: var(--ink);
+}
+
+.room-join-h {
+  font: 900 calc(var(--u) * 3.4) / 0.95 var(--display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.room-url {
+  font: 700 calc(var(--u) * 1.5) / 1.2 var(--mono);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- middle: voice, trace, tallies ---------- */
+
+.room-mid {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1.4);
+}
+
+.room-voice {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.2);
+}
+
+.room-badge-slot {
+  flex: none;
+  width: calc(var(--u) * 7);
+  aspect-ratio: 1;
+}
+
+.room-say {
+  min-width: 0;
+  font: 900 calc(var(--u) * 2.8) / 1.02 var(--display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.room-trace-slot {
+  flex: 1;
+  min-height: calc(var(--u) * 10);
+  border: 1px solid var(--housing-hi);
+}
+
+.room-total {
+  font: 700 calc(var(--u) * 1.4) / 1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--housing-dim);
+}
+
+.room-total .room-num {
+  font-size: calc(var(--u) * 2.4);
+  letter-spacing: 0.02em;
+  color: var(--housing-ink);
+}
+
+.room-tally {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: calc(var(--u) * 1);
+}
+
+.room-tally li {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: calc(var(--u) * 0.5);
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 0.9);
+  background: var(--chart);
+  color: var(--ink);
+}
+
+.room-tally-n {
+  font-size: calc(var(--u) * 3.8);
+  line-height: 0.9;
+}
+
+.room-tally .room-verdict {
+  font-size: calc(var(--u) * 1.6);
+  letter-spacing: 0.06em;
+}
+
+/* ---------- right: feed and top lists ---------- */
+
+.room-side {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1);
+  overflow: hidden;
+}
+
+.room-h {
+  font: 700 calc(var(--u) * 1.3) / 1.2 var(--display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--housing-dim);
+}
+
+.room-h:not(:first-child) {
+  margin-top: calc(var(--u) * 0.6);
+}
+
+.room-feed {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.6);
+}
+
+.room-feed li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: calc(var(--u) * 1);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1);
+  background: var(--receipt);
+  color: var(--ink);
+  font: 700 calc(var(--u) * 1.4) / 1.2 var(--mono);
+}
+
+.room-nick {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-demo {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.room-top {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.3);
+  counter-reset: rank;
+}
+
+.room-top li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: calc(var(--u) * 1);
+  counter-increment: rank;
+}
+
+.room-top li .room-nick::before {
+  content: counter(rank) '. ';
+  font-variant-numeric: tabular-nums;
+  color: var(--housing-dim);
+}
+
+.room-top .room-num {
+  font-size: calc(var(--u) * 1.8);
+  line-height: 1;
+}
+
+.room-empty,
+.room-none {
+  color: var(--housing-dim);
+}
+
+.room-empty {
+  font-size: calc(var(--u) * 1.6);
+}
+
+/* Quiet on purpose: the last good data is still on screen. */
+.room-reconnecting {
+  position: absolute;
+  right: 1cqw;
+  bottom: 0.6cqw;
+  margin: 0;
+  font: 700 1cqw / 1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--housing-dim);
+}
+
+/* ---------- phone or portrait: stack, larger unit ---------- */
+
+@media (max-width: 640px), (max-aspect-ratio: 1 / 1) {
+  .room {
+    place-items: start stretch;
+  }
+
+  .room-frame {
+    width: 100%;
+    aspect-ratio: auto;
+    border: 0;
+  }
+
+  .room-board {
+    --u: 2.6cqw;
+    height: auto;
+    grid-template-columns: 1fr;
+    padding: calc(var(--u) * 1.5);
+  }
+
+  .room-join {
+    max-width: calc(var(--u) * 26);
+  }
+
+  .room-trace-slot {
+    flex: none;
+    height: calc(var(--u) * 12);
+  }
+
+  .room-tally {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .room-reconnecting {
+    position: static;
+    padding: 0 calc(2.6cqw * 1.5) calc(2.6cqw * 1.5);
+    font-size: 2.6cqw;
+  }
+}
+
+/* Nothing here animates today; this keeps it that way if the shared kit adds motion inside. */
+@media (prefers-reduced-motion: reduce) {
+  .room *,
+  .room *::before,
+  .room *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
