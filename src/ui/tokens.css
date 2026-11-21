@@ -1,0 +1,52 @@
+/* Design tokens, copied from docs/design/DESIGN.md. One theme only.
+   CARD 2 owns this file and the rest of src/ui: add the components there.
+   Screens never write a colour, font or spacing value of their own (D28). */
+:root {
+  --bench: #121a18; /* page background behind the instrument */
+  --housing: #1e2a27; /* instrument casing: the app's own background */
+  --housing-hi: #32433e; /* casing edges and engraved rules */
+  --housing-ink: #dce6df; /* text on the housing */
+  --housing-dim: #93a79e; /* secondary text on the housing */
+  --chart: #eef2e6; /* strip-chart paper */
+  --grid: #c6d6c0; /* fine chart grid, every 8px */
+  --grid-strong: #9db897; /* heavy chart grid, every 40px */
+  --receipt: #fafaf4; /* thermal ticket paper */
+  --ink: #1c1f25; /* pen, print, text on paper */
+  --ink-soft: #5a606a; /* secondary text on paper, dotted leaders */
+  --pencil: #2e5fb5; /* the baseline, and nothing else */
+  --stamp: #c3273b; /* the verdict stamp, and nothing else */
+
+  --display: 'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
+  --mono: 'Courier Prime', 'Courier New', Courier, monospace;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 36px;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bench);
+  color: var(--housing-ink);
+  font: 400 15px/1.5 var(--mono);
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--pencil);
+  outline-offset: 2px;
+}
