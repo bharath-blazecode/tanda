@@ -9,6 +9,7 @@ import { PulseTest } from '../../tests/pulse'
 import { StandTest } from '../../tests/stand'
 import { getMotionAvailability } from '../../sensors/motion'
 import { update } from '../../store/local'
+import { isQuickDemo } from '../../store/quick'
 import { Housing, Key, Keys, Label, Plate, Sheet } from '../../ui'
 
 type Step = 'clean' | 'what' | 'stand' | 'choice' | 'pulse' | 'saved'
@@ -27,7 +28,10 @@ const firstTest = (): Step => (getMotionAvailability() === 'unavailable' ? 'choi
 
 export function Baseline() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<Step>('clean')
+  // Quick demo skips the questions, the tapping test and the pulse: straight to standing still.
+  // It needs motion to have anything to record, so without it this is the full flow.
+  const quick = isQuickDemo() && getMotionAvailability() !== 'unavailable'
+  const [step, setStep] = useState<Step>(quick ? 'stand' : 'clean')
   const [clean, setClean] = useState(true)
   const [stand, setStand] = useState<StandMetrics | null>(null)
   const [counts, setCounts] = useState<Record<DrinkKind, number>>(NONE)
@@ -56,12 +60,12 @@ export function Baseline() {
   //
   // The tapping test may be skipped, but only once the standing test has been recorded: a run
   // with neither is not a reading, and the contract refuses it (shared/contracts.ts).
-  const finish = (taps: ChoiceMetrics | null, hr: number | null) => {
+  const finish = (taps: ChoiceMetrics | null, hr: number | null, stood: StandMetrics | null = stand) => {
     update((current) => ({
       ...current,
       baseline: {
         run: {
-          stand: stand ?? undefined,
+          stand: stood ?? undefined,
           choice: taps ?? undefined,
           at: Date.now(),
           ...(hr === null ? {} : { hr, hrSource: 'camera' as const }),
@@ -165,15 +169,17 @@ export function Baseline() {
 
   return (
     <Housing>
-      <Plate small serial={`Recording\n${step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
-      {step === 'stand' && <Label>Test 1 of 2 · Stand still</Label>}
+      <Plate small serial={`Recording\n${quick ? 'Quick demo' : step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
+      {step === 'stand' && <Label>{quick ? 'Your normal · Stand still' : 'Test 1 of 2 · Stand still'}</Label>}
       {step === 'pulse' ? (
         <PulseTest label="Optional · Pulse" onDone={(hr) => finish(choice, hr)} />
       ) : step === 'stand' ? (
         <StandTest
           onDone={(metrics) => {
             setStand(metrics)
-            setStep('choice')
+            // Quick demo: the standing test alone is the normal. Passed in, since state has not landed yet.
+            if (quick) finish(null, null, metrics)
+            else setStep('choice')
           }}
         />
       ) : (

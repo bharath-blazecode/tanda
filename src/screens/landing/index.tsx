@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { ChartWindow, Housing, Key, Plate, Printed } from '../../ui'
 import { load, reset, update } from '../../store/local'
+import { setQuickDemo } from '../../store/quick'
 
 const NAME_MAX = 16
 // Stored.nickname has min(3): a shorter value would fail validation on the next load() and wipe the record.
@@ -26,11 +27,20 @@ export function Landing() {
   // A form, so Enter (shown as "Go") in the field does exactly what the Start key does.
   const start = (event: FormEvent) => {
     event.preventDefault()
+    setQuickDemo(false)
+    update((s) => ({ ...s, nickname: chooseName(name, s.nickname), shareToRoom: true }))
+    navigate('/setup')
+  }
+
+  // The short way through: the standing test only, for the normal and for the check.
+  const quickDemo = () => {
+    setQuickDemo(true)
     update((s) => ({ ...s, nickname: chooseName(name, s.nickname), shareToRoom: true }))
     navigate('/setup')
   }
 
   const stayOff = () => {
+    setQuickDemo(false)
     update((s) => ({ ...s, shareToRoom: false }))
     navigate('/setup')
   }
@@ -79,8 +89,11 @@ export function Landing() {
             <NameField value={name} onChange={setName} />
             <Key type="submit">Start</Key>
           </form>
+          <Key quiet onClick={quickDemo}>
+            Quick demo · 1 minute
+          </Key>
           <Key quiet onClick={stayOff}>
-            Stay off the screen
+            Start, but keep me off the big screen
           </Key>
         </>
       )}

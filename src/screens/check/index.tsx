@@ -14,6 +14,7 @@ import { StandTest } from '../../tests/stand'
 import { getMotionAvailability } from '../../sensors/motion'
 import { drinksToday } from '../../store/day'
 import { load, update } from '../../store/local'
+import { isQuickDemo } from '../../store/quick'
 import { Housing, Key, Label, Plate, Sheet } from '../../ui'
 
 type Step = 'intro' | 'stand' | 'choice' | 'pulse' | 'scoring'
@@ -39,11 +40,11 @@ export function Check() {
   if (!stored.baseline) return null
   const baseline = stored.baseline
 
-  const finish = async (taps: ChoiceMetrics | null, hr: number | null) => {
+  const finish = async (taps: ChoiceMetrics | null, hr: number | null, stood: StandMetrics | null = stand) => {
     setStep('scoring')
     const now = Date.now()
     const run: RunResult = {
-      stand: stand ?? undefined,
+      stand: stood ?? undefined,
       choice: taps ?? undefined,
       at: now,
       ...(hr === null ? {} : { hr, hrSource: 'camera' as const }),
@@ -94,6 +95,8 @@ export function Check() {
   // The pulse is always on offer, never gated on the baseline: gating trapped anyone whose normal
   // predates the camera step. It is only SCORED when the baseline has a pulse too (D46).
   const pulseWillScore = baseline.run.hr !== undefined
+  // Quick demo: the standing test alone, as long as there is one to compare with.
+  const quick = isQuickDemo() && !noMotion && baseline.run.stand !== undefined
   const begin = (pulse: boolean) => {
     setWithPulse(pulse)
     if (noMotion) skipStand()
@@ -105,9 +108,13 @@ export function Check() {
       <Housing>
         <Plate small serial={'Check\nAgainst your normal'} />
         <Sheet grow>
-          <Label paper>Same two tests</Label>
-          <h2>About fifty seconds.</h2>
-          <p>Stand still, then tap fast. We compare both against the normal you recorded.</p>
+          <Label paper>{quick ? 'Quick demo · One test' : 'Same two tests'}</Label>
+          <h2>{quick ? 'About ten seconds.' : 'About fifty seconds.'}</h2>
+          <p>
+            {quick
+              ? 'Stand still. We compare it against the normal you recorded.'
+              : 'Stand still, then tap fast. We compare both against the normal you recorded.'}
+          </p>
           {!baseline.run.stand && (
             <p className="k-small">
               Your normal has no standing test in it, so this one will not be scored.
@@ -145,8 +152,8 @@ export function Check() {
 
   return (
     <Housing>
-      <Plate small serial={`Check\n${step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
-      {step === 'stand' && <Label>Test 1 of 2 · Stand still</Label>}
+      <Plate small serial={`Check\n${quick && step === 'stand' ? 'Quick demo' : step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
+      {step === 'stand' && <Label>{quick ? 'Quick demo · Stand still' : 'Test 1 of 2 · Stand still'}</Label>}
       {step === 'pulse' ? (
         <PulseTest
           label={pulseWillScore ? 'Optional · Pulse' : 'Optional · Pulse · shown, not scored'}
@@ -156,7 +163,10 @@ export function Check() {
         <StandTest
           onDone={(metrics) => {
             setStand(metrics)
-            setStep('choice')
+            if (!quick) setStep('choice')
+            else if (withPulse) setStep('pulse')
+            // Passed in, since the state set above has not landed yet.
+            else void finish(null, null, metrics)
           }}
         />
       ) : (
@@ -174,7 +184,7 @@ export function Check() {
           Skip this test
         </Key>
       )}
-      {step === 'stand' && (
+      {step === 'stand' && !quick && (
         <Key quiet onClick={skipStand}>
           Skip this test
         </Key>
