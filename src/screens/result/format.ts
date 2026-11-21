@@ -94,7 +94,7 @@ export function comparisonRows(run: RunResult, reference: RunResult, can: Compar
     notes.push('Pulse shown, not compared: the reference has no pulse.')
   } else if (status === 'approximate' && run.pulse?.bpm !== undefined) {
     rows.push(['Pulse', `about ${Math.round(run.pulse.bpm)} bpm`])
-    notes.push('Pulse is approximate, from a weak camera signal. It is shown and not scored.')
+    notes.push(run.pulse.combined ? 'Pulse is approximate from two compatible captures and is not scored.' : 'Pulse is approximate, from a weak camera signal. It is shown and not scored.')
   } else if (status === 'unreadable') {
     rows.push(['Pulse', 'No reading'])
     notes.push('The camera could not find a steady rhythm. That says nothing about your pulse itself.')

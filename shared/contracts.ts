@@ -50,8 +50,9 @@ export type PulseStatus = z.infer<typeof PulseStatus>
 
 export const PulseRecord = z.object({
   status: PulseStatus,
+  combined: z.literal(true).optional(),
   bpm: z.number().min(30).max(220).optional(), // measured and approximate only
-})
+}).refine(p => !p.combined || (p.status === 'approximate' && p.bpm !== undefined), 'Combined pulse is display only')
 export type PulseRecord = z.infer<typeof PulseRecord>
 
 /** A pulse is scored only when it was measured, so an approximate figure can never reach `hr`. */
