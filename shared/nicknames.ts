@@ -41,23 +41,82 @@ const HATE_WORDS = ['nazi', 'kike', 'fag', 'spic', 'chink', 'gook', 'coon', 'pak
 
 const LEET: Record<string, string> = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't' }
 
-function isHateful(name: string): boolean {
-  const words = name
-    .toLowerCase()
-    .replace(/[013457]/g, (d) => LEET[d] ?? d)
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(Boolean)
-  const compact = words.join('')
-  if (HATE_ANYWHERE.some((term) => compact.includes(term))) return true
-  return words.some((w) => HATE_WORDS.some((term) => w === term || w === `${term}s`))
+// Cyrillic and Greek letters that look Latin, so "nаzі" with Cyrillic а and і reads as "nazi".
+// Both cases are listed because some capitals look like a different Latin letter than their small
+// form (Greek Η is H, η is not).
+const LOOKALIKE: Record<string, string> = {
+  а: 'a', А: 'a', в: 'b', В: 'b', е: 'e', Е: 'e', к: 'k', К: 'k', м: 'm', М: 'm', н: 'h', Н: 'h',
+  о: 'o', О: 'o', р: 'p', Р: 'p', с: 'c', С: 'c', т: 't', Т: 't', х: 'x', Х: 'x', у: 'y', У: 'y',
+  і: 'i', І: 'i', ј: 'j', Ј: 'j', ѕ: 's', Ѕ: 's', һ: 'h', Һ: 'h', ԁ: 'd', ԛ: 'q', ԝ: 'w', Ԝ: 'w',
+  α: 'a', Α: 'a', β: 'b', Β: 'b', ε: 'e', Ε: 'e', Ζ: 'z', Η: 'h', ι: 'i', Ι: 'i', κ: 'k', Κ: 'k',
+  Μ: 'm', ν: 'v', Ν: 'n', ο: 'o', Ο: 'o', ρ: 'p', Ρ: 'p', τ: 't', Τ: 't', υ: 'u', Υ: 'y', χ: 'x',
+  Χ: 'x',
 }
 
-// A link on a projector is an advert nobody approved. "Mr. Bean" passes; "kachka.fun" does not.
-const looksLikeLink = (s: string) => /http|www|@|\.\p{L}/iu.test(s)
+// Unicode keeps each set of ten decimal digits contiguous and in order from zero, and adjacent sets
+// are whole tens, so the count of digits just before this one, mod 10, is its value. The longest
+// contiguous stretch is 50, hence the cap on the walk.
+const isDigit = (cp: number) => cp > 0 && /\p{Nd}/u.test(String.fromCodePoint(cp))
+function digitValue(ch: string): string {
+  const cp = ch.codePointAt(0) ?? 0
+  let before = 0
+  while (before < 60 && isDigit(cp - before - 1)) before++
+  return String(before % 10)
+}
+
+// What the blocklist is checked against, never what is shown: accents off, any script's digits as
+// ASCII then as leetspeak letters, Cyrillic and Greek look-alikes as Latin, lower case.
+function comparisonForm(name: string): string {
+  return name
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .replace(/\p{Nd}/gu, digitValue)
+    .replace(/[013457]/g, (d) => LEET[d] ?? d)
+    .replace(/./gsu, (ch) => LOOKALIKE[ch] ?? ch)
+    .toLowerCase()
+}
+
+function isHateful(name: string): boolean {
+  const form = comparisonForm(name)
+  const words = form.split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+  const compact = words.join('')
+  if (HATE_ANYWHERE.some((term) => compact.includes(term))) return true
+  if (words.some((w) => HATE_WORDS.some((term) => w === term || w === `${term}s`))) return true
+  // Again with every non-letter removed, so "n-a-z-i" or "F A G" is caught. A short term only counts
+  // when it spans a removed gap: inside one word it is "Spicy" or "Nazir", which are fine.
+  const letters: string[] = []
+  const wordOf: number[] = []
+  let word = 0
+  for (const ch of form) {
+    if (/\p{L}/u.test(ch)) {
+      letters.push(ch)
+      wordOf.push(word)
+    } else if (wordOf.length > 0 && wordOf[wordOf.length - 1] === word) word++
+  }
+  const joined = letters.join('')
+  if (HATE_ANYWHERE.some((term) => joined.includes(term))) return true
+  return HATE_WORDS.some((term) => {
+    for (let i = joined.indexOf(term); i !== -1; i = joined.indexOf(term, i + 1)) {
+      if (wordOf[i] !== wordOf[i + term.length - 1]) return true
+    }
+    return false
+  })
+}
+
+// A link on a projector is an advert nobody approved. "Mr. Bean" passes; "kachka.fun",
+// "kachka . fun" and "kachka. fun" do not: a dot, spaces and a capital reads as an abbreviation,
+// so only that shape is allowed. No `i` flag on the second test, where \p{Lu} would match any case.
+const looksLikeLink = (s: string) =>
+  /http|www|@/i.test(s) || /\.\p{L}|\s\.\s*\p{L}|\.\s+(?!\p{Lu})\p{L}/u.test(s)
+
+// Default-ignorable code points render as nothing. Most are format characters the filter below drops
+// anyway, but the Hangul fillers (U+115F, U+1160, U+3164, U+FFA0) count as letters and would make a
+// blank name, and the grapheme joiner and variation selectors count as marks.
+const INVISIBLE = /\p{Default_Ignorable_Code_Point}/gu
 
 /** Cleans a typed name for the room board, or returns null when it cannot be shown. */
 export function sanitizeName(raw: string): string | null {
-  const normal = raw.normalize('NFKC').replace(/\s+/gu, ' ')
+  const normal = raw.normalize('NFKC').replace(INVISIBLE, '').replace(/\s+/gu, ' ')
   if (looksLikeLink(normal)) return null
   const kept = normal
     // Letters of any script, digits, space and ' - . ! only. Marks stay so Devanagari or Thai survive.
@@ -70,7 +129,8 @@ export function sanitizeName(raw: string): string | null {
   // Count code points, not UTF-16 units, so a cut never splits a character in half.
   const name = Array.from(kept).slice(0, MAX_NAME_CHARS).join('').trim()
   if (!/[\p{L}\p{Nd}]/u.test(name)) return null
-  if (looksLikeLink(name) || isHateful(name)) return null
+  // The comparison form also catches a link spelled with look-alikes ("һttр").
+  if (looksLikeLink(name) || /http|www|@/.test(comparisonForm(name)) || isHateful(name)) return null
   return name
 }
 
@@ -94,5 +154,10 @@ function seededRandom(seed: string): () => number {
  */
 export function boardName(raw: string, deviceId: string): string {
   if (isValidNickname(raw)) return raw
-  return sanitizeName(raw) ?? generateNickname(seededRandom(deviceId))
+  return sanitizeName(raw) ?? deviceNickname(deviceId)
+}
+
+/** The generated nickname that is stable for a device: the fallback, and all of ROOM_NAMES=generated. */
+export function deviceNickname(deviceId: string): string {
+  return generateNickname(seededRandom(deviceId))
 }

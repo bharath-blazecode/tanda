@@ -5,17 +5,20 @@ import type { RoomLive, RoomStage } from '../shared/contracts'
 export const PRESENCE_TTL_MS = 45_000
 export const MAX_PRESENT = 1_000
 export const LIVE_SIZE = 30
+// At most one change of name or stage per device this often, so one script cannot make the list churn.
+export const CHANGE_GAP_MS = 2_000
 
 export type PresenceSnapshot = { liveCount: number; live: RoomLive[] }
 
 export type PresenceStore = {
-  // `nickname` is already the board name; this store never sees raw input.
-  beat(deviceId: string, nickname: string, stage: RoomStage, now: number): void
+  // `nickname` is already the board name; this store never sees raw input. A change inside the gap
+  // is ignored; `force` skips the gap for a result, which the result route already throttles.
+  beat(deviceId: string, nickname: string, stage: RoomStage, now: number, force?: boolean): void
   snapshot(now: number): PresenceSnapshot
   reset(): void
 }
 
-export type PresenceOptions = { ttlMs?: number; maxDevices?: number; liveSize?: number }
+export type PresenceOptions = { ttlMs?: number; maxDevices?: number; liveSize?: number; changeGapMs?: number }
 
 type Present = { nickname: string; stage: RoomStage; changedAt: number; seenAt: number; seq: number }
 
@@ -23,6 +26,7 @@ export function createPresenceStore({
   ttlMs = PRESENCE_TTL_MS,
   maxDevices = MAX_PRESENT,
   liveSize = LIVE_SIZE,
+  changeGapMs = CHANGE_GAP_MS,
 }: PresenceOptions = {}): PresenceStore {
   // Re-inserted on every beat, so Map order is "least recently seen first": expiry and the cap
   // both only ever look at the front.
@@ -37,11 +41,12 @@ export function createPresenceStore({
   }
 
   return {
-    beat(deviceId, nickname, stage, now) {
+    beat(deviceId, nickname, stage, now, force = false) {
       expire(now)
       const current = byDevice.get(deviceId)
-      byDevice.delete(deviceId)
       const changed = !current || current.stage !== stage || current.nickname !== nickname
+      if (current && changed && !force && now - current.changedAt < changeGapMs) return
+      byDevice.delete(deviceId)
       byDevice.set(deviceId, {
         nickname,
         stage,
