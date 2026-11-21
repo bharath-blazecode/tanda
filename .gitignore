@@ -21,3 +21,6 @@ venv/
 Thumbs.db
 .idea/
 *.swp
+
+# Server bundle
+dist-server/
