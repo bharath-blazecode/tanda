@@ -58,7 +58,7 @@ server                Hono: /api/health, /api/verdict, /api/room, and the built 
 - Never tell anyone they are fine to drive. Never show a blood alcohol figure.
 - With any alcohol logged today, every result shows the fixed safety line, Steady included.
 - Code decides the verdict and the nudge. Claude only writes the line on the ticket.
-- The server receives numbers and closed enums only. No free text, no drinks on the room board.
+- The verdict route receives numbers and closed enums only: no free text ever reaches Claude. The one piece of free text the server accepts is the display name for the room board, which it cleans (`sanitizeName`) and never passes to the model. No drinks on the room board.
 - Never ship these words in UI copy: "safe to drive", "fine to drive", "ok to drive", "sober",
   "legal limit", "BAC", "diagnosis".
 - The Anthropic key lives only in the server environment. Never in the repo, the bundle, chat or a

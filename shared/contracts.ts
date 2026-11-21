@@ -92,7 +92,7 @@ export type Drink = z.infer<typeof Drink>
 export const Stored = z.object({
   v: z.literal(1),
   deviceId: z.string().min(8).max(64), // random UUID; rate-limit key only
-  nickname: z.string().min(3).max(40), // generated from shared/nicknames.ts, never typed by the user
+  nickname: z.string().min(3).max(40), // generated, or typed on Landing; the server cleans it before showing it
   shareToRoom: z.boolean(),
   baseline: z.object({ run: RunResult, clean: z.boolean() }).optional(),
   drinks: z.array(Drink),
