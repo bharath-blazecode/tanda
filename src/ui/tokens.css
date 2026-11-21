@@ -1,0 +1,39 @@
+/* Kachka design tokens. Source of truth: docs/design/DESIGN.md
+   One theme only. The housing is dark, the paper is light, and that contrast is the design. */
+
+:root {
+  /* --- colour --- */
+  --bench:       #121A18;  /* page background behind the instrument */
+  --housing:     #1E2A27;  /* instrument casing: the app's own background */
+  --housing-hi:  #32433E;  /* casing edges and engraved rules */
+  --housing-ink: #DCE6DF;  /* text on the housing */
+  --housing-dim: #93A79E;  /* secondary text on the housing */
+  --chart:       #EEF2E6;  /* strip-chart paper */
+  --grid:        #C6D6C0;  /* fine chart grid, every 8px */
+  --grid-strong: #9DB897;  /* heavy chart grid, every 40px */
+  --receipt:     #FAFAF4;  /* thermal ticket paper */
+  --ink:         #1C1F25;  /* pen, print, text on paper */
+  --ink-soft:    #5A606A;  /* secondary text on paper, dotted leaders */
+  --pencil:      #2E5FB5;  /* the baseline, and nothing else */
+  --stamp:       #C3273B;  /* the verdict stamp, and nothing else */
+
+  /* --- type --- */
+  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --mono:    "Courier Prime", "Courier New", Courier, monospace;
+
+  /* --- space --- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 36px;
+
+  /* --- shape --- */
+  --z: 7px;          /* ticket zigzag tooth */
+  --radius: 6px;     /* the housing corner, and nothing else */
+
+  color-scheme: dark;
+}
+
+/* Fonts are served from our own origin, not Google. See src/ui/fonts.ts and src/ui/README.md. */
