@@ -10,6 +10,7 @@ import { assess } from '../../engine/classify'
 import { CAFFEINE_MG } from '../../engine/nudge'
 import { ChoiceTest } from '../../tests/choice'
 import { StandTest } from '../../tests/stand'
+import { getMotionAvailability } from '../../sensors/motion'
 import { drinksToday } from '../../store/day'
 import { load, update } from '../../store/local'
 import { Housing, Key, Label, Plate, Sheet } from '../../ui'
@@ -73,6 +74,9 @@ export function Check() {
     setStep('choice')
   }
 
+  // Known to have no motion this session: do not mount Stand Still only to watch it stall.
+  const noMotion = getMotionAvailability() === 'unavailable'
+
   if (step === 'intro') {
     return (
       <Housing>
@@ -89,8 +93,11 @@ export function Check() {
           {!baseline.clean && (
             <p className="k-small">Your normal was taken after a drink, so read this one loosely.</p>
           )}
+          {noMotion && (
+            <p className="k-small">No motion sensor here, running one test instead.</p>
+          )}
         </Sheet>
-        <Key onClick={() => setStep('stand')}>Start</Key>
+        <Key onClick={() => (noMotion ? skipStand() : setStep('stand'))}>Start</Key>
         <Key quiet onClick={() => navigate('/home')}>
           Back
         </Key>
@@ -122,7 +129,10 @@ export function Check() {
           }}
         />
       ) : (
-        <ChoiceTest label="Test 2 of 2 · Choice tap" onDone={finish} />
+        <ChoiceTest
+          label={noMotion ? 'No motion sensor here · Choice tap only' : 'Test 2 of 2 · Choice tap'}
+          onDone={finish}
+        />
       )}
       {step === 'stand' && (
         <Key quiet onClick={skipStand}>

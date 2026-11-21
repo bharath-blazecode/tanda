@@ -6,10 +6,14 @@ import { useNavigate } from 'react-router'
 import type { ChoiceMetrics, StandMetrics } from '../../../shared/contracts'
 import { ChoiceTest } from '../../tests/choice'
 import { StandTest } from '../../tests/stand'
+import { getMotionAvailability } from '../../sensors/motion'
 import { update } from '../../store/local'
 import { Housing, Key, Keys, Label, Plate, Sheet } from '../../ui'
 
 type Step = 'clean' | 'stand' | 'choice' | 'saved'
+
+/** Setup found no motion: go straight to Choice Tap rather than mount Stand Still to stall. */
+const firstTest = (): Step => (getMotionAvailability() === 'unavailable' ? 'choice' : 'stand')
 
 export function Baseline() {
   const navigate = useNavigate()
@@ -43,7 +47,7 @@ export function Baseline() {
             style={{ fontSize: 22 }}
             onClick={() => {
               setClean(true)
-              setStep('stand')
+              setStep(firstTest())
             }}
           >
             Nothing yet
@@ -52,7 +56,7 @@ export function Baseline() {
             style={{ fontSize: 22 }}
             onClick={() => {
               setClean(false)
-              setStep('stand')
+              setStep(firstTest())
             }}
           >
             Already had some
@@ -96,7 +100,14 @@ export function Baseline() {
           }}
         />
       ) : (
-        <ChoiceTest label="Test 2 of 2 · Choice tap" onDone={finish} />
+        <ChoiceTest
+          label={
+            getMotionAvailability() === 'unavailable'
+              ? 'No motion sensor here · Choice tap only'
+              : 'Test 2 of 2 · Choice tap'
+          }
+          onDone={finish}
+        />
       )}
     </Housing>
   )
