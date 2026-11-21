@@ -12,9 +12,16 @@ export type PulseSample = {
   t: number
   /** Mean red of the sampled patch, 0 to 255. */
   red: number
+  /** Mean green. Haemoglobin absorbs green hardest, so this often carries the clearest pulse
+   *  even though a fingertip looks red: red is the brightest channel, not the most modulated. */
+  green?: number
+  /** Mean blue. Weakest of the three through a finger, but free to try. */
+  blue?: number
   /** Did this frame look like a fingertip over the lens. */
   covered: boolean
 }
+
+export type Channel = 'red' | 'green' | 'blue'
 
 export const SETTLE_SECONDS = 3
 export const CAPTURE_SECONDS = 15
@@ -24,10 +31,16 @@ export const RESAMPLE_HZ = 30
 export const MIN_BPM = 40
 export const MAX_BPM = 180
 
-/** Autocorrelation peak height below this is noise, not a pulse. Real fingertip signals on a
- *  phone with no torch sit a long way below a clean synthetic sine, so this is deliberately low:
- *  a wrong rate is caught by the band check, not by demanding a pretty signal. */
-export const MIN_CONFIDENCE = 0.3
+// These two came out of measurement, not taste. Over 40 seeds of pure noise with no pulse in it
+// at all, the autocorrelation peak had a median of 0.13 and reached 0.29. A clear signal scored
+// 0.74 and up. So anything at or below 0.3 is indistinguishable from noise, and a number read
+// there would be invented rather than measured. There is a test that holds this line.
+/** Below this the rate is weak enough to be shown only as a rough figure. Set above the noise
+ *  ceiling of 0.29, so a reported rate always has something real behind it. */
+export const ROUGH_CONFIDENCE = 0.35
+
+/** At or above this the rate is reported plainly. */
+export const MIN_CONFIDENCE = 0.5
 
 /** Below this share of covered frames we doubt the finger was on the lens. Advisory only: a
  *  reading with a clear rhythm is accepted whatever this says (see analyzePulse). */
@@ -43,11 +56,35 @@ export const MIN_CAPTURE_SECONDS = 8
  */
 export type PulseFailure = 'too-short' | 'not-covered' | 'no-rhythm'
 
+/**
+ * Relative modulation: how much each sample differs from the local average, as a fraction of it.
+ * Dividing by the local level is what makes channels comparable, and it undoes part of what the
+ * camera's automatic exposure does, since a gain change scales every pixel at once.
+ */
+export function relativeSeries(xs: readonly number[], hz: number): number[] {
+  const slow = movingAverage(xs, Math.max(1, Math.round(1.5 * hz)))
+  const fast = movingAverage(xs, Math.max(1, Math.round(0.1 * hz)))
+  return fast.map((v, i) => (slow[i] > 0 ? (v - slow[i]) / slow[i] : 0))
+}
+
+/** Root mean square of a series, used to report how much signal there was at all. */
+export function rms(xs: readonly number[]): number {
+  if (xs.length === 0) return 0
+  return Math.sqrt(xs.reduce((a, b) => a + b * b, 0) / xs.length)
+}
+
 export type PulseAnalysis = {
   /** Average beats per minute, or null when we could not read one. */
   bpm: number | null
   /** Frames used, after the settling ones are dropped. For diagnosing a failure on a real phone. */
   samples: number
+  /** Which colour channel the rate came from. */
+  channel?: Channel
+  /** How much the signal actually moved, as a percentage of its own level. Near zero means the
+   *  camera flattened it, not that the person has no pulse. */
+  modulation: number
+  /** True when the rate is reported but the signal was weak: show it as approximate. */
+  rough: boolean
   /** Height of the autocorrelation peak, 0 to 1. Reported for diagnostics, never shown as health. */
   confidence: number
   /** Share of frames that passed the lens gate, 0 to 1. */
@@ -90,8 +127,9 @@ export function bandpass(xs: readonly number[], hz: number, fastSeconds: number,
  * Put irregular frames onto an even grid by linear interpolation. Camera frame rate wanders,
  * and autocorrelation needs an even spacing to turn a lag into a rate.
  */
-export function resample(samples: readonly PulseSample[], hz: number): number[] {
-  if (samples.length < 2) return samples.map((s) => s.red)
+export function resample(samples: readonly PulseSample[], hz: number, channel: Channel = 'red'): number[] {
+  const value = (s: PulseSample) => s[channel] ?? s.red
+  if (samples.length < 2) return samples.map(value)
   const step = 1000 / hz
   const start = samples[0].t
   const end = samples[samples.length - 1].t
@@ -105,7 +143,9 @@ export function resample(samples: readonly PulseSample[], hz: number): number[] 
     const b = samples[j + 1]
     const span = b.t - a.t
     // Two frames with the same timestamp would divide by zero; fall back to the earlier one.
-    out[i] = span <= 0 ? a.red : a.red + ((b.red - a.red) * (t - a.t)) / span
+    const from = value(a)
+    const to = value(b)
+    out[i] = span <= 0 ? from : from + ((to - from) * (t - a.t)) / span
   }
   return out
 }
@@ -175,7 +215,7 @@ export function rateFromAutocorrelation(y: readonly number[], hz: number): { bpm
  * Returns a reason rather than throwing: every failure here is an ordinary outcome.
  */
 export function analyzePulse(samples: readonly PulseSample[], settleSeconds = SETTLE_SECONDS): PulseAnalysis {
-  const empty = { bpm: null, confidence: 0, coveredFraction: 0, seconds: 0, samples: 0 }
+  const empty = { bpm: null, confidence: 0, coveredFraction: 0, seconds: 0, samples: 0, modulation: 0, rough: false }
   if (samples.length < 2) return { ...empty, reason: 'too-short' }
 
   const start = samples[0].t
@@ -192,17 +232,36 @@ export function analyzePulse(samples: readonly PulseSample[], settleSeconds = SE
   // this, so a phone whose auto-exposure pushed a few frames outside the gate threw away a
   // reading that was perfectly good. A clear rhythm is the better evidence of a finger on a lens
   // than any single-frame test, so it wins.
-  const grid = resample(used, RESAMPLE_HZ)
-  // 0.1 s smooths sensor noise; 1.5 s is longer than one beat at MIN_BPM, so the slow term
-  // removes drift, finger pressure and the camera hunting for an exposure, without removing
-  // the pulse itself.
-  const filtered = bandpass(grid, RESAMPLE_HZ, 0.1, 1.5)
-  const { bpm, confidence } = rateFromAutocorrelation(filtered, RESAMPLE_HZ)
-
-  if (bpm !== null && confidence >= MIN_CONFIDENCE) {
-    return { bpm: Math.round(bpm), confidence, ...base, reason: 'ok' }
+  //
+  // Try every colour channel and keep the clearest. A fingertip looks red because red is the
+  // brightest channel through skin, but haemoglobin absorbs GREEN hardest, so green usually
+  // carries the strongest pulse. Reading red alone threw that away.
+  const channels: Channel[] = ['green', 'red', 'blue']
+  let best: { bpm: number | null; confidence: number; channel: Channel; modulation: number } | null = null
+  for (const channel of channels) {
+    if (channel !== 'red' && used[0][channel] === undefined) continue
+    const series = relativeSeries(resample(used, RESAMPLE_HZ, channel), RESAMPLE_HZ)
+    const got = rateFromAutocorrelation(series, RESAMPLE_HZ)
+    const candidate = { ...got, channel, modulation: rms(series) * 100 }
+    if (!best || candidate.confidence > best.confidence) best = candidate
   }
-  // No rate. Now coverage decides which advice to give.
+  if (!best) return { ...empty, ...base, reason: 'no-rhythm' }
+
+  const { bpm, confidence, channel, modulation } = best
+  if (bpm !== null && confidence >= ROUGH_CONFIDENCE) {
+    return {
+      bpm: Math.round(bpm),
+      confidence,
+      channel,
+      modulation,
+      // Above MIN_CONFIDENCE it is a reading; between the two it is a rough figure, and the
+      // screen says so rather than passing it off as exact.
+      rough: confidence < MIN_CONFIDENCE,
+      ...base,
+      reason: 'ok',
+    }
+  }
+  // No rate worth naming. Now coverage decides which advice to give.
   const reason: PulseFailure = coveredFraction < MIN_COVERED_FRACTION ? 'not-covered' : 'no-rhythm'
-  return { bpm: null, confidence, ...base, reason }
+  return { bpm: null, confidence, channel, modulation, rough: false, ...base, reason }
 }
