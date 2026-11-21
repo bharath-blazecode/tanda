@@ -19,11 +19,12 @@ function capture(options: {
   drift?: number
   noise?: number
   jitter?: number
+  seed?: number
 }): PulseSample[] {
   const { bpm, seconds = 20, fps = 30, covered = true, amplitude = 4, drift = 0, noise = 0, jitter = 0 } = options
   const out: PulseSample[] = []
   // A fixed generator, so a failure is reproducible.
-  let seed = 7
+  let seed = options.seed ?? 7
   const random = () => {
     seed = (seed * 1103515245 + 12345) % 2147483648
     return seed / 2147483648 - 0.5
@@ -33,7 +34,7 @@ function capture(options: {
     const t = (i * 1000) / fps + jitter * random() * (1000 / fps)
     const phase = (2 * Math.PI * bpm * (t / 1000)) / 60
     const red = 140 + amplitude * Math.sin(phase) + (drift * t) / 1000 + noise * random()
-    out.push({ t, red, covered })
+    out.push({ t, red, green: red, blue: red, covered })
   }
   return out
 }
@@ -165,6 +166,18 @@ describe('analyzePulse', () => {
     expect(analyzePulse(capture({ bpm: 72, seconds: 6 })).reason).toBe('too-short')
     expect(analyzePulse([]).reason).toBe('too-short')
     expect(analyzePulse([{ t: 0, red: 1, covered: true }]).reason).toBe('too-short')
+  })
+
+  it('never invents a rate from pure noise, whatever the seed', () => {
+    // The thresholds exist because of this. Over many seeds of noise with no pulse in it the
+    // autocorrelation peak reaches about 0.29, so a threshold below that prints a random number
+    // between 40 and 180 and calls it someone's pulse. This test holds the line.
+    let reported = 0
+    for (let seed = 1; seed <= 30; seed += 1) {
+      const got = analyzePulse(capture({ bpm: 72, amplitude: 0, noise: 30, seed }))
+      if (got.bpm !== null) reported += 1
+    }
+    expect(reported).toBe(0)
   })
 
   it('says no-rhythm for noise with no pulse in it', () => {

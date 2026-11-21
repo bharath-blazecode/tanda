@@ -103,7 +103,15 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
       }
 
       if (phaseRef.current === 'reading') {
-        samples.current.push({ t: sample.t, red: sample.red, covered: sample.covered })
+        // All three channels: green usually carries the clearest pulse even though the lens
+        // looks red, and analyze picks whichever reads best.
+        samples.current.push({
+          t: sample.t,
+          red: sample.red,
+          green: sample.green,
+          blue: sample.blue,
+          covered: sample.covered,
+        })
         setTrace((old) => [...old, sample.red].slice(-TRACE_POINTS))
         const elapsed = startedAt.current === null ? 0 : now - startedAt.current
         setLeft(Math.max(0, Math.ceil((TOTAL_MS - elapsed) / 1000)))
@@ -266,6 +274,8 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
                 ['Lens covered', `${Math.round(result.coveredFraction * 100)}%`],
                 ['Rhythm found', result.confidence.toFixed(2)],
                 ['Frames', `${result.samples} in ${Math.round(result.seconds)}s`],
+                // Near zero means the camera flattened the signal, not that there is no pulse.
+                ['Signal', `${result.modulation.toFixed(2)}%`],
               ]}
             />
           </Sheet>
