@@ -1,0 +1,136 @@
+import { describe, expect, it } from 'vitest'
+import { RoomState, type RoomEntry } from '../shared/contracts'
+import { createRoomStore, DEFAULT_MAX_AGE_MS } from './state'
+
+const T0 = 1_763_700_000_000
+
+const entry = (over: Partial<RoomEntry> = {}): RoomEntry => ({
+  nickname: 'Calm Quokka',
+  verdict: 'steady',
+  score: 80,
+  mode: 'real',
+  at: T0,
+  ...over,
+})
+
+describe('createRoomStore', () => {
+  it('returns an empty board stamped with now', () => {
+    const state = createRoomStore().snapshot(T0)
+    expect(state).toEqual({
+      total: 0,
+      mix: { steady: 0, wired: 0, tipsy: 0, wobbly: 0 },
+      feed: [],
+      top: { real: [], demo: [] },
+      updatedAt: T0,
+    })
+  })
+
+  it('keeps one entry per device, so a rerun replaces the earlier one', () => {
+    const store = createRoomStore()
+    store.add(entry({ verdict: 'steady', at: T0 }), 'device-aaaa')
+    store.add(entry({ verdict: 'tipsy', score: 40, at: T0 + 1000 }), 'device-aaaa')
+    const state = store.snapshot(T0 + 2000)
+    expect(state.total).toBe(1)
+    expect(state.mix).toEqual({ steady: 0, wired: 0, tipsy: 1, wobbly: 0 })
+    expect(state.feed.map((e) => e.verdict)).toEqual(['tipsy'])
+  })
+
+  it('counts total and the mix per verdict', () => {
+    const store = createRoomStore()
+    const verdicts = ['steady', 'steady', 'wired', 'tipsy', 'wobbly', 'wobbly', 'wobbly'] as const
+    verdicts.forEach((verdict, i) => store.add(entry({ verdict, at: T0 + i }), `device-${i}-xxxx`))
+    const state = store.snapshot(T0 + 100)
+    expect(state.total).toBe(7)
+    expect(state.mix).toEqual({ steady: 2, wired: 1, tipsy: 1, wobbly: 3 })
+  })
+
+  it('puts the newest first in the feed and caps it at 12', () => {
+    const store = createRoomStore()
+    for (let i = 0; i < 20; i++) store.add(entry({ score: i, at: T0 + i * 1000 }), `device-${i}-xxxx`)
+    const state = store.snapshot(T0 + 60_000)
+    expect(state.total).toBe(20)
+    expect(state.feed).toHaveLength(12)
+    expect(state.feed.map((e) => e.score)).toEqual([19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8])
+  })
+
+  it('ranks top.real steadiest first and leaves demo entries out', () => {
+    const store = createRoomStore()
+    const scores = [50, 95, 70, 88, 60, 91]
+    scores.forEach((score, i) => store.add(entry({ score, mode: 'real', at: T0 + i }), `real-${i}-xxxx`))
+    store.add(entry({ score: 100, mode: 'demo', at: T0 + 10 }), 'demo-high-xxxx')
+    const { top } = store.snapshot(T0 + 100)
+    expect(top.real.map((e) => e.score)).toEqual([95, 91, 88, 70, 60])
+    expect(top.real.every((e) => e.mode === 'real')).toBe(true)
+  })
+
+  it('ranks top.demo dizziest first and leaves real entries out', () => {
+    const store = createRoomStore()
+    const scores = [40, 12, 77, 25, 5, 60]
+    scores.forEach((score, i) => store.add(entry({ score, mode: 'demo', handicap: 'spin', at: T0 + i }), `demo-${i}-xxxx`))
+    store.add(entry({ score: 0, mode: 'real', verdict: 'tipsy', at: T0 + 10 }), 'real-low-xxxx')
+    const { top } = store.snapshot(T0 + 100)
+    expect(top.demo.map((e) => e.score)).toEqual([5, 12, 25, 40, 60])
+    expect(top.demo.every((e) => e.mode === 'demo')).toBe(true)
+  })
+
+  it('breaks score ties by most recent first, including equal timestamps', () => {
+    const store = createRoomStore()
+    store.add(entry({ nickname: 'Calm Ibis', score: 90, at: T0 }), 'device-1-xxxx')
+    store.add(entry({ nickname: 'Brisk Emu', score: 90, at: T0 + 5 }), 'device-2-xxxx')
+    store.add(entry({ nickname: 'Zippy Emu', score: 90, at: T0 + 5 }), 'device-3-xxxx')
+    const state = store.snapshot(T0 + 100)
+    expect(state.top.real.map((e) => e.nickname)).toEqual(['Zippy Emu', 'Brisk Emu', 'Calm Ibis'])
+    expect(state.feed.map((e) => e.nickname)).toEqual(['Zippy Emu', 'Brisk Emu', 'Calm Ibis'])
+  })
+
+  it('drops entries older than 12 hours when taking a snapshot', () => {
+    const store = createRoomStore()
+    store.add(entry({ at: T0 }), 'old-device-xxxx')
+    store.add(entry({ verdict: 'wired', at: T0 + 60_000 }), 'new-device-xxxx')
+    const state = store.snapshot(T0 + DEFAULT_MAX_AGE_MS + 1)
+    expect(state.total).toBe(1)
+    expect(state.mix.wired).toBe(1)
+    expect(store.snapshot(T0 + 60_000 + DEFAULT_MAX_AGE_MS + 1).total).toBe(0)
+  })
+
+  it('keeps at most maxEntries, dropping the oldest', () => {
+    const store = createRoomStore({ maxEntries: 3 })
+    for (let i = 0; i < 5; i++) store.add(entry({ score: i, at: T0 + i }), `device-${i}-xxxx`)
+    const state = store.snapshot(T0 + 10)
+    expect(state.total).toBe(3)
+    expect(state.feed.map((e) => e.score)).toEqual([4, 3, 2])
+  })
+
+  it('stamps updatedAt with the last change, and with now once empty', () => {
+    const store = createRoomStore()
+    store.add(entry({ at: T0 + 500 }), 'device-aaaa')
+    expect(store.snapshot(T0 + 9000).updatedAt).toBe(T0 + 500)
+    store.reset()
+    expect(store.snapshot(T0 + 9500).updatedAt).toBe(T0 + 9500)
+  })
+
+  it('reset empties the board', () => {
+    const store = createRoomStore()
+    store.add(entry(), 'device-aaaa')
+    store.reset()
+    expect(store.snapshot(T0).total).toBe(0)
+  })
+
+  it('always produces a snapshot that parses with the RoomState schema', () => {
+    const store = createRoomStore()
+    expect(RoomState.safeParse(store.snapshot(T0)).success).toBe(true)
+    for (let i = 0; i < 30; i++) {
+      store.add(
+        entry({
+          verdict: (['steady', 'wired', 'tipsy', 'wobbly'] as const)[i % 4],
+          mode: i % 2 ? 'demo' : 'real',
+          handicap: i % 2 ? 'offhand' : undefined,
+          score: (i * 37) % 101,
+          at: T0 + i,
+        }),
+        `device-${i}-xxxx`,
+      )
+      expect(RoomState.safeParse(store.snapshot(T0 + i)).success).toBe(true)
+    }
+  })
+})
