@@ -41,3 +41,32 @@ The step is skippable in one tap and a failure never marks a result partial.
 Driven in Chromium against a synthetic 64x64 fingertip video modulated at exactly 72 bpm
 (`--use-file-for-fake-video-capture`). Read back 72 bpm, released the camera track on finish and
 on skip, and refused the default fake camera as not covered.
+
+## Stable readings and retries
+
+The reporting range is **40 to 180 bpm**, a limit of this camera feature rather than a definition
+of a normal pulse. A clear 48 bpm signal is retained. Out-of-range or unsupported signals are
+rejected, never rounded up to an average-looking pulse.
+
+The analyzer looks for a real correlation peak before applying that range. It inspects faster
+and slower periods as well, so a fast fundamental is not silently replaced by a half-rate
+harmonic. Flat channels, sparse frames, non-finite or backwards timestamps, camera gaps over
+250 ms and incompatible rates at the beginning and end cannot produce an ordinary reading.
+Frames must average at least 12 samples per second. Where the browser exposes presented-frame
+counts, the capture loop samples each video frame only once.
+
+**Try again** keeps the last two completed captures in memory for up to 90 seconds. Each capture
+is analyzed separately; time gaps and separate attempts are never stitched into a continuous
+waveform. If both contain a credible contiguous section of at least eight seconds, and their
+rates agree within 8 bpm or 10%, those sections can support a rough estimate. Contradictory
+sections, stale attempts, and old evidence without usable new data cannot rescue a reading.
+A good new standalone reading takes priority over history.
+
+Rough results say **About … bpm**. Retry estimates explain that they use usable sections of both
+readings. They are displayed only and do not enter the baseline or verdict calculation. Skip,
+Next and leaving the pulse step clear retry history; no raw camera data is persisted or uploaded.
+A camera permission response that arrives after cancellation cannot restart the capture.
+
+Synthetic tests cover rate boundaries, out-of-band harmonics, constant/noisy signals, frame
+gaps, changing rates and retry recovery. These checks cannot establish accuracy on a physical
+phone or replace comparison with a trusted pulse measurement on that device.
