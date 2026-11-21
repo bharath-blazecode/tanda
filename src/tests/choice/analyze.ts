@@ -8,8 +8,16 @@ export type ChoiceTrial = {
   ms: number | null // time from light to tap
 }
 
-/** Scored trials in one run. Two warm-ups run first and are never passed in here. */
-export const SCORED_TRIALS = 12
+/**
+ * Scored trials in one run. Two warm-ups run first and are never passed in here.
+ *
+ * Must stay a multiple of SQUARES, because every square has to light the same number of times;
+ * an unbalanced run would measure which square you favour as well as how fast you are.
+ * Dropped from 12 to 8 on build day to shorten the test. The median's standard error grows as
+ * 1/sqrt(n), so cutting the count raises run-to-run noise by about 22%, and NOISE_FLOOR.choiceRt
+ * was raised with it. Change one without the other and sober retests start reading as drift.
+ */
+export const SCORED_TRIALS = 8
 
 /**
  * Stands in for the median when no tap was both correct and timed.

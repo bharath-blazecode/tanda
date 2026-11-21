@@ -18,7 +18,7 @@ const ANTICIPATION_MS = 100 // under this is a guess, not a reaction
 const WAIT_MIN_MS = 800
 const WAIT_MAX_MS = 2000
 
-/** Each square lights three times across the scored trials, shuffled, after two warm-ups. */
+/** Each square lights the same number of times across the scored trials, shuffled, after two warm-ups. */
 function buildSequence(): number[] {
   const scored: number[] = []
   for (let square = 0; square < SQUARES; square++) {
