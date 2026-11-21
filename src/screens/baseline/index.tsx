@@ -21,23 +21,28 @@ export function Baseline() {
   const [step, setStep] = useState<Step>('clean')
   const [clean, setClean] = useState(true)
   const [stand, setStand] = useState<StandMetrics | null>(null)
-  const [choice, setChoice] = useState<ChoiceMetrics | null>(null)
+  const [hasPulse, setHasPulse] = useState(false)
 
-  // The optional third step (D46). A pulse only ever counts when the baseline has one too,
-  // which is why it is offered here and not only at check time.
-  const finish = (taps: ChoiceMetrics, hr: number | null) => {
+  // The normal is saved as soon as both tests are through. The pulse (D46) is opt-in from the
+  // saved screen, because it fails often enough on real phones that nobody should meet it unasked.
+  const finish = (taps: ChoiceMetrics) => {
     update((current) => ({
       ...current,
-      baseline: {
-        run: {
-          stand: stand ?? undefined,
-          choice: taps,
-          at: Date.now(),
-          ...(hr === null ? {} : { hr, hrSource: 'camera' as const }),
-        },
-        clean,
-      },
+      baseline: { run: { stand: stand ?? undefined, choice: taps, at: Date.now() }, clean },
     }))
+    setStep('saved')
+  }
+
+  // A pulse only ever counts when the baseline has one too, which is why it can be added here.
+  const addPulse = (hr: number | null) => {
+    if (hr !== null) {
+      update((current) =>
+        current.baseline
+          ? { ...current, baseline: { ...current.baseline, run: { ...current.baseline.run, hr, hrSource: 'camera' as const } } }
+          : current,
+      )
+      setHasPulse(true)
+    }
     setStep('saved')
   }
 
@@ -93,6 +98,11 @@ export function Baseline() {
         <Key quiet onClick={() => navigate('/home')}>
           I will log real drinks
         </Key>
+        {!hasPulse && (
+          <Key quiet onClick={() => setStep('pulse')}>
+            Add a pulse reading (optional)
+          </Key>
+        )}
       </Housing>
     )
   }
@@ -102,7 +112,7 @@ export function Baseline() {
       <Plate small serial={`Recording\n${step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
       {step === 'stand' && <Label>Test 1 of 2 · Stand still</Label>}
       {step === 'pulse' ? (
-        <PulseTest label="Optional · Pulse" onDone={(hr) => finish(choice!, hr)} />
+        <PulseTest label="Optional · Pulse" onDone={addPulse} />
       ) : step === 'stand' ? (
         <StandTest
           onDone={(metrics) => {
@@ -118,8 +128,7 @@ export function Baseline() {
               : 'Test 2 of 2 · Choice tap'
           }
           onDone={(metrics) => {
-            setChoice(metrics)
-            setStep('pulse')
+            finish(metrics)
           }}
         />
       )}

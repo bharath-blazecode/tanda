@@ -27,6 +27,9 @@ export function Check() {
   const [step, setStep] = useState<Step>('intro')
   const [stand, setStand] = useState<StandMetrics | null>(null)
   const [choice, setChoice] = useState<ChoiceMetrics | null>(null)
+  // The pulse step is opt-in: it fails often enough on real phones that nobody should meet it
+  // unasked, least of all in a two-minute demo. One quiet key on the intro turns it on.
+  const [withPulse, setWithPulse] = useState(false)
 
   // A check only means something against a baseline.
   useEffect(() => {
@@ -88,10 +91,14 @@ export function Check() {
   // Known to have no motion this session: do not mount Stand Still only to watch it stall.
   const noMotion = getMotionAvailability() === 'unavailable'
 
-  // The step is always offered. It is only SCORED when the baseline has a pulse too (D46), but
-  // gating the step on that trapped anyone whose normal predates the camera step, or who skipped
-  // it once: they could never be offered it again. Showing a rate is worth something on its own.
+  // The pulse is always on offer, never gated on the baseline: gating trapped anyone whose normal
+  // predates the camera step. It is only SCORED when the baseline has a pulse too (D46).
   const pulseWillScore = baseline.run.hr !== undefined
+  const begin = (pulse: boolean) => {
+    setWithPulse(pulse)
+    if (noMotion) skipStand()
+    else setStep('stand')
+  }
 
   if (step === 'intro') {
     return (
@@ -99,16 +106,8 @@ export function Check() {
         <Plate small serial={'Check\nAgainst your normal'} />
         <Sheet grow>
           <Label paper>Same two tests</Label>
-          <h2>About seventy seconds.</h2>
-          <p>
-            Stand still, then tap fast. We compare both against the normal you recorded.
-            {' Then an optional pulse reading you can skip.'}
-          </p>
-          {!pulseWillScore && (
-            <p className="k-small">
-              Your normal has no pulse in it, so this one will show but will not be scored.
-            </p>
-          )}
+          <h2>About fifty seconds.</h2>
+          <p>Stand still, then tap fast. We compare both against the normal you recorded.</p>
           {!baseline.run.stand && (
             <p className="k-small">
               Your normal has no standing test in it, so this one will not be scored.
@@ -121,7 +120,10 @@ export function Check() {
             <p className="k-small">No motion sensor here, running one test instead.</p>
           )}
         </Sheet>
-        <Key onClick={() => (noMotion ? skipStand() : setStep('stand'))}>Start</Key>
+        <Key onClick={() => begin(false)}>Start</Key>
+        <Key quiet onClick={() => begin(true)}>
+          Start, and add a pulse reading
+        </Key>
         <Key quiet onClick={() => navigate('/home')}>
           Back
         </Key>
@@ -146,7 +148,10 @@ export function Check() {
       <Plate small serial={`Check\n${step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
       {step === 'stand' && <Label>Test 1 of 2 · Stand still</Label>}
       {step === 'pulse' ? (
-        <PulseTest label="Optional · Pulse" onDone={(hr) => void finish(choice!, hr)} />
+        <PulseTest
+          label={pulseWillScore ? 'Optional · Pulse' : 'Optional · Pulse · shown, not scored'}
+          onDone={(hr) => void finish(choice!, hr)}
+        />
       ) : step === 'stand' ? (
         <StandTest
           onDone={(metrics) => {
@@ -159,7 +164,8 @@ export function Check() {
           label={noMotion ? 'No motion sensor here · Choice tap only' : 'Test 2 of 2 · Choice tap'}
           onDone={(metrics) => {
             setChoice(metrics)
-            setStep('pulse')
+            if (withPulse) setStep('pulse')
+            else void finish(metrics, null)
           }}
         />
       )}

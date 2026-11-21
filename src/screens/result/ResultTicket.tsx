@@ -24,6 +24,8 @@ export type ResultTicketProps = {
   timestamp: string;
   sample?: boolean;
   animate?: boolean;
+  /** Whose reading this is: the name typed on Landing. Stays on the phone and on the ticket. */
+  name?: string;
   /** Printed above the rows, e.g. "Simulated". Only the tags that apply. */
   tags?: string[];
   /** One extra line under the rows: the demo's guess at the handicap. */
@@ -47,6 +49,7 @@ export function ResultTicket({
   timestamp,
   sample = false,
   animate = true,
+  name,
   tags = [],
   extra,
   againTo = "/check",
@@ -72,6 +75,12 @@ export function ResultTicket({
               Reading {readingId}
               <br />
               {timestamp}
+              {name && (
+                <>
+                  <br />
+                  Subject · {name}
+                </>
+              )}
             </span>
           </header>
           {sample && <Label paper>Sample data · animation preview</Label>}

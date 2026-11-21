@@ -41,6 +41,7 @@ export function Result() {
         line={line.trim().replace(/^["“]+|["”]+$/g, '').trim()}
         readingId={serialFor(run.at).replace(/^No\. /, '')}
         timestamp={printedAt(run.at)}
+        name={stored.nickname}
         tags={ticketTags({ mode, assessment, baselineClean: baseline.clean })}
         extra={guess}
         againTo={mode === 'demo' ? '/demo' : '/check'}
