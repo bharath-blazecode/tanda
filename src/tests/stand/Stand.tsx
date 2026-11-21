@@ -8,13 +8,15 @@ export function Stand({
   onComplete,
   onSkip,
   onReset,
+  onUnavailable,
 }: {
   baseline?: StandAnalysis;
   onComplete?: (result: StandAnalysis) => void;
   onSkip?: () => void;
   onReset?: () => void;
+  onUnavailable?: () => void;
 }) {
-  const test = useStand(onComplete, onSkip);
+  const test = useStand(onComplete, onSkip, onUnavailable);
   const active = ["permission", "countdown", "running"].includes(test.phase);
   return (
     <Housing className="stand-test">
@@ -72,6 +74,12 @@ export function Stand({
             <h2>Try that again.</h2>
             <p>{test.error}</p>
           </div>
+        </Sheet>
+      )}
+      {test.phase === "unavailable" && (
+        <Sheet>
+          <h2>No motion sensor here.</h2>
+          <p>This browser is not sending motion data. Skip this test to carry on.</p>
         </Sheet>
       )}
       {test.phase === "skipped" && (

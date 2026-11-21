@@ -19,6 +19,7 @@ vi.mock("../../sensors/motion", async (importOriginal) => {
     },
   };
 });
+import { getMotionAvailability } from "../../sensors/motion";
 import { useStand } from "./useStand";
 let beeps: number[];
 beforeEach(() => {
@@ -87,19 +88,62 @@ it("finishes a 15 second capture after countdown with three countdown beeps and 
   expect(beeps).toEqual([660, 660, 660, 990, 990]);
   expect(sensor.stop).toHaveBeenCalled();
 });
-it("reports permission denial and a granted permission without readings", async () => {
+it("reports no sensor on a denied permission instead of asking to retry", async () => {
   sensor.permission.mockResolvedValueOnce("denied");
-  const { result } = renderHook(() => useStand());
+  const unavailable = vi.fn();
+  const { result } = renderHook(() =>
+    useStand(undefined, undefined, unavailable),
+  );
   await act(async () => {
     result.current.start();
   });
-  expect(result.current.phase).toBe("error");
-  expect(result.current.error).toContain("denied");
+  expect(result.current.phase).toBe("unavailable");
+  expect(unavailable).toHaveBeenCalledOnce();
+  expect(getMotionAvailability()).toBe("unavailable");
+});
+it("stops on its own and reports no sensor when no reading arrives within 1.5 s", async () => {
+  const unavailable = vi.fn();
+  const { result } = renderHook(() =>
+    useStand(undefined, undefined, unavailable),
+  );
   await act(async () => {
     result.current.start();
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTimeAsync(1000);
   });
-  expect(result.current.error).toContain("no motion readings");
+  expect(result.current.phase).toBe("permission");
+  expect(unavailable).not.toHaveBeenCalled();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(600);
+  });
+  expect(result.current.phase).toBe("unavailable");
+  expect(unavailable).toHaveBeenCalledOnce();
+  expect(sensor.stop).toHaveBeenCalled();
+});
+it("does not start the countdown on all-zero readings from a blocked sensor", async () => {
+  const unavailable = vi.fn();
+  const { result } = renderHook(() =>
+    useStand(undefined, undefined, unavailable),
+  );
+  await act(async () => {
+    result.current.start();
+  });
+  const zero = { x: 0, y: 0, z: 0 };
+  const feed = setInterval(
+    () =>
+      sensor.listener?.({
+        t: performance.now() / 1000,
+        rotation: zero,
+        acceleration: zero,
+        gravity: zero,
+      }),
+    1000 / 60,
+  );
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1600);
+  });
+  clearInterval(feed);
+  expect(result.current.phase).toBe("unavailable");
+  expect(unavailable).toHaveBeenCalledOnce();
 });
 it("cancels a pending permission response without starting a subscription", async () => {
   let resolve!: (value: string) => void;

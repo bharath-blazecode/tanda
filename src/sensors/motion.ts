@@ -114,3 +114,77 @@ export function startMotion(
     });
   });
 }
+
+// ---- Is motion usable here? The one place that decides, shared by Setup and Stand Still. ----
+
+/** Setup's window for the first usable sample. */
+export const FIRST_SAMPLE_MS = 1000;
+
+/** A reading counts only if some axis is non-zero. Blocked sensors (Brave) send no events,
+ *  all-null events or all-zero ones; a real phone always reports gravity, so it never reads all zero. */
+export function isUsable(
+  reading: MotionReading | null,
+): reading is MotionReading {
+  if (!reading) return false;
+  return [reading.rotation, reading.acceleration, reading.gravity].some(
+    (v) => v !== null && (v.x !== 0 || v.y !== 0 || v.z !== 0),
+  );
+}
+
+/** What can be done before any tap: a prompt only a tap may open (iOS), or just listen. */
+export function motionSupport():
+  | "insecure"
+  | "unsupported"
+  | "needs-tap"
+  | "listen" {
+  if (!window.isSecureContext) return "insecure";
+  const constructor = window.DeviceMotionEvent as MotionConstructor | undefined;
+  if (!constructor) return "unsupported";
+  return typeof constructor.requestPermission === "function"
+    ? "needs-tap"
+    : "listen";
+}
+
+/** Resolves true on the first usable sample, false if none arrives within the window. */
+export function waitForUsableSample(windowMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    let stop = () => {};
+    const timer = setTimeout(() => {
+      stop();
+      resolve(false);
+    }, windowMs);
+    stop = subscribe((sample) => {
+      if (!isUsable(sample)) return;
+      clearTimeout(timer);
+      stop();
+      resolve(true);
+    });
+  });
+}
+
+/** "unknown" until Setup or a Stand Still run decides. Memory only: a reload re-detects, which is
+ *  what someone wants after allowing motion sensors in Brave's site settings. */
+export type MotionAvailability = "unknown" | "available" | "unavailable";
+let availability: MotionAvailability = "unknown";
+export function getMotionAvailability(): MotionAvailability {
+  return availability;
+}
+export function setMotionAvailability(next: MotionAvailability): void {
+  availability = next;
+}
+
+/** Asks if this browser has a prompt, proves it with a usable sample, and records the outcome for
+ *  the session. Call it from a tap: the iOS prompt is requested before the first await. */
+export async function detectMotion(
+  windowMs = FIRST_SAMPLE_MS,
+): Promise<MotionPermission | "no-data"> {
+  const permission = await ensurePermission();
+  const outcome =
+    permission !== "granted"
+      ? permission
+      : (await waitForUsableSample(windowMs))
+        ? "granted"
+        : "no-data";
+  setMotionAvailability(outcome === "granted" ? "available" : "unavailable");
+  return outcome;
+}

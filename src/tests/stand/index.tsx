@@ -18,6 +18,8 @@ export function StandTest({
         onComplete={setReading}
         onSkip={() => onDone(null)}
         onReset={() => setReading(null)}
+        // No sensor is the same answer as a skip: the run carries on with Choice Tap, partial.
+        onUnavailable={() => onDone(null)}
       />
       {reading && (
         <Key onClick={() => onDone(reading.metrics)}>Use this reading</Key>

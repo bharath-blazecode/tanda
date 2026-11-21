@@ -8,21 +8,18 @@
 //   and the room gets this link through Slack, so it is the likeliest way a judge gets stuck.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { ensurePermission, subscribe, type MotionPermission } from '../../sensors/motion'
+import {
+  detectMotion,
+  motionSupport,
+  setMotionAvailability,
+  type MotionPermission,
+} from '../../sensors/motion'
 import { Housing, Key, Label, Plate, Sheet } from '../../ui'
 
 type Phase = 'checking' | 'idle' | 'requesting' | 'no-samples' | MotionPermission
 
-/** How long to wait for the first sample before deciding nothing is coming. */
-const FIRST_SAMPLE_MS = 1000
-
 /** A pause after success, so the screen does not flash past before it can be read. */
 const HANDOVER_MS = 400
-
-function hasPermissionApi(): boolean {
-  const ctor = globalThis.DeviceMotionEvent as (typeof DeviceMotionEvent & { requestPermission?: unknown }) | undefined
-  return typeof ctor?.requestPermission === 'function'
-}
 
 export function Setup() {
   const navigate = useNavigate()
@@ -37,65 +34,43 @@ export function Setup() {
     [],
   )
 
-  /** Resolves once a sample arrives, or false if none does. A granted permission is not proof. */
-  const waitForSample = useCallback(
-    () =>
-      new Promise<boolean>((resolve) => {
-        let settled = false
-        const stop = subscribe(() => {
-          if (settled) return
-          settled = true
-          stop()
-          resolve(true)
-        })
-        timers.current.push(
-          window.setTimeout(() => {
-            if (settled) return
-            settled = true
-            stop()
-            resolve(false)
-          }, FIRST_SAMPLE_MS),
-        )
-      }),
-    [],
-  )
-
   const handOver = useCallback(() => {
     timers.current.push(window.setTimeout(() => navigate('/baseline'), HANDOVER_MS))
   }, [navigate])
 
-  // Android and desktop ask nothing. Listen for one sample and move on if it arrives.
+  // detectMotion records the outcome for Baseline and Check; this only picks what to show.
+  const settle = useCallback(
+    (result: MotionPermission | 'no-data') => {
+      setPhase(result === 'no-data' ? 'no-samples' : result)
+      if (result === 'granted') handOver()
+    },
+    [handOver],
+  )
+
+  // Android and desktop ask nothing. Listen for one usable sample and move on if it arrives.
   useEffect(() => {
     let cancelled = false
-    if (hasPermissionApi()) {
+    if (motionSupport() === 'needs-tap') {
       setPhase('idle')
       return
     }
-    void waitForSample().then((ok) => {
-      if (cancelled) return
-      if (ok) {
-        setPhase('granted')
-        handOver()
-      } else {
-        setPhase('no-samples')
-      }
+    void detectMotion().then((result) => {
+      if (!cancelled) settle(result)
     })
     return () => {
       cancelled = true
     }
-  }, [waitForSample, handOver])
+  }, [settle])
 
-  const ask = async () => {
-    setPhase('requesting')
-    const result = await ensurePermission()
-    if (result !== 'granted') {
-      setPhase(result)
-      return
-    }
-    // Granted is not the same as working.
-    const ok = await waitForSample()
-    setPhase(ok ? 'granted' : 'no-samples')
-    if (ok) handOver()
+  // Runs inside the tap, so iOS can show its prompt. Granted is not the same as working.
+  const ask = () => {
+    setPhase(motionSupport() === 'needs-tap' ? 'requesting' : 'checking')
+    void detectMotion().then(settle)
+  }
+
+  const oneTest = () => {
+    setMotionAvailability('unavailable')
+    navigate('/baseline')
   }
 
   const copyLink = async () => {
@@ -120,10 +95,15 @@ export function Setup() {
 
         {stuck ? (
           <>
-            <h2>This browser is holding the sensors back.</h2>
-            <p>
-              Open the link in Safari or Chrome instead. Apps that show pages inside themselves often
-              keep motion to themselves.
+            <h2>This browser is not sending motion data.</h2>
+            <p>You can still do the tapping test. Your reading will be marked partial.</p>
+            <p className="k-small">
+              In Brave: tap the lion icon and allow motion sensors, or open the site settings and
+              allow Motion sensors. Then tap Try again.
+            </p>
+            <p className="k-small">
+              Or open the link in another browser, like Safari or Chrome. Apps that show pages
+              inside themselves often keep motion to themselves.
             </p>
             <p className="k-small">{copied ? 'Link copied.' : window.location.origin}</p>
           </>
@@ -135,10 +115,17 @@ export function Setup() {
               body sways when you stand still.
             </p>
             {denied && (
-              <p className="k-small">
-                Your phone is remembering a no for this tab. Close this tab, open the link again, and
-                tap Allow.
-              </p>
+              <>
+                <p className="k-small">
+                  Your phone is remembering a no for this tab. Close this tab, open the link again,
+                  and tap Allow.
+                </p>
+                {/* Brave says no without ever asking, so the tab trick does not help there. */}
+                <p className="k-small">
+                  In Brave: tap the lion icon and allow motion sensors, or open the site settings and
+                  allow Motion sensors.
+                </p>
+              </>
             )}
             {unavailable && (
               <p className="k-small">
@@ -151,17 +138,28 @@ export function Setup() {
         <p className="k-small">Your readings stay on this phone. No account, nothing to sign.</p>
       </Sheet>
 
-      {stuck && <Key onClick={copyLink}>{copied ? 'Copied' : 'Copy the link'}</Key>}
-
-      {(phase === 'idle' || phase === 'requesting' || denied) && (
+      {(phase === 'idle' || phase === 'requesting') && (
         <Key onClick={ask} disabled={phase === 'requesting'}>
-          {phase === 'requesting' ? 'Asking' : denied ? 'Ask again' : 'Allow motion'}
+          {phase === 'requesting' ? 'Asking' : 'Allow motion'}
         </Key>
       )}
 
-      {phase !== 'checking' && phase !== 'granted' && (
-        <Key quiet onClick={() => navigate('/baseline')}>
+      {/* Always a way forward. Once motion has failed, it is the main key, not a footnote. */}
+      {phase !== 'granted' && (
+        <Key quiet={phase === 'checking' || phase === 'idle' || phase === 'requesting'} onClick={oneTest}>
           Continue with one test
+        </Key>
+      )}
+
+      {(stuck || denied) && (
+        <Key quiet onClick={ask}>
+          {denied ? 'Ask again' : 'Try again'}
+        </Key>
+      )}
+
+      {stuck && (
+        <Key quiet onClick={copyLink}>
+          {copied ? 'Copied' : 'Copy the link'}
         </Key>
       )}
     </Housing>

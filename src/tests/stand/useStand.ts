@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ensurePermission,
+  isUsable,
+  setMotionAvailability,
   subscribe,
   type MotionReading,
 } from "../../sensors/motion";
@@ -12,10 +14,14 @@ export type Phase =
   | "running"
   | "done"
   | "error"
-  | "skipped";
+  | "skipped"
+  | "unavailable";
+/** No usable sample this long after the sensor was opened means no sensor, not a retry. */
+export const NO_SENSOR_MS = 1500;
 export function useStand(
   onComplete?: (reading: StandAnalysis) => void,
   onSkip?: () => void,
+  onUnavailable?: () => void,
 ) {
   const [phase, setPhase] = useState<Phase>("intro");
   const [seconds, setSeconds] = useState(3);
@@ -110,18 +116,18 @@ export function useStand(
       setError(message);
       setPhase("error");
     };
+    // Retrying cannot fix a missing, blocked or denied sensor (iOS remembers a no for the session),
+    // so say so and let the run carry on with Choice Tap.
+    const unavailable = () => {
+      cancel();
+      setMotionAvailability("unavailable");
+      setPhase("unavailable");
+      onUnavailable?.();
+    };
     void permission.then((status) => {
       if (token !== generation.current) return;
       if (status !== "granted") {
-        const messages = {
-          denied:
-            "Motion permission was denied. Close this tab, reopen the link and tap Start. You can also skip this test.",
-          unsupported:
-            "Motion sensors are unavailable here. Open this link on a phone, or skip this test.",
-          insecure:
-            "Motion needs HTTPS. Open the secure development link on your phone.",
-        };
-        fail(messages[status]);
+        unavailable();
         return;
       }
       let firstEvent = 0,
@@ -133,7 +139,10 @@ export function useStand(
       unsubscribe = subscribe((sample) => {
         const now = performance.now();
         if (!firstEvent) {
+          // All-zero events are what a blocked sensor sends; they must not start the countdown.
+          if (!isUsable(sample)) return;
           firstEvent = now;
+          setMotionAvailability("available");
           setPhase("countdown");
         }
         lastEvent = now;
@@ -143,10 +152,7 @@ export function useStand(
       timer = setInterval(() => {
         const now = performance.now();
         if (!firstEvent) {
-          if (now - requestedAt > 1000)
-            fail(
-              "Permission was allowed, but no motion readings arrived. Open the link directly in your phone browser, or skip this test.",
-            );
+          if (now - requestedAt > NO_SENSOR_MS) unavailable();
           return;
         }
         if (now - lastEvent > 1000) {
