@@ -69,6 +69,20 @@ describe('room routes', () => {
   })
 })
 
+describe('request body limit', () => {
+  it('answers 413 with JSON for an API body over 4 KB', async () => {
+    const big = { ...verdictRequest, padding: 'x'.repeat(5000) }
+    const res = await post('/api/verdict', big)
+    expect(res.status).toBe(413)
+    expect(await res.json()).toEqual({ error: 'payload_too_large' })
+    expect((await post('/api/room/result', big)).status).toBe(413)
+  })
+
+  it('lets a normal body through', async () => {
+    expect((await post('/api/verdict', verdictRequest)).status).toBe(200)
+  })
+})
+
 describe('unknown API paths', () => {
   it('answers JSON 404, never the app shell', async () => {
     const res = await app.request('/api/nope')

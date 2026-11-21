@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { VerdictRequest } from '../shared/contracts'
-import { SYSTEM_PROMPT, buildUserMessage, driftLabel, filterLine } from './prompt'
+import { DEMO_LINES, DEMO_NO_DRIFT_LINES, REAL_LINES, STEADY_WITH_ALCOHOL_LINES } from '../src/engine/canned'
+import { SYSTEM_PROMPT, buildUserMessage, driftLabel, filterLine, normalise } from './prompt'
 
 const base: VerdictRequest = {
   deviceId: 'device-secret-1234',
@@ -88,6 +89,73 @@ describe('filterLine', () => {
 
   it('does not reject innocent words that contain a short stem', () => {
     expect(filterLine('Back to the bin with bacon.')).toBe('Back to the bin with bacon.')
+    expect(filterLine('Careful with the cardboard, I have seen more drama in an empty wheelie bin.')).not.toBeNull()
+  })
+
+  it.each([
+    'Your sobriety is noted.',
+    'Your blood-alcohol is a mystery.',
+    'B.A.C. unknown.',
+    'Looking s o b e r today.',
+    'You belong behind the wheel.',
+    'Comfortably under the limit.',
+    'Nice car.',
+    'Hand over the licence.',
+    'Ask a doctor.',
+    'That needs medical attention.',
+    'You drove here, did you.',
+    'Not a legal opinion.',
+    'So​ber as a judge.',
+    'You are s‍ober.',
+  ])('rejects a disguised banned word: %s', (text) => {
+    expect(filterLine(text)).toBeNull()
+  })
+
+  it('rejects look-alike alphabets and other non-ASCII letters', () => {
+    expect(filterLine('You are sоber.')).toBeNull() // Cyrillic o
+    expect(filterLine('Café jitters.')).toBeNull()
+  })
+
+  it('maps compatibility forms before matching', () => {
+    expect(filterLine('Ｓｏｂｅｒ enough.')).toBeNull() // fullwidth letters fold to ASCII under NFKC
+  })
+
+  it('lets a harmless line with an apostrophe, a dash and curly quotes through', () => {
+    const line = 'You’re a “scientist” now — the bin\'s impressed.'
+    expect(filterLine(line)).toBe(line)
+    expect(filterLine(line, { alcohol: true })).toBe(line)
+  })
+
+  it.each([
+    "You're fine.",
+    'Safe enough, I suppose.',
+    'All OK here.',
+    'Okay, logged.',
+    "You're alright.",
+    'All clear on the chart.',
+    'Good to go, apparently.',
+    'You are clear to leave.',
+  ])('rejects clearance words when alcohol is logged: %s', (text) => {
+    expect(filterLine(text, { alcohol: true })).toBeNull()
+    expect(filterLine(text)).toBe(text)
+  })
+
+  it('keeps every canned line that can be shown with alcohol logged through the alcohol filter', () => {
+    const withAlcohol = [
+      ...REAL_LINES.tipsy,
+      ...REAL_LINES.wired,
+      ...STEADY_WITH_ALCOHOL_LINES,
+      ...Object.values(DEMO_LINES).flat(),
+      ...DEMO_NO_DRIFT_LINES,
+    ]
+    for (const line of withAlcohol) expect(filterLine(line, { alcohol: true }), line).toBe(line)
+  })
+})
+
+describe('normalise', () => {
+  it('lower-cases, drops punctuation and joins spaced-out letters', () => {
+    expect(normalise('Blood-Alcohol, B.A.C.!')).toBe('blood alcohol bac')
+    expect(normalise('s o b e r')).toBe('sober')
   })
 })
 
