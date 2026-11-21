@@ -75,3 +75,26 @@ describe('receiptFilename', () => {
     expect(receiptFilename('../../etc/passwd')).toBe('kachka-reading-etcpasswd.png')
   })
 })
+
+describe('what the picture adds to the ticket', () => {
+  const data = {
+    readingId: '36370',
+    timestamp: 'Sat 21 Nov 16:40',
+    tags: [],
+    rows: [['Choice time', '+21%']] as [string, string][],
+    verdict: 'wobbly',
+    line: 'A line.',
+    safety: false,
+    nudge: 'Water, and a slow breath.',
+  }
+
+  it('ends with where to get your own', () => {
+    expect(receiptLines(data).at(-1)).toEqual({ kind: 'site', text: 'kachka.fun' })
+  })
+
+  it('prints the demo guess under the rows, and only when there is one', () => {
+    const kinds = receiptLines({ ...data, extra: 'We think you spun.' }).map((l) => l.kind)
+    expect(kinds.indexOf('extra')).toBe(kinds.lastIndexOf('row') + 1)
+    expect(receiptLines(data).some((l) => l.kind === 'extra')).toBe(false)
+  })
+})
