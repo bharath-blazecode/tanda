@@ -39,12 +39,6 @@ export function Landing() {
     navigate('/setup')
   }
 
-  const stayOff = () => {
-    setQuickDemo(false)
-    update((s) => ({ ...s, shareToRoom: false }))
-    navigate('/setup')
-  }
-
   return (
     <Housing>
       <Plate serial={'Body drift recorder\nModel BC-2'} />
@@ -91,9 +85,6 @@ export function Landing() {
           </form>
           <Key quiet onClick={quickDemo}>
             Quick demo · 1 minute
-          </Key>
-          <Key quiet onClick={stayOff}>
-            Start, but keep me off the big screen
           </Key>
         </>
       )}

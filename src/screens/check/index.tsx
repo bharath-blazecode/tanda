@@ -40,11 +40,11 @@ export function Check() {
   if (!stored.baseline) return null
   const baseline = stored.baseline
 
-  const finish = async (taps: ChoiceMetrics | null, hr: number | null, stood: StandMetrics | null = stand) => {
+  const finish = async (taps: ChoiceMetrics | null, hr: number | null) => {
     setStep('scoring')
     const now = Date.now()
     const run: RunResult = {
-      stand: stood ?? undefined,
+      stand: stand ?? undefined,
       choice: taps ?? undefined,
       at: now,
       ...(hr === null ? {} : { hr, hrSource: 'camera' as const }),
@@ -95,8 +95,10 @@ export function Check() {
   // The pulse is always on offer, never gated on the baseline: gating trapped anyone whose normal
   // predates the camera step. It is only SCORED when the baseline has a pulse too (D46).
   const pulseWillScore = baseline.run.hr !== undefined
-  // Quick demo: the standing test alone, as long as there is one to compare with.
-  const quick = isQuickDemo() && !noMotion && baseline.run.stand !== undefined
+  // Quick demo shows all three tests once, in the pass that ends in the ticket: stand still, the
+  // tapping test with its skip key, then the pulse with its own. Only the standing test is scored,
+  // because the quick normal has nothing else in it.
+  const quick = isQuickDemo()
   const begin = (pulse: boolean) => {
     setWithPulse(pulse)
     if (noMotion) skipStand()
@@ -108,11 +110,11 @@ export function Check() {
       <Housing>
         <Plate small serial={'Check\nAgainst your normal'} />
         <Sheet grow>
-          <Label paper>{quick ? 'Quick demo · One test' : 'Same two tests'}</Label>
-          <h2>{quick ? 'About ten seconds.' : 'About fifty seconds.'}</h2>
+          <Label paper>{quick ? 'Quick demo · Three tests' : 'Same two tests'}</Label>
+          <h2>{quick ? 'Stand, tap, pulse.' : 'About fifty seconds.'}</h2>
           <p>
             {quick
-              ? 'Stand still. We compare it against the normal you recorded.'
+              ? 'Stand still for ten seconds. Then the tapping test and the pulse: try them, or skip either with the key underneath.'
               : 'Stand still, then tap fast. We compare both against the normal you recorded.'}
           </p>
           {!baseline.run.stand && (
@@ -127,10 +129,12 @@ export function Check() {
             <p className="k-small">No motion sensor here, running one test instead.</p>
           )}
         </Sheet>
-        <Key onClick={() => begin(false)}>Start</Key>
-        <Key quiet onClick={() => begin(true)}>
-          Start, and add a pulse reading
-        </Key>
+        <Key onClick={() => begin(quick)}>Start</Key>
+        {!quick && (
+          <Key quiet onClick={() => begin(true)}>
+            Start, and add a pulse reading
+          </Key>
+        )}
         <Key quiet onClick={() => navigate('/home')}>
           Back
         </Key>
@@ -152,8 +156,8 @@ export function Check() {
 
   return (
     <Housing>
-      <Plate small serial={`Check\n${quick && step === 'stand' ? 'Quick demo' : step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
-      {step === 'stand' && <Label>{quick ? 'Quick demo · Stand still' : 'Test 1 of 2 · Stand still'}</Label>}
+      <Plate small serial={`Check\n${step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
+      {step === 'stand' && <Label>Test 1 of 2 · Stand still</Label>}
       {step === 'pulse' ? (
         <PulseTest
           label={pulseWillScore ? 'Optional · Pulse' : 'Optional · Pulse · shown, not scored'}
@@ -163,10 +167,7 @@ export function Check() {
         <StandTest
           onDone={(metrics) => {
             setStand(metrics)
-            if (!quick) setStep('choice')
-            else if (withPulse) setStep('pulse')
-            // Passed in, since the state set above has not landed yet.
-            else void finish(null, null, metrics)
+            setStep('choice')
           }}
         />
       ) : (
@@ -184,7 +185,7 @@ export function Check() {
           Skip this test
         </Key>
       )}
-      {step === 'stand' && !quick && (
+      {step === 'stand' && (
         <Key quiet onClick={skipStand}>
           Skip this test
         </Key>
