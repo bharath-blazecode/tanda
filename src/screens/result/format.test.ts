@@ -56,9 +56,32 @@ describe('metricRows', () => {
       ['Pulse', '+10%'],
     ])
   })
-  it('leaves out metrics the engine did not score', () => {
+  it('leaves out metrics the engine did not score, except the pulse', () => {
     const rows = metricRows({ choiceRt: 0, choiceWrong: 0 }, { ...run, stand: undefined }, baseline)
-    expect(rows.map(([label]) => label)).toEqual(['Choice time', 'Wrong squares'])
+    expect(rows.map(([label]) => label)).toEqual(['Choice time', 'Wrong squares', 'Pulse'])
+  })
+
+  it('says Skipped rather than dropping the pulse row', () => {
+    // The pulse is the one step a person chooses to do or not. A missing row reads as a bug;
+    // "Skipped" reads as a choice.
+    const rows = metricRows({ choiceRt: 0, choiceWrong: 0 }, { ...run, hr: undefined }, baseline)
+    expect(rows.at(-1)).toEqual(['Pulse', 'Skipped'])
+  })
+
+  it('says Skipped when neither run has a pulse', () => {
+    const rows = metricRows({ choiceRt: 0 }, { ...run, hr: undefined }, { ...baseline, hr: undefined })
+    expect(rows.at(-1)).toEqual(['Pulse', 'Skipped'])
+  })
+
+  it('shows the reading, not a change, when only this run has a pulse', () => {
+    // Nothing to compare it with, so a percentage would be a number we cannot honestly state.
+    const rows = metricRows({ choiceRt: 0 }, { ...run, hr: 71.6 }, { ...baseline, hr: undefined })
+    expect(rows.at(-1)).toEqual(['Pulse', '72 bpm'])
+  })
+
+  it('keeps the pulse row last, under the wrong squares', () => {
+    const rows = metricRows({ sway: 1, choiceRt: 0, choiceWrong: 1, hr: 0.5 }, run, baseline)
+    expect(rows.map(([label]) => label)).toEqual(['Body sway', 'Choice time', 'Wrong squares', 'Pulse'])
   })
   it('never prints a raw drift number', () => {
     const rows = metricRows({ sway: 2.345, choiceRt: 1.234, choiceWrong: 2 }, run, baseline)
