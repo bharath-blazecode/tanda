@@ -5,11 +5,17 @@ import { bodyLimit } from 'hono/body-limit'
 import type { Health } from '../shared/contracts'
 import type { Config } from './config'
 import { roomRoutes } from './room'
+import type { RoomStore } from './state'
 import { verdictRoutes } from './verdict'
 
 export const MAX_BODY_BYTES = 4096
 
-export function createApp(config: Config) {
+export type AppDeps = {
+  // Injected at boot when the room is mirrored to Redis; otherwise a plain in-memory store.
+  store?: RoomStore
+}
+
+export function createApp(config: Config, deps: AppDeps = {}) {
   const app = new Hono()
 
   // Every API body is a few numbers and enums; anything larger is junk we should not even parse.
@@ -24,7 +30,7 @@ export function createApp(config: Config) {
   })
 
   app.route('/api', verdictRoutes(config))
-  app.route('/api', roomRoutes(config))
+  app.route('/api', roomRoutes(config, deps.store))
 
   // Unknown API paths answer JSON, never the SPA shell.
   app.all('/api/*', (c) => c.json({ error: 'not_found' }, 404))
