@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { median, NO_CLEAN_TAPS_MS, SCORED_TRIALS, summariseChoice, type ChoiceTrial } from './analyze'
+import { hasCleanTaps, median, NO_CLEAN_TAPS_MS, SCORED_TRIALS, summariseChoice, type ChoiceTrial } from './analyze'
 
 const hit = (ms: number, lit = 0): ChoiceTrial => ({ lit, tapped: lit, ms })
 const miss = (lit = 0): ChoiceTrial => ({ lit, tapped: null, ms: null })
@@ -71,5 +71,19 @@ describe('summariseChoice', () => {
     for (const trials of [[], [miss()], [hit(1)], [wrong(50)]]) {
       expect(summariseChoice(trials).medianMs).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('hasCleanTaps', () => {
+  it('is false for an empty run', () => {
+    expect(hasCleanTaps(summariseChoice([]))).toBe(false)
+  })
+
+  it('is false when every trial was wrong or missed', () => {
+    expect(hasCleanTaps(summariseChoice([wrong(120), miss(), wrong(150)]))).toBe(false)
+  })
+
+  it('is true with one correct tap', () => {
+    expect(hasCleanTaps(summariseChoice([wrong(120), miss(), hit(450)]))).toBe(true)
   })
 })

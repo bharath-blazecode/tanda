@@ -1,0 +1,45 @@
+/* CARD 4. Choice Tap layout. Tokens only, from src/ui/tokens.css. */
+.choice-test {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  flex: 1;
+}
+.choice-test .choice-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s3);
+}
+.choice-test .choice-counter {
+  font: 900 clamp(32px, 9vw, 44px)/1 var(--display);
+  color: var(--housing-ink);
+  white-space: nowrap;
+}
+/* The grid fills most of a phone screen: two rows of tall keys. */
+.choice-test .choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--s3);
+  height: clamp(320px, 62vh, 560px);
+}
+.choice-test .choice-grid .k-key {
+  height: 100%;
+  font-size: clamp(24px, 8vw, 40px);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Big, centred status under the grid. Reserved height so the grid never jumps. */
+.choice-test .choice-status {
+  min-height: 2.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font: 900 clamp(26px, 8vw, 34px)/1.05 var(--display);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--housing-ink);
+}

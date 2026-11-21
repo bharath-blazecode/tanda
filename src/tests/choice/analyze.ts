@@ -57,3 +57,8 @@ export function summariseChoice(trials: ChoiceTrial[]): ChoiceMetrics {
     trials: trials.length,
   }
 }
+
+/** False when every scored trial was a wrong square or a lapse, so there is no real median to show. */
+export function hasCleanTaps(metrics: ChoiceMetrics): boolean {
+  return metrics.wrong + metrics.lapses < metrics.trials
+}

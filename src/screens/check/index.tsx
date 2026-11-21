@@ -113,7 +113,7 @@ export function Check() {
   return (
     <Housing>
       <Plate small serial={`Check\n${step === 'stand' ? '1' : '2'} of 2`} />
-      <Label>{step === 'stand' ? 'Test 1 of 2 · Stand still' : 'Test 2 of 2 · Choice tap'}</Label>
+      {step === 'stand' && <Label>Test 1 of 2 · Stand still</Label>}
       {step === 'stand' ? (
         <StandTest
           onDone={(metrics) => {
@@ -122,7 +122,7 @@ export function Check() {
           }}
         />
       ) : (
-        <ChoiceTest onDone={finish} />
+        <ChoiceTest label="Test 2 of 2 · Choice tap" onDone={finish} />
       )}
       {step === 'stand' && (
         <Key quiet onClick={skipStand}>
