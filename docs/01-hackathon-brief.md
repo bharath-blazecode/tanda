@@ -24,7 +24,6 @@ page. Nothing here is inferred.*
 | **Cost** | Free (Participant / Spectator tickets) |
 | **Scale** | 223 registered on Luma. *(Demos are capped at 90 minutes — at ~4 min a team that's roughly 22 slots, so the field is likely smaller than registrations suggest.)* |
 | **Tooling provided** | Claude Code + Anthropic API access |
-| **Venue wifi** | `Tanda-Guest` / `Guest@Tanda25!` |
 | **Team registration** | `hackathon-teams-vxlk.onrender.com` — one person creates the team, the rest join |
 | **Slack** | `tandahackathon2026.slack.com` · `#team-formation` · `#showcase` |
 
