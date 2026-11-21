@@ -12,8 +12,8 @@ const lines: Record<Verdict, string> = {
   wobbly: "Off your normal. Bodies keep receipts.",
 };
 
-// Card 7 preview uses explicit fixtures. Real run data can be supplied to ResultTicket.
-export function Result() {
+// Card 7 preview with explicit fixtures and the four animations. Open it at /result?preview.
+export function ResultPreview() {
   const [verdict, setVerdict] = useState<Verdict>("tipsy");
   const [replay, setReplay] = useState(0);
   const assessment: Assessment = {
