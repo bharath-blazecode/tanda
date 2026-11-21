@@ -1,13 +1,22 @@
 // Builds the Hono app. Kept separate from index.ts so tests can call routes without a port.
 import { Hono } from 'hono'
 import { serveStatic } from '@hono/node-server/serve-static'
+import { bodyLimit } from 'hono/body-limit'
 import type { Health } from '../shared/contracts'
 import type { Config } from './config'
 import { roomRoutes } from './room'
 import { verdictRoutes } from './verdict'
 
+export const MAX_BODY_BYTES = 4096
+
 export function createApp(config: Config) {
   const app = new Hono()
+
+  // Every API body is a few numbers and enums; anything larger is junk we should not even parse.
+  app.use(
+    '/api/*',
+    bodyLimit({ maxSize: MAX_BODY_BYTES, onError: (c) => c.json({ error: 'payload_too_large' }, 413) }),
+  )
 
   app.get('/api/health', (c) => {
     const body: Health = { status: 'ok', version: config.version, sha: config.sha }

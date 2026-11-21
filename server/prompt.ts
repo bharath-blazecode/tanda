@@ -85,30 +85,69 @@ export function buildUserMessage(req: VerdictRequest): string {
   return `Write the ticket line for this result.\n${lines.join('\n')}`
 }
 
-const BANNED_PHRASES = [
-  'safe to drive',
-  'fine to drive',
-  'ok to drive',
-  'okay to drive',
-  'sober',
-  'legal limit',
-  'blood alcohol',
+// Matched against normalise(text), so punctuation, case and spacing tricks collapse first.
+// Prefixes catch inflections ("driven", "sobriety", "medical"); short or common stems are whole
+// words only so innocent words survive ("back", "careful", "wheelie bin" in a canned line).
+const BANNED_PATTERNS: readonly RegExp[] = [
+  /\bdriv/,
+  /\bdrove/,
+  /\bwheels?\b/,
+  /\bcars?\b/,
+  /\bsober/,
+  /\bsobri/,
+  /\bbac\b/,
+  /\bblood alcohol/,
+  /\blegal/,
+  /\blimit/,
+  /\blicen[cs]e/,
+  /\bdiagnos/,
+  /\bdoctor/,
+  /\bmedic/,
 ]
 
-// Word-boundary patterns for short stems that would otherwise match innocent words ("back", "bacon").
-const BANNED_PATTERNS = [/\bbac\b/i, /\bdiagnos/i, /\bdriv(?:e|ing)/i]
+// With alcohol logged, any word that reads as clearance is out, whatever the verdict.
+const ALCOHOL_PATTERNS: readonly RegExp[] = [
+  /\b(?:fine|safe|okay|ok|alright)\b/,
+  /\ball clear\b/,
+  /\bgood to go\b/,
+  /\bclear to\b/,
+]
 
 const WRAPPING_QUOTES = /^["'`“”‘’«»]+|["'`“”‘’«»]+$/g
+const ZERO_WIDTH = /[​‌‍⁠﻿]/g
+// Any letter or combining mark outside ASCII. Look-alike alphabets (Cyrillic "о" for "o") are the
+// cheap way past a word list, and the voice is plain English. Punctuation such as curly quotes and
+// dashes is not a letter, so it passes here and becomes a space in normalise().
+const NON_ASCII_LETTER = /(?![A-Za-z])[\p{L}\p{M}]/u
 
-export function hasBannedPhrase(text: string): boolean {
-  const lower = text.toLowerCase()
-  return BANNED_PHRASES.some((p) => lower.includes(p)) || BANNED_PATTERNS.some((re) => re.test(text))
+export type FilterOptions = { alcohol?: boolean }
+
+function clean(text: string): string {
+  return text.normalize('NFKC').replace(ZERO_WIDTH, '')
+}
+
+// Lower-case letters and digits separated by single spaces. Runs of single letters are then joined,
+// so "B.A.C." and "s o b e r" read as "bac" and "sober".
+export function normalise(text: string): string {
+  return clean(text)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\b(?:\p{L} )+\p{L}\b/gu, (run) => run.replace(/ /g, ''))
+}
+
+export function hasBannedPhrase(text: string, { alcohol = false }: FilterOptions = {}): boolean {
+  if (NON_ASCII_LETTER.test(clean(text))) return true
+  const norm = normalise(text)
+  if (BANNED_PATTERNS.some((re) => re.test(norm))) return true
+  return alcohol && ALCOHOL_PATTERNS.some((re) => re.test(norm))
 }
 
 // Returns the cleaned line, or null when it must not be printed (the caller falls back to canned).
-export function filterLine(raw: string): string | null {
-  const line = raw.trim().replace(WRAPPING_QUOTES, '').replace(/\s+/g, ' ').trim()
+// `alcohol: true` adds the stricter list, for any request with alcohol logged.
+export function filterLine(raw: string, options: FilterOptions = {}): string | null {
+  const line = clean(raw).trim().replace(WRAPPING_QUOTES, '').replace(/\s+/g, ' ').trim()
   if (line.length === 0 || line.length > MAX_LINE_CHARS) return null
-  if (hasBannedPhrase(line)) return null
+  if (hasBannedPhrase(line, options)) return null
   return line
 }

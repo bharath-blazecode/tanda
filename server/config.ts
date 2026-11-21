@@ -4,13 +4,18 @@ import { readFileSync } from 'node:fs'
 import { z } from 'zod'
 import pkg from '../package.json'
 
+export const VERDICT_MODELS = ['claude-haiku-5-5', 'claude-sonnet-5-5'] as const
+
 const Env = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3333),
   HOST: z.string().default('0.0.0.0'),
   STATIC_DIR: z.string().default('dist'),
   // Without a key the verdict route answers with canned lines. Nothing breaks (D12).
   ANTHROPIC_API_KEY: z.string().optional(),
-  VERDICT_MODEL: z.string().default('claude-haiku-5-5'),
+  // Allowlist: a dearer model would multiply spend on the shared key and break the 150-token budget.
+  VERDICT_MODEL: z
+    .enum(VERDICT_MODELS, { error: `VERDICT_MODEL must be one of: ${VERDICT_MODELS.join(', ')}` })
+    .default('claude-haiku-5-5'),
   VERDICT_ENABLED: z
     .enum(['true', 'false'])
     .default('true')
@@ -26,7 +31,7 @@ export type Config = {
   host: string
   staticDir: string
   anthropicApiKey: string | undefined
-  verdictModel: string
+  verdictModel: (typeof VERDICT_MODELS)[number]
   verdictEnabled: boolean
   roomAdminToken: string | undefined
   version: string
