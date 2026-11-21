@@ -49,33 +49,26 @@ export function Baseline() {
     if (drinks.length > 0) update((current) => ({ ...current, drinks: [...current.drinks, ...drinks] }))
     setStep(firstTest())
   }
-  const [hasPulse, setHasPulse] = useState(false)
+  const [choice, setChoice] = useState<ChoiceMetrics | null>(null)
 
-  // The normal is saved as soon as both tests are through. The pulse (D46) is opt-in from the
-  // saved screen, because it fails often enough on real phones that nobody should meet it unasked.
+  // One pass, in one order: what you had, the tests, the optional pulse, done. Nothing asks
+  // about drinks again once the picker at the start has been answered.
+  //
   // The tapping test may be skipped, but only once the standing test has been recorded: a run
   // with neither is not a reading, and the contract refuses it (shared/contracts.ts).
-  const finish = (taps: ChoiceMetrics | null) => {
+  const finish = (taps: ChoiceMetrics | null, hr: number | null) => {
     update((current) => ({
       ...current,
       baseline: {
-        run: { stand: stand ?? undefined, choice: taps ?? undefined, at: Date.now() },
+        run: {
+          stand: stand ?? undefined,
+          choice: taps ?? undefined,
+          at: Date.now(),
+          ...(hr === null ? {} : { hr, hrSource: 'camera' as const }),
+        },
         clean,
       },
     }))
-    setStep('saved')
-  }
-
-  // A pulse only ever counts when the baseline has one too, which is why it can be added here.
-  const addPulse = (hr: number | null) => {
-    if (hr !== null) {
-      update((current) =>
-        current.baseline
-          ? { ...current, baseline: { ...current.baseline, run: { ...current.baseline.run, hr, hrSource: 'camera' as const } } }
-          : current,
-      )
-      setHasPulse(true)
-    }
     setStep('saved')
   }
 
@@ -127,15 +120,12 @@ export function Baseline() {
             </p>
           )}
         </Sheet>
-        <Key onClick={() => navigate('/demo')}>No drink in hand? Fake it</Key>
-        <Key quiet onClick={() => navigate('/home')}>
-          I will log real drinks
+        <Key style={{ fontSize: 22 }} onClick={() => navigate('/home')}>
+          Done
         </Key>
-        {!hasPulse && (
-          <Key quiet onClick={() => setStep('pulse')}>
-            Add a pulse reading (optional)
-          </Key>
-        )}
+        <Key quiet onClick={() => navigate('/demo')}>
+          Try the demo challenge
+        </Key>
       </Housing>
     )
   }
@@ -178,7 +168,7 @@ export function Baseline() {
       <Plate small serial={`Recording\n${step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
       {step === 'stand' && <Label>Test 1 of 2 · Stand still</Label>}
       {step === 'pulse' ? (
-        <PulseTest label="Optional · Pulse" onDone={addPulse} />
+        <PulseTest label="Optional · Pulse" onDone={(hr) => finish(choice, hr)} />
       ) : step === 'stand' ? (
         <StandTest
           onDone={(metrics) => {
@@ -194,12 +184,19 @@ export function Baseline() {
               : 'Test 2 of 2 · Choice tap'
           }
           onDone={(metrics) => {
-            finish(metrics)
+            setChoice(metrics)
+            setStep('pulse')
           }}
         />
       )}
       {step === 'choice' && stand !== null && (
-        <Key quiet onClick={() => finish(null)}>
+        <Key
+          quiet
+          onClick={() => {
+            setChoice(null)
+            setStep('pulse')
+          }}
+        >
           Skip this test
         </Key>
       )}
