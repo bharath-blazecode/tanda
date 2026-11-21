@@ -1,15 +1,20 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 /** The main button: paper-coloured, thick bottom edge, travels down when pressed.
- *  `quiet` variant: outlined, for secondary actions. */
+ *  `quiet`: outlined, for secondary actions. `lit`: inverted, for Choice Tap. */
 export function Key({
   children,
   quiet = false,
+  lit = false,
   className = '',
   type = 'button',
   ...rest
-}: { children: ReactNode; quiet?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+}: { children: ReactNode; quiet?: boolean; lit?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button type={type} className={`k-key${quiet ? ' k-key--quiet' : ''} ${className}`.trim()} {...rest}>
+    <button
+      type={type}
+      className={`k-key${quiet ? ' k-key--quiet' : ''}${lit ? ' k-key--lit' : ''} ${className}`.trim()}
+      {...rest}
+    >
       {children}
     </button>
   )
