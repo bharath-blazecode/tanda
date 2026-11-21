@@ -1,0 +1,145 @@
+// @vitest-environment jsdom
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import type { MotionReading } from "../../sensors/motion";
+const sensor = vi.hoisted(() => ({
+  listener: null as ((sample: MotionReading) => void) | null,
+  permission: vi.fn(),
+  stop: vi.fn(),
+}));
+vi.mock("../../sensors/motion", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("../../sensors/motion")>();
+  return {
+    ...original,
+    ensurePermission: sensor.permission,
+    subscribe: (listener: (sample: MotionReading) => void) => {
+      sensor.listener = listener;
+      return sensor.stop;
+    },
+  };
+});
+import { useStand } from "./useStand";
+let beeps: number[];
+beforeEach(() => {
+  vi.useFakeTimers();
+  sensor.permission.mockResolvedValue("granted");
+  sensor.stop.mockReset();
+  sensor.listener = null;
+  beeps = [];
+  class AudioMock {
+    state = "running";
+    currentTime = 0;
+    destination = {};
+    resume = vi.fn().mockResolvedValue(undefined);
+    close = vi.fn().mockResolvedValue(undefined);
+    createGain() {
+      return {
+        gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+        connect() {},
+        disconnect() {},
+      };
+    }
+    createOscillator() {
+      const frequency = { value: 0 };
+      return {
+        frequency,
+        connect() {},
+        disconnect() {},
+        start() {
+          beeps.push(frequency.value);
+        },
+        stop() {},
+        onended: null,
+      };
+    }
+  }
+  vi.stubGlobal("AudioContext", AudioMock);
+});
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+function emit() {
+  const t = performance.now() / 1000;
+  sensor.listener?.({
+    t,
+    rotation: { x: Math.sin(t * 3), y: Math.cos(t * 4), z: 0 },
+    acceleration: { x: 0, y: 0, z: 0 },
+    gravity: { x: 0, y: 9.81, z: 0 },
+  });
+}
+it("finishes a 15 second capture after countdown with three countdown beeps and start/end beeps", async () => {
+  const complete = vi.fn();
+  const { result } = renderHook(() => useStand(complete));
+  await act(async () => {
+    result.current.start();
+  });
+  const feed = setInterval(emit, 1000 / 60);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(19_000);
+  });
+  clearInterval(feed);
+  expect(result.current.phase).toBe("done");
+  expect(result.current.reading?.metrics.valid).toBe(true);
+  expect(complete).toHaveBeenCalledOnce();
+  expect(beeps).toEqual([660, 660, 660, 990, 990]);
+  expect(sensor.stop).toHaveBeenCalled();
+});
+it("reports permission denial and a granted permission without readings", async () => {
+  sensor.permission.mockResolvedValueOnce("denied");
+  const { result } = renderHook(() => useStand());
+  await act(async () => {
+    result.current.start();
+  });
+  expect(result.current.phase).toBe("error");
+  expect(result.current.error).toContain("denied");
+  await act(async () => {
+    result.current.start();
+    await vi.advanceTimersByTimeAsync(1100);
+  });
+  expect(result.current.error).toContain("no motion readings");
+});
+it("cancels a pending permission response without starting a subscription", async () => {
+  let resolve!: (value: string) => void;
+  sensor.permission.mockReturnValueOnce(
+    new Promise<string>((done) => {
+      resolve = done;
+    }),
+  );
+  const { result } = renderHook(() => useStand());
+  act(() => result.current.start());
+  act(() => result.current.abort());
+  await act(async () => resolve("granted"));
+  expect(sensor.listener).toBeNull();
+  expect(result.current.phase).toBe("intro");
+});
+it("discards capture when the page is hidden and detaches the sensor", async () => {
+  const complete = vi.fn();
+  const { result } = renderHook(() => useStand(complete));
+  await act(async () => {
+    result.current.start();
+  });
+  const feed = setInterval(emit, 1000 / 60);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5000);
+  });
+  expect(result.current.phase).toBe("running");
+  act(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      value: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  clearInterval(feed);
+  expect(result.current.phase).toBe("error");
+  expect(result.current.reading).toBeNull();
+  expect(complete).not.toHaveBeenCalled();
+  expect(sensor.stop).toHaveBeenCalled();
+  Object.defineProperty(document, "hidden", {
+    configurable: true,
+    value: false,
+  });
+});
