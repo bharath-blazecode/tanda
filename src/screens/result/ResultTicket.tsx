@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import type { Assessment } from "../../../shared/contracts";
 import {
@@ -15,6 +16,7 @@ import {
   Label,
 } from "../../ui";
 import { ResultBird } from "./ResultBird";
+import { canShareReceipt, saveReceipt, shareReceipt } from "./share";
 
 export type ResultTicketProps = {
   assessment: Assessment;
@@ -57,6 +59,35 @@ export function ResultTicket({
   // The data producer owns the verdict. The screen renders the supplied assessment.
   // Keep the fixed safety line visible for every Tipsy presentation as well.
   const safety = assessment.showSafetyLine || assessment.verdict === "tipsy";
+  // Saving always works. Sharing an image does not exist in every browser, so it is only
+  // offered where it does rather than failing in someone's hand.
+  const [busy, setBusy] = useState<"save" | "share" | null>(null);
+  const [note, setNote] = useState("");
+  const receipt = {
+    readingId,
+    timestamp,
+    name,
+    tags,
+    rows,
+    verdict: assessment.verdict,
+    line,
+    // The safety line is on the shared image under exactly the rule it is on the screen (D19):
+    // a receipt that leaves the phone must not be the one copy that drops it.
+    safety,
+    nudge: nudges[assessment.nudge],
+  };
+  const run = async (what: "save" | "share") => {
+    setBusy(what);
+    setNote("");
+    try {
+      const outcome = what === "save" ? await saveReceipt(receipt) : await shareReceipt(receipt);
+      if (outcome === "saved") setNote("Saved to your downloads.");
+      else if (outcome === "unavailable") setNote("This browser cannot make the image.");
+      else setNote("");
+    } finally {
+      setBusy(null);
+    }
+  };
   return (
     <div className="result-shell">
       <Housing>
@@ -139,6 +170,37 @@ export function ResultTicket({
             Home
           </Link>
         </nav>
+        {!sample && (
+          <>
+            <nav className="k-keys k-keys--2" aria-label="Keep this reading">
+              <button
+                type="button"
+                className="k-key k-key--quiet result-link"
+                disabled={busy !== null}
+                onClick={() => void run("save")}
+              >
+                {busy === "save" ? "Saving" : "Save receipt"}
+              </button>
+              {canShareReceipt() ? (
+                <button
+                  type="button"
+                  className="k-key k-key--quiet result-link"
+                  disabled={busy !== null}
+                  onClick={() => void run("share")}
+                >
+                  {busy === "share" ? "Sharing" : "Share"}
+                </button>
+              ) : (
+                <span />
+              )}
+            </nav>
+            {note && (
+              <p className="result-fine" role="status" aria-live="polite">
+                {note}
+              </p>
+            )}
+          </>
+        )}
         <p className="result-fine">A toy, not a test. For adults.</p>
       </Housing>
     </div>
