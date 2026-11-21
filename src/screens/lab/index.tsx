@@ -6,6 +6,7 @@ import type { ChoiceMetrics, StandMetrics } from '../../../shared/contracts'
 import { ChoiceTest } from '../../tests/choice'
 import { StandTest } from '../../tests/stand'
 import { Placeholder } from '../placeholder'
+import { Kit } from './kit'
 
 const routes = ['/', '/setup', '/baseline', '/home', '/log', '/check', '/result', '/demo', '/band', '/room']
 
@@ -45,5 +46,5 @@ export function LabChoice() {
 }
 
 export function LabKit() {
-  return <Placeholder title="UI kit" card="Card 2" spec="docs/design/DESIGN.md, Components" />
+  return <Kit />
 }

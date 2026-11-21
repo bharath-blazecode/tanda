@@ -26,6 +26,9 @@
   --s5: 24px;
   --s6: 36px;
 
+  --z: 7px; /* the ticket's zigzag tooth */
+  --radius: 6px; /* the housing corner, and nothing else */
+
   color-scheme: dark;
 }
 
