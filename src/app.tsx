@@ -11,9 +11,12 @@ import { Log } from './screens/log'
 import { Result } from './screens/result'
 import { Room } from './screens/room'
 import { Setup } from './screens/setup'
+import { RoomReporter } from './room-reporter'
 
 export function App() {
   return (
+    <>
+    <RoomReporter />
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/setup" element={<Setup />} />
@@ -33,5 +36,6 @@ export function App() {
       <Route path="/lab/kit" element={<LabKit />} />
       <Route path="*" element={<Landing />} />
     </Routes>
+    </>
   )
 }

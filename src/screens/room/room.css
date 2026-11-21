@@ -1,7 +1,8 @@
 /* CARD 9. The room board's own stylesheet.
-   The one screen allowed one for now (screens normally never style themselves, D28): the shared kit in
-   src/ui does not exist yet. Only token variables from src/ui/tokens.css; no colour, font or hex of its own.
-   Sizes are in container units (--u is 1% of the frame width) so the board scales with the projector. */
+   The one screen allowed one (screens normally never style themselves, D28): a 16:9 projector layout
+   is not something the shared kit covers. Only token variables from src/ui/tokens.css; no colour,
+   font or hex of its own. Sizes are in container units (--u is 1% of the frame width) so the board
+   scales with the projector. */
 
 .room {
   min-height: 100dvh;
@@ -21,13 +22,14 @@
   border: 1px solid var(--housing-hi);
 }
 
+/* Join and tallies left, the live list in the middle (it is what moves), readings right. */
 .room-board {
   --u: 1cqw;
   height: 100%;
   display: grid;
-  grid-template-columns: 23fr 47fr 30fr;
+  grid-template-columns: 22fr 44fr 34fr;
   gap: calc(var(--u) * 2);
-  padding: calc(var(--u) * 2.2);
+  padding: calc(var(--u) * 2);
   font: 400 calc(var(--u) * 1.4) / 1.3 var(--mono);
   color: var(--housing-ink);
 }
@@ -64,14 +66,19 @@
   color: var(--stamp);
 }
 
-/* ---------- left: join ---------- */
+/* ---------- left: join, then the room mix ---------- */
 
-.room-join {
-  align-self: start;
+.room-left {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--u) * 1);
-  padding: calc(var(--u) * 1.6);
+  gap: calc(var(--u) * 1.2);
+}
+
+.room-join {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.8);
+  padding: calc(var(--u) * 1.4);
   background: var(--receipt);
   color: var(--ink);
 }
@@ -91,52 +98,18 @@
 }
 
 .room-join-h {
-  font: 900 calc(var(--u) * 3.4) / 0.95 var(--display);
+  font: 900 calc(var(--u) * 3) / 0.95 var(--display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .room-url {
-  font: 700 calc(var(--u) * 1.5) / 1.2 var(--mono);
+  font: 700 calc(var(--u) * 1.4) / 1.2 var(--mono);
   overflow-wrap: anywhere;
 }
 
-/* ---------- middle: voice, trace, tallies ---------- */
-
-.room-mid {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--u) * 1.4);
-}
-
-.room-voice {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--u) * 1.2);
-}
-
-.room-badge-slot {
-  flex: none;
-  width: calc(var(--u) * 7);
-  aspect-ratio: 1;
-}
-
-.room-say {
-  min-width: 0;
-  font: 900 calc(var(--u) * 2.8) / 1.02 var(--display);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  text-wrap: balance;
-}
-
-.room-trace-slot {
-  flex: 1;
-  min-height: calc(var(--u) * 10);
-  border: 1px solid var(--housing-hi);
-}
-
 .room-total {
-  font: 700 calc(var(--u) * 1.4) / 1 var(--mono);
+  font: 700 calc(var(--u) * 1.3) / 1 var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--housing-dim);
@@ -150,29 +123,142 @@
 
 .room-tally {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: calc(var(--u) * 1);
+  grid-template-columns: repeat(2, 1fr);
+  gap: calc(var(--u) * 0.8);
 }
 
+/* Number above the word: two to a row is too narrow to put them side by side. */
 .room-tally li {
   min-width: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: calc(var(--u) * 0.5);
-  padding: calc(var(--u) * 0.8) calc(var(--u) * 0.9);
+  flex-direction: column;
+  gap: calc(var(--u) * 0.3);
+  padding: calc(var(--u) * 0.7) calc(var(--u) * 0.9);
   background: var(--chart);
   color: var(--ink);
 }
 
 .room-tally-n {
-  font-size: calc(var(--u) * 3.8);
+  font-size: calc(var(--u) * 3.6);
   line-height: 0.9;
 }
 
 .room-tally .room-verdict {
-  font-size: calc(var(--u) * 1.6);
+  font-size: calc(var(--u) * 1.5);
   letter-spacing: 0.06em;
+}
+
+/* ---------- middle: who is in the lab right now, on chart paper ---------- */
+
+.room-live {
+  display: flex;
+}
+
+.room-live-in {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1);
+  padding: calc(var(--u) * 1.4);
+}
+
+.room-live-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.4);
+}
+
+/* Sizes the kit's paper badge for the projector; its look stays the kit's. */
+.room-live-head > .k-badge {
+  flex: none;
+  width: calc(var(--u) * 6.5);
+}
+
+.room-live-count {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.2);
+}
+
+.room-live-n {
+  font-size: calc(var(--u) * 8);
+  line-height: 0.85;
+}
+
+.room-live-h {
+  font: 900 calc(var(--u) * 1.9) / 1 var(--display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.room-say {
+  font: 900 calc(var(--u) * 2.2) / 1.02 var(--display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.room-people {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: calc(var(--u) * 5.4);
+  align-content: start;
+  gap: calc(var(--u) * 0.8);
+  overflow: hidden;
+}
+
+.room-person {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(var(--u) * 0.2);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 0.9);
+  background: var(--receipt);
+  border: 1px solid var(--ink);
+  /* A new arrival, or a new stage, prints in like a ticket. */
+  animation: room-print 0.5s steps(6) both;
+}
+
+.room-person-name,
+.room-person-doing {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-person-name {
+  font: 900 calc(var(--u) * 2) / 1.05 var(--display);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.room-person-doing {
+  font: 700 calc(var(--u) * 1.3) / 1.2 var(--mono);
+  color: var(--ink-soft);
+}
+
+.room-person-more {
+  background: none;
+  border-style: dashed;
+  animation: none;
+}
+
+.room-live-empty {
+  font: 700 calc(var(--u) * 1.8) / 1.3 var(--mono);
+  color: var(--ink-soft);
+}
+
+@keyframes room-print {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
 }
 
 /* ---------- right: feed and top lists ---------- */
@@ -180,7 +266,7 @@
 .room-side {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--u) * 1);
+  gap: calc(var(--u) * 0.8);
   overflow: hidden;
 }
 
@@ -210,6 +296,7 @@
   background: var(--receipt);
   color: var(--ink);
   font: 700 calc(var(--u) * 1.4) / 1.2 var(--mono);
+  animation: room-print 0.5s steps(6) both;
 }
 
 .room-nick {
@@ -295,13 +382,12 @@
     max-width: calc(var(--u) * 26);
   }
 
-  .room-trace-slot {
-    flex: none;
-    height: calc(var(--u) * 12);
+  .room-tally {
+    grid-template-columns: repeat(4, 1fr);
   }
 
-  .room-tally {
-    grid-template-columns: repeat(2, 1fr);
+  .room-people {
+    flex: none;
   }
 
   .room-reconnecting {
@@ -311,7 +397,7 @@
   }
 }
 
-/* Nothing here animates today; this keeps it that way if the shared kit adds motion inside. */
+/* The print-in and the mascot's moods stop for anyone who asked for less motion. */
 @media (prefers-reduced-motion: reduce) {
   .room *,
   .room *::before,
