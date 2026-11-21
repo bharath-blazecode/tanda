@@ -3,7 +3,15 @@
 **Team workspace for the Tanda AI Hackathon 2026 — Brisbane, 20–21 November.**
 Theme: *Bring an idea to life.* Research, strategy, idea selection and the build plan live here.
 
-**🎯 We're building [`BUZZ CHECK`](docs/08-three-ideas.md)** — a body-drift recorder. Log a drink, hold still, and find out how far you've moved from your own normal. Three sensor channels: phone accelerometer, camera, and a smart ring over Bluetooth.
+**🎯 We're building [`BUZZ CHECK`](docs/12-current-plan.md)** — a body drift recorder. Log a drink, hold still, find out how far you've moved from your own normal. Steady / Wired / Tipsy / Wobbly, printed on a receipt, signed by a bin chicken.
+
+| Tier | What | Status |
+|---|---|---|
+| **1** | Phone sensors — sway, tremor, tap | ✅ **Building** · [artifact](https://claude.ai/artifact/PxjfUo9T94tEkLCm1eNk3z) |
+| **2** | The lens — camera pulse + magnifier | ✅ **Building** · [artifact](https://claude.ai/artifact/1S1tCjbbQxQF2u7MS4BimT) |
+| **3** | The ring — HR, HRV, SpO₂ | ⏸️ **On hold** — team verifying feasibility · [dossier](https://claude.ai/artifact/R3XmooEsVLgv4nF1oQzKMM) |
+
+🔴 **Neither the camera nor the motion sensors work inside the artifact viewer.** Hosting isn't a finishing touch, it's the project — see [`docs/12`](docs/12-current-plan.md) §4.
 
 📋 **[Team plan page](https://claude.ai/artifact/9XfYmYj56wfpLVB24GecEj)** — the build plan with a live countdown, tickable gates, the pre-mortem and the demo script. *(Ask Bharath for access.)*
 
@@ -51,8 +59,25 @@ Read them in order; later ones correct earlier ones where they disagree.
 | **[`docs/05-merged-ideas.md`](docs/05-merged-ideas.md)** | Idea pool 2 audited for uniqueness, and the merge that folds four of them into one. |
 | **[`docs/06-patient-zero.md`](docs/06-patient-zero.md)** | A crowd-scale merge of 8 of the 12 ideas. Superseded by `07`; kept for the hardware verdict. |
 | **[`docs/07-instruments.md`](docs/07-instruments.md)** | Where the earlier docs over-read the brief, the real prizes and schedule, and five non-game instrument ideas. |
-| **[`docs/08-three-ideas.md`](docs/08-three-ideas.md)** | 🎯 **The pick.** Why our three ideas are one instrument, the wearable feasibility verdicts, and the science behind Wired vs Tipsy. |
+| **[`docs/08-three-ideas.md`](docs/08-three-ideas.md)** | Why the three ideas are one instrument, and the wearable feasibility verdicts. |
+| **[`docs/09-the-three-ideas.md`](docs/09-the-three-ideas.md)** | 📋 **The three ideas in full detail** — what each is, how it's built, its honest risks, and how they stack. Not yet prioritised. |
+| **[`docs/10-biosignals.md`](docs/10-biosignals.md)** | 🔬 **What actually detects alcohol and caffeine**, and what a local agent can honestly do. Hardware section superseded by `11`. |
+| **[`docs/11-the-ring.md`](docs/11-the-ring.md)** | 💍 **The Kmart ring** — which to buy, the real metric list (JRing/56ff), the standard-BLE shortcut, and the things that will bite you. *(Tier 3, on hold.)* |
+| **[`docs/12-current-plan.md`](docs/12-current-plan.md)** | 🎯 **Where we are now.** Both artifacts described in detail, what's on hold, the hosting problem, and the gates for the rest of today. |
 | **[`IDEA`](IDEA)** | The locked idea in one sentence, plus the go/no-go checklist. |
+
+## What's left today
+
+Working backwards from the **16:30** deadline. Full version in [`docs/12`](docs/12-current-plan.md) §6.
+
+| Time | Gate |
+|---|---|
+| **11:30** | 🚨 Public HTTPS URL live. Free host — **don't block on the domain.** |
+| **12:30** | Real motion on a real iPhone, over mobile data |
+| **13:30** | 🔒 Hard feature freeze. Both tiers behind one link |
+| **14:30** | Ten people, their own phones, iOS + Android |
+| **15:00** | Slides done, first rehearsal on a stopwatch |
+| **16:00** | **Post the link.** Keep polishing behind the same URL |
 
 ## The strategy in short
 
@@ -77,7 +102,7 @@ Full reasoning and counter-arguments: `docs/02` §3 and §5, `docs/07` §1, `doc
 - **Web Bluetooth does not exist on iOS Safari** — so on any iPhone — or in Firefox. The crowd's phones cannot read a wearable; the ring is read from laptop Chrome or Android.
 - **Mi Band 8 is a dead end.** Gadgetbridge: third-party real-time heart rate is not supported on Xiaomi protobuf bands *even with the vendor app*. Auth token needs extracting from Mi Fitness logs, often from a rooted device.
 - **Mi Band 10 has a "Share HR" broadcast mode** that may expose the standard BLE Heart Rate Service. One 15-minute test, then move on either way.
-- **The Kmart (Anko) ring is a rebadged Colmi/Yawell QRing** — unencrypted, publicly documented protocol, HR + SpO2 + HRV, with an existing Web Bluetooth client. Kmart at 10 James St is ~500 m from the venue.
+- **The Kmart (Anko) ring is a JRing/56ff device**, $29, all sizes the same hardware. HRV ✅, live HR ✅, SpO₂ ✅, blood pressure ✅, **skin temperature ❌**. It advertises the **standard BLE Heart Rate Service `0x180D`**, so live BPM in the browser is ~20 lines. Kmart at 10 James St is ~500 m from the venue.
 - **Cheap ring HR can be ~30 bpm off.** Fine, because we measure drift from your own baseline, not absolute values.
 - **`DeviceMotionEvent.requestPermission()` must be called from a user gesture on iOS 13+**, or motion silently does nothing.
 - **Torch control is unsupported on Safari everywhere**; `navigator.vibrate` is Android-only. Neither can carry a signal.
