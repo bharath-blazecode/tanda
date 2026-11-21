@@ -32,6 +32,8 @@ export type ResultTicketProps = {
   tags?: string[];
   /** One extra line under the rows: the demo's guess at the handicap. */
   extra?: string;
+  /** What was logged today, in words. The label behind the verdict, never a measurement. */
+  logged?: string;
   /** Where "Run again" goes. A demo reading goes back to the demo. */
   againTo?: string;
 };
@@ -54,6 +56,7 @@ export function ResultTicket({
   name,
   tags = [],
   extra,
+  logged,
   againTo = "/check",
 }: ResultTicketProps) {
   // The data producer owns the verdict. The screen renders the supplied assessment.
@@ -139,6 +142,7 @@ export function ResultTicket({
           )}
           {tags.length > 0 && <p className="result-tag">{tags.join(" · ")}</p>}
           {rows.length > 0 && <Rows items={rows} />}
+          {logged && <p className="result-extra">Logged today · {logged}</p>}
           {extra && <p className="result-extra">{extra}</p>}
           {tags.length === 0 && assessment.partial && (
             <p className="result-tag">Partial reading · Stand Still skipped</p>

@@ -3,10 +3,11 @@
 // same ticket again with no network call (the bird's line was saved with the result).
 import { useRef } from 'react'
 import { Navigate, useLocation } from 'react-router'
+import { drinksToday } from '../../store/day'
 import { load } from '../../store/local'
 import { InkFilter } from '../../ui'
 import { guessFromDrift, guessLine, isDemoHandicap } from '../demo/guess'
-import { metricRows, printedAt, serialFor, ticketTags } from './format'
+import { describeDrinks, metricRows, printedAt, serialFor, ticketTags } from './format'
 import { ResultPreview } from './Preview'
 import { ResultTicket } from './ResultTicket'
 import './result.css'
@@ -43,6 +44,7 @@ export function Result() {
         timestamp={printedAt(run.at)}
         name={stored.nickname}
         tags={ticketTags({ mode, assessment, baselineClean: baseline.clean })}
+        logged={describeDrinks(drinksToday(stored.drinks, run.at))}
         extra={guess}
         againTo={mode === 'demo' ? '/demo' : '/check'}
       />

@@ -3,7 +3,7 @@
 // so walking away mid-way leaves no half-baseline behind.
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import type { ChoiceMetrics, StandMetrics } from '../../../shared/contracts'
+import type { ChoiceMetrics, DrinkKind, StandMetrics } from '../../../shared/contracts'
 import { ChoiceTest } from '../../tests/choice'
 import { PulseTest } from '../../tests/pulse'
 import { StandTest } from '../../tests/stand'
@@ -12,46 +12,67 @@ import { update } from '../../store/local'
 import { isQuickDemo } from '../../store/quick'
 import { Housing, Key, Keys, Label, Plate, Sheet } from '../../ui'
 
-type Step = 'clean' | 'stand' | 'choice' | 'pulse' | 'saved'
+type Step = 'clean' | 'what' | 'stand' | 'choice' | 'pulse' | 'saved'
+
+const DRINKS: { kind: DrinkKind; label: string }[] = [
+  { kind: 'coffee', label: 'Coffee' },
+  { kind: 'energy', label: 'Energy drink' },
+  { kind: 'beer', label: 'Beer' },
+  { kind: 'wine', label: 'Wine' },
+  { kind: 'spirit', label: 'Spirit' },
+]
+const NONE: Record<DrinkKind, number> = { coffee: 0, energy: 0, beer: 0, wine: 0, spirit: 0 }
 
 /** Setup found no motion: go straight to Choice Tap rather than mount Stand Still to stall. */
 const firstTest = (): Step => (getMotionAvailability() === 'unavailable' ? 'choice' : 'stand')
 
 export function Baseline() {
   const navigate = useNavigate()
-  // Quick demo skips the question and the tapping test: straight to standing still. It needs
-  // motion to have anything to record, so without it this is the full flow.
+  // Quick demo skips the questions, the tapping test and the pulse: straight to standing still.
+  // It needs motion to have anything to record, so without it this is the full flow.
   const quick = isQuickDemo() && getMotionAvailability() !== 'unavailable'
   const [step, setStep] = useState<Step>(quick ? 'stand' : 'clean')
   const [clean, setClean] = useState(true)
   const [stand, setStand] = useState<StandMetrics | null>(null)
-  const [hasPulse, setHasPulse] = useState(false)
+  const [counts, setCounts] = useState<Record<DrinkKind, number>>(NONE)
+  const total = Object.values(counts).reduce((a, b) => a + b, 0)
 
-  // The normal is saved as soon as both tests are through. The pulse (D46) is opt-in from the
-  // saved screen, because it fails often enough on real phones that nobody should meet it unasked.
+  /**
+   * Write what was already drunk before the tests, so the label is right from the first reading
+   * rather than being filled in afterwards.
+   *
+   * They are logged at the current time because a Drink carries only `at`, with no "how long
+   * ago". That makes the caffeine curve read slightly high for something drunk hours earlier,
+   * which errs toward saying more is on board rather than less.
+   */
+  const logThenContinue = () => {
+    const at = Date.now()
+    const drinks = DRINKS.flatMap(({ kind }) =>
+      Array.from({ length: counts[kind] }, (_, i) => ({ kind, at: at - i })),
+    )
+    if (drinks.length > 0) update((current) => ({ ...current, drinks: [...current.drinks, ...drinks] }))
+    setStep(firstTest())
+  }
+  const [choice, setChoice] = useState<ChoiceMetrics | null>(null)
+
+  // One pass, in one order: what you had, the tests, the optional pulse, done. Nothing asks
+  // about drinks again once the picker at the start has been answered.
+  //
   // The tapping test may be skipped, but only once the standing test has been recorded: a run
   // with neither is not a reading, and the contract refuses it (shared/contracts.ts).
-  const finish = (taps: ChoiceMetrics | null, stood: StandMetrics | null = stand) => {
+  const finish = (taps: ChoiceMetrics | null, hr: number | null, stood: StandMetrics | null = stand) => {
     update((current) => ({
       ...current,
       baseline: {
-        run: { stand: stood ?? undefined, choice: taps ?? undefined, at: Date.now() },
+        run: {
+          stand: stood ?? undefined,
+          choice: taps ?? undefined,
+          at: Date.now(),
+          ...(hr === null ? {} : { hr, hrSource: 'camera' as const }),
+        },
         clean,
       },
     }))
-    setStep('saved')
-  }
-
-  // A pulse only ever counts when the baseline has one too, which is why it can be added here.
-  const addPulse = (hr: number | null) => {
-    if (hr !== null) {
-      update((current) =>
-        current.baseline
-          ? { ...current, baseline: { ...current.baseline, run: { ...current.baseline.run, hr, hrSource: 'camera' as const } } }
-          : current,
-      )
-      setHasPulse(true)
-    }
     setStep('saved')
   }
 
@@ -79,7 +100,7 @@ export function Baseline() {
             style={{ fontSize: 22 }}
             onClick={() => {
               setClean(false)
-              setStep(firstTest())
+              setStep('what')
             }}
           >
             Already had some
@@ -103,13 +124,43 @@ export function Baseline() {
             </p>
           )}
         </Sheet>
-        <Key onClick={() => navigate('/demo')}>No drink in hand? Fake it</Key>
-        <Key quiet onClick={() => navigate('/home')}>
-          I will log real drinks
+        <Key style={{ fontSize: 22 }} onClick={() => navigate('/home')}>
+          Done
         </Key>
-        {!hasPulse && (
-          <Key quiet onClick={() => setStep('pulse')}>
-            Add a pulse reading (optional)
+        <Key quiet onClick={() => navigate('/demo')}>
+          Try the demo challenge
+        </Key>
+      </Housing>
+    )
+  }
+
+  if (step === 'what') {
+    return (
+      <Housing>
+        <Plate small serial={'Setup\nWhat you had'} />
+        <Sheet grow>
+          <Label paper>Before we start</Label>
+          <h2>What have you had?</h2>
+          <p className="k-small">Tap one for each. This is only used to label the reading.</p>
+          <div style={{ display: 'grid', gap: 'var(--s3)', marginTop: 'var(--z)' }}>
+            {DRINKS.map(({ kind, label }) => (
+              <Key
+                key={kind}
+                style={{ fontSize: 20 }}
+                onClick={() => setCounts((c) => ({ ...c, [kind]: c[kind] + 1 }))}
+              >
+                {label}
+                {counts[kind] > 0 ? ` · ${counts[kind]}` : ''}
+              </Key>
+            ))}
+          </div>
+        </Sheet>
+        <Key style={{ fontSize: 22 }} onClick={logThenContinue}>
+          {total > 0 ? `Start with ${total}` : 'Start'}
+        </Key>
+        {total > 0 && (
+          <Key quiet onClick={() => setCounts(NONE)}>
+            Clear
           </Key>
         )}
       </Housing>
@@ -121,13 +172,13 @@ export function Baseline() {
       <Plate small serial={`Recording\n${quick ? 'Quick demo' : step === 'stand' ? '1 of 2' : step === 'choice' ? '2 of 2' : 'Optional'}`} />
       {step === 'stand' && <Label>{quick ? 'Your normal · Stand still' : 'Test 1 of 2 · Stand still'}</Label>}
       {step === 'pulse' ? (
-        <PulseTest label="Optional · Pulse" onDone={addPulse} />
+        <PulseTest label="Optional · Pulse" onDone={(hr) => finish(choice, hr)} />
       ) : step === 'stand' ? (
         <StandTest
           onDone={(metrics) => {
             setStand(metrics)
             // Quick demo: the standing test alone is the normal. Passed in, since state has not landed yet.
-            if (quick) finish(null, metrics)
+            if (quick) finish(null, null, metrics)
             else setStep('choice')
           }}
         />
@@ -139,12 +190,19 @@ export function Baseline() {
               : 'Test 2 of 2 · Choice tap'
           }
           onDone={(metrics) => {
-            finish(metrics)
+            setChoice(metrics)
+            setStep('pulse')
           }}
         />
       )}
       {step === 'choice' && stand !== null && (
-        <Key quiet onClick={() => finish(null)}>
+        <Key
+          quiet
+          onClick={() => {
+            setChoice(null)
+            setStep('pulse')
+          }}
+        >
           Skip this test
         </Key>
       )}

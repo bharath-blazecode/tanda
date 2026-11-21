@@ -47,7 +47,8 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
-.k-plate__serial { text-align: right; }
+/* A touch bigger than a plain label; tighter tracking keeps the same width. */
+.k-plate__serial { text-align: right; font-size: 12px; letter-spacing: .08em; }
 
 .k-plate--small .k-plate__name { font-size: 24px; }
 .k-plate--small .k-plate__mark { width: 36px; height: 36px; }
