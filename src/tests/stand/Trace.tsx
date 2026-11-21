@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { StandAnalysis } from "./analyze";
+import { CAPTURE_SECONDS, SETTLE_SECONDS, type StandAnalysis } from "./analyze";
 import { ChartWindow } from "../../ui";
 export function Trace({
   reading,
@@ -80,7 +80,9 @@ export function Trace({
           <span className="baseline">Blue · previous run</span>
         )}
       </span>
-      <span className="axis">2s settling excluded · 13s measured</span>
+      <span className="axis">
+        {SETTLE_SECONDS}s settling excluded · {CAPTURE_SECONDS - SETTLE_SECONDS}s measured
+      </span>
     </ChartWindow>
   );
 }

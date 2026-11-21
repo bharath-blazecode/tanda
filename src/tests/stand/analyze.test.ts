@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { analyze } from "./analyze";
 import type { MotionReading } from "../../sensors/motion";
 function capture(hz = 60): MotionReading[] {
-  return Array.from({ length: 15 * hz }, (_, index) => {
+  return Array.from({ length: 10 * hz }, (_, index) => {
     const t = index / hz;
     return {
       t,
@@ -21,14 +21,15 @@ function capture(hz = 60): MotionReading[] {
   });
 }
 describe("Stand Still analysis", () => {
-  it("returns finite sway and a 13 second trace from a 15 second capture", () => {
+  it("returns finite sway and a 8 second trace from a 10 second capture", () => {
     const result = analyze(capture());
     expect(result.metrics.valid).toBe(true);
     expect(result.metrics.hz).toBeCloseTo(60);
     expect(result.metrics.swayRms).toBeGreaterThan(0.5);
     expect(result.metrics.swayRms).toBeLessThan(1.1);
     expect(result.trace[0].t).toBeGreaterThanOrEqual(2);
-    expect(result.trace.at(-1)!.t).toBeLessThan(15);
+    expect(result.trace.at(-1)!.t).toBeLessThan(10);
+    expect(result.trace.at(-1)!.t - result.trace[0].t).toBeCloseTo(8, 1);
   });
   it("is stable across 30 and 60 Hz inputs", () => {
     expect(
@@ -53,6 +54,7 @@ describe("Stand Still analysis", () => {
   });
   it("rejects interruptions and disconnected segments", () => {
     expect(analyze(capture().slice(0, 200)).metrics.valid).toBe(false);
+    expect(analyze(capture().slice(0, 9 * 60)).metrics.valid).toBe(false);
     expect(
       analyze(capture().filter((sample) => sample.t < 5 || sample.t > 7))
         .metrics.valid,

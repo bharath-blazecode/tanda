@@ -5,7 +5,7 @@ import {
   type MotionReading,
   type Vector,
 } from "../../sensors/motion";
-export const CAPTURE_SECONDS = 15;
+export const CAPTURE_SECONDS = 10;
 export const SETTLE_SECONDS = 2;
 export type StandAnalysis = {
   metrics: StandMetrics;
@@ -36,7 +36,7 @@ export function analyze(samples: readonly MotionReading[]): StandAnalysis {
     reason: null,
   };
   const fail = (reason: string) => ({ ...result, reason });
-  if (samples.length < 2 || samples.at(-1)!.t - samples[0].t < 14.5)
+  if (samples.length < 2 || samples.at(-1)!.t - samples[0].t < CAPTURE_SECONDS - 0.5)
     return fail("Capture interrupted. Start again.");
   const origin = samples[0].t;
   const settled = samples.filter(

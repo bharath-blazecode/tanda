@@ -21,7 +21,7 @@ Motion permission and audio initialization start directly inside the Start butto
 
 ## Capture and analysis
 
-The user requested a **15-second total capture**, overriding the older 20-second screen specification. Three countdown beeps precede capture. Separate start and end beeps bracket capture. The first 2 seconds are settling time, leaving 13 seconds for metrics and the replay.
+The user requested a **10-second total capture**, overriding the older 20-second screen specification. Three countdown beeps precede capture. Separate start and end beeps bracket capture. The first 2 seconds are settling time, leaving 8 seconds for metrics and the replay.
 
 The analyzer resamples timestamped readings and applies a 0.2–3 Hz first-order high-pass/low-pass cascade to each tilt axis. It filters the settling samples too, then excludes them from RMS calculation. Gyroscope beta and gamma are preferred. Acceleration x and y form the fallback. The two source types have different units and must not be compared against each other.
 
@@ -36,6 +36,6 @@ Missing readings, gaps over 0.5 seconds, interrupted captures, large linear acce
 - The user reported a successful iPhone test of the standalone lab on 21 November 2026. The subsequent scaffold/UI integration still needs a phone retest. Phone model, browser, numeric readings, and silent-switch behavior have not yet been recorded.
 - Android physical verification remains pending.
 
-On each phone, confirm permission/data access, all countdown/start/end beeps, 15 seconds of capture, a finite sway value, measured Hz and trace replay. Then check retry, cancel, screen locking, and backgrounding. Record browser and OS versions, sensor source, sample rate and whether the beeps work with the silent switch enabled.
+On each phone, confirm permission/data access, all countdown/start/end beeps, 10 seconds of capture, a finite sway value, measured Hz and trace replay. Then check retry, cancel, screen locking, and backgrounding. Record browser and OS versions, sensor source, sample rate and whether the beeps work with the silent switch enabled.
 
 Browser API reference: https://developer.mozilla.org/en-US/docs/Web/API/DeviceMotionEvent/rotationRate

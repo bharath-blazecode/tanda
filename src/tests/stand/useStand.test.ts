@@ -71,7 +71,7 @@ function emit() {
     gravity: { x: 0, y: 9.81, z: 0 },
   });
 }
-it("finishes a 15 second capture after countdown with three countdown beeps and start/end beeps", async () => {
+it("finishes a 10 second capture after countdown with three countdown beeps and start/end beeps", async () => {
   const complete = vi.fn();
   const { result } = renderHook(() => useStand(complete));
   await act(async () => {
@@ -79,7 +79,19 @@ it("finishes a 15 second capture after countdown with three countdown beeps and 
   });
   const feed = setInterval(emit, 1000 / 60);
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(19_000);
+    await vi.advanceTimersByTimeAsync(3100);
+  });
+  expect(result.current.phase).toBe("running");
+  expect(result.current.seconds).toBe(10);
+  expect(beeps).toEqual([660, 660, 660, 990]);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(9000);
+  });
+  expect(result.current.phase).toBe("running");
+  expect(result.current.seconds).toBe(1);
+  expect(complete).not.toHaveBeenCalled();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
   });
   clearInterval(feed);
   expect(result.current.phase).toBe("done");
