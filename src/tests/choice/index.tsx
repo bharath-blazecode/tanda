@@ -2,10 +2,13 @@
 // Protocol and edge cases: docs/04-screens-spec.md, T2. Ported from docs/design/prototype-flow.html.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChoiceMetrics } from '../../../shared/contracts'
-import { Key, Label } from '../../ui'
-import { SCORED_TRIALS, summariseChoice, type ChoiceTrial } from './analyze'
+import { Key, Label, Rows, Sheet } from '../../ui'
+import { hasCleanTaps, SCORED_TRIALS, summariseChoice, type ChoiceTrial } from './analyze'
+import './choice.css'
 
-type Props = { onDone: (metrics: ChoiceMetrics) => void }
+/** `onDone` fires from the Next key on the results sheet, so the person sees their taps first.
+ *  `label` is the engraved step label, e.g. "Test 2 of 2 · Choice tap". */
+type Props = { onDone: (metrics: ChoiceMetrics) => void; label?: string }
 
 const WARM_UPS = 2
 const SQUARES = 4
@@ -29,10 +32,11 @@ function buildSequence(): number[] {
   return [...warmUps, ...scored]
 }
 
-type Phase = 'idle' | 'waiting' | 'lit' | 'done'
+type Phase = 'intro' | 'waiting' | 'lit' | 'done'
 
-export function ChoiceTest({ onDone }: Props) {
-  const [phase, setPhase] = useState<Phase>('idle')
+export function ChoiceTest({ onDone, label = 'Choice tap' }: Props) {
+  const [phase, setPhase] = useState<Phase>('intro')
+  const [result, setResult] = useState<ChoiceMetrics | null>(null)
   const [lit, setLit] = useState(-1)
   const [index, setIndex] = useState(0)
   const [message, setMessage] = useState('')
@@ -43,7 +47,7 @@ export function ChoiceTest({ onDone }: Props) {
   const repeats = useRef(0)
   const litAt = useRef(0)
   const timers = useRef<number[]>([])
-  const phaseRef = useRef<Phase>('idle')
+  const phaseRef = useRef<Phase>('intro')
   const indexRef = useRef(0)
 
   const setPhaseBoth = (next: Phase) => {
@@ -64,9 +68,9 @@ export function ChoiceTest({ onDone }: Props) {
   const finish = useCallback(() => {
     clearTimers()
     setLit(-1)
+    setResult(summariseChoice(trials.current))
     setPhaseBoth('done')
-    onDone(summariseChoice(trials.current))
-  }, [onDone])
+  }, [])
 
   /** `note` survives into the next trial; without it the reset below would clear it in the same tick. */
   const nextTrial = useCallback((note = '') => {
@@ -101,6 +105,7 @@ export function ChoiceTest({ onDone }: Props) {
     trials.current = []
     repeats.current = 0
     indexRef.current = 0
+    setResult(null)
     setMessage('')
     nextTrial()
   }, [nextTrial])
@@ -108,10 +113,10 @@ export function ChoiceTest({ onDone }: Props) {
   /** A hidden tab means the taps that follow are not reaction times. Start the run again. */
   useEffect(() => {
     const onHidden = () => {
-      if (document.visibilityState === 'hidden' && phaseRef.current !== 'idle' && phaseRef.current !== 'done') {
+      if (document.visibilityState === 'hidden' && phaseRef.current !== 'intro' && phaseRef.current !== 'done') {
         clearTimers()
         setLit(-1)
-        setPhaseBoth('idle')
+        setPhaseBoth('intro')
         setMessage('That restarted when you left the page.')
       }
     }
@@ -148,38 +153,84 @@ export function ChoiceTest({ onDone }: Props) {
   }
 
   const counter =
-    phase === 'idle' || phase === 'done'
-      ? ''
-      : index < WARM_UPS
-        ? `Warm-up ${index + 1}/${WARM_UPS}`
-        : `${index - WARM_UPS + 1}/${SCORED_TRIALS}`
+    phase === 'intro'
+      ? `${SCORED_TRIALS} taps`
+      : phase === 'done'
+        ? 'Done'
+        : index < WARM_UPS
+          ? `Warm-up ${index + 1}/${WARM_UPS}`
+          : `${index - WARM_UPS + 1}/${SCORED_TRIALS}`
+
+  const running = phase === 'waiting' || phase === 'lit'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s3)' }}>
-        <Label>{phase === 'done' ? 'Done' : 'Choice tap'}</Label>
-        <Label>{message || counter}</Label>
+    <div className="choice-test">
+      <div className="choice-head">
+        <Label>{label}</Label>
+        <span className="choice-counter" aria-live="polite">
+          {counter}
+        </span>
       </div>
 
-      {phase === 'idle' || phase === 'done' ? (
-        <Key onClick={start}>{phase === 'done' ? 'Again' : 'Start'}</Key>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)' }}>
-          {Array.from({ length: SQUARES }, (_, square) => (
-            <Key
-              key={square}
-              lit={lit === square}
-              aria-label={`Square ${square + 1}${lit === square ? ', lit' : ''}`}
-              style={{ aspectRatio: '1 / 1', fontSize: 'clamp(20px, 7vw, 34px)' }}
-              onPointerDown={(e) => {
-                e.preventDefault()
-                tap(square)
-              }}
-            >
-              {lit === square ? 'Tap' : ''}
+      {phase === 'intro' && (
+        <>
+          <Sheet grow>
+            <Label paper>Speed and accuracy</Label>
+            <h2>Tap the square that lights up.</h2>
+            <p>Four squares. One lights up; tap it as fast as you can. The first two do not count.</p>
+          </Sheet>
+          {message && (
+            <div className="choice-status" role="status" aria-live="polite">
+              {message}
+            </div>
+          )}
+          <Key onClick={start}>Start</Key>
+        </>
+      )}
+
+      {running && (
+        <>
+          <div className="choice-grid">
+            {Array.from({ length: SQUARES }, (_, square) => (
+              <Key
+                key={square}
+                lit={lit === square}
+                aria-label={`Square ${square + 1}${lit === square ? ', lit' : ''}`}
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  tap(square)
+                }}
+              >
+                {lit === square ? 'Tap' : ''}
+              </Key>
+            ))}
+          </div>
+          <div className="choice-status" role="status" aria-live="polite">
+            {message}
+          </div>
+        </>
+      )}
+
+      {phase === 'done' && result && (
+        <>
+          <Sheet grow>
+            <Label paper>Choice tap</Label>
+            <h2>{hasCleanTaps(result) ? `${Math.round(result.medianMs)} ms` : 'No clean taps'}</h2>
+            <p>Median of your correct taps.</p>
+            <Rows
+              items={[
+                ['Wrong squares', String(result.wrong)],
+                ['Missed', String(result.lapses)],
+              ]}
+            />
+          </Sheet>
+          <Key onClick={() => onDone(result)}>Next</Key>
+          {!hasCleanTaps(result) && (
+            <Key quiet onClick={start}>
+              Try again
             </Key>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   )
