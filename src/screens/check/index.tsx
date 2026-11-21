@@ -2,8 +2,8 @@
 // Run the same two tests and compare. Scoring is local and instant; the bird's line is the only
 // thing that waits on the network, and it falls back to a canned one (D12).
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
-import type { ChoiceMetrics, RunResult, StandMetrics } from '../../../shared/contracts'
+import { useLocation, useNavigate } from 'react-router'
+import type { ChoiceMetrics, Handicap, Mode, RunResult, StandMetrics } from '../../../shared/contracts'
 import { requestVerdictLine } from '../../api/verdict'
 import { cannedLine } from '../../engine/canned'
 import { assess } from '../../engine/classify'
@@ -20,6 +20,9 @@ type Step = 'intro' | 'stand' | 'choice' | 'scoring'
 export function Check() {
   const navigate = useNavigate()
   const stored = useRef(load()).current
+  // Demo hands over its mode and the handicap picked; anything else is a real check.
+  const handed = useLocation().state as { mode?: Mode; handicap?: Handicap } | null
+  const mode: Mode = handed?.mode === 'demo' ? 'demo' : 'real'
   const [step, setStep] = useState<Step>('intro')
   const [stand, setStand] = useState<StandMetrics | null>(null)
 
@@ -42,7 +45,7 @@ export function Check() {
       baselineClean: baseline.clean,
       run,
       drinksToday: today,
-      mode: 'real',
+      mode,
       checksSinceBaseline: 0,
     })
 
@@ -51,21 +54,22 @@ export function Check() {
 
     // The line is the bird's, not the engine's. A canned one shows at once and stays if the
     // server does not answer inside its timeout.
-    let line = cannedLine(assessment.verdict, 'real', now, { alcohol })
+    let line = cannedLine(assessment.verdict, mode, now, { alcohol, handicap: assessment.guessedHandicap })
     const answer = await requestVerdictLine({
       deviceId: stored.deviceId,
-      mode: 'real',
+      mode,
       verdict: assessment.verdict,
       confidence: assessment.confidence,
       drift: assessment.drift,
       nudge: assessment.nudge,
       drinks: { caffeineMg, alcohol },
       localHour: new Date(now).getHours(),
+      handicap: assessment.guessedHandicap,
     })
     if (answer) line = answer.line
 
-    update((current) => ({ ...current, lastResult: { run, assessment, line, mode: 'real' } }))
-    navigate('/result')
+    update((current) => ({ ...current, lastResult: { run, assessment, line, mode } }))
+    navigate('/result', { state: mode === 'demo' ? { handicap: handed?.handicap } : null })
   }
 
   // Motion was there at baseline but is not now: run the tapping test alone and mark it partial.
