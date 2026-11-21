@@ -37,8 +37,16 @@ export function metricRows(
   if (drift.choiceWrong !== undefined) {
     rows.push(['Wrong squares', signedCount(run.choice.wrong, baseline.choice.wrong)])
   }
-  if (drift.hr !== undefined && run.hr !== undefined && baseline.hr !== undefined) {
+  // Pulse always gets a row, unlike the others, because it is the one step a person chooses to
+  // do or not: a missing row reads as a bug, where "Skipped" reads as a choice. When only this
+  // run has a pulse there is nothing to compare it with, so it shows the reading rather than a
+  // change it cannot honestly state (D46).
+  if (run.hr !== undefined && baseline.hr !== undefined) {
     rows.push(['Pulse', signedPercent(run.hr, baseline.hr)])
+  } else if (run.hr !== undefined) {
+    rows.push(['Pulse', `${Math.round(run.hr)} bpm`])
+  } else {
+    rows.push(['Pulse', 'Skipped'])
   }
   return rows
 }
