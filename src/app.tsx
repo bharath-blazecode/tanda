@@ -5,7 +5,7 @@ import { Baseline } from './screens/baseline'
 import { Check } from './screens/check'
 import { Demo } from './screens/demo'
 import { Home } from './screens/home'
-import { Lab, LabChoice, LabKit, LabStand } from './screens/lab'
+import { Lab, LabChoice, LabKit, LabPulse, LabStand } from './screens/lab'
 import { Landing } from './screens/landing'
 import { Log } from './screens/log'
 import { Result } from './screens/result'
@@ -28,6 +28,7 @@ export function App() {
       <Route path="/lab" element={<Lab />} />
       <Route path="/lab/stand" element={<LabStand />} />
       <Route path="/lab/choice" element={<LabChoice />} />
+      <Route path="/lab/pulse" element={<LabPulse />} />
       <Route path="/lab/kit" element={<LabKit />} />
       <Route path="*" element={<Landing />} />
     </Routes>

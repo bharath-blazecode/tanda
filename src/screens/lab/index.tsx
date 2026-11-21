@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import type { ChoiceMetrics, StandMetrics } from '../../../shared/contracts'
 import { ChoiceTest } from '../../tests/choice'
+import { PulseTest } from '../../tests/pulse'
 import { StandTest } from '../../tests/stand'
 import { Placeholder } from '../placeholder'
 import { Kit } from './kit'
@@ -16,6 +17,7 @@ export function Lab() {
       <ul>
         <li><Link to="/lab/stand">Stand Still</Link> (card 3)</li>
         <li><Link to="/lab/choice">Choice Tap</Link> (card 4)</li>
+        <li><Link to="/lab/pulse">Pulse from the camera</Link> (card 13)</li>
         <li><Link to="/lab/kit">UI kit</Link> (card 2)</li>
         <li><a href="/api/health">/api/health</a></li>
         <li><a href="/api/room">/api/room</a></li>
@@ -41,6 +43,16 @@ export function LabChoice() {
     <Placeholder title="Choice Tap" card="Card 4" spec="docs/04-screens-spec.md, T2">
       <ChoiceTest onDone={setMetrics} />
       <pre>{JSON.stringify(metrics, null, 2)}</pre>
+    </Placeholder>
+  )
+}
+
+export function LabPulse() {
+  const [bpm, setBpm] = useState<number | null | undefined>(undefined)
+  return (
+    <Placeholder title="Pulse from the camera" card="Card 13" spec="DECISIONS.md, D46">
+      <PulseTest onDone={setBpm} />
+      <pre>{JSON.stringify({ bpm }, null, 2)}</pre>
     </Placeholder>
   )
 }
