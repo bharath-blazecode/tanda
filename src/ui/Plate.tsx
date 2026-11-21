@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { Logo } from './Logo'
 import { Label } from './Label'
 /** The nameplate row: mark and name on the left, serial text on the right, a rule under it.
@@ -15,10 +16,10 @@ export function Plate({
 }) {
   return (
     <div className={`k-plate${small ? ' k-plate--small' : ''}`}>
-      <div className="k-plate__brand">
+      <Link to="/" className="k-plate__brand" aria-label={`${name} homepage`}>
         <span className="k-plate__mark"><Logo /></span>
         <div className="k-plate__name">{name}</div>
-      </div>
+      </Link>
       {serial && (
         <Label className="k-plate__serial">
           {serial.split('\n').map((line, i) => (
