@@ -286,3 +286,9 @@
   font: 400 13px/1.45 var(--mono);
   color: var(--ink-soft);
 }
+
+/* CARD 7. The bird sits on the ticket at a readable size rather than filling it. */
+.k-ibis--ticket {
+  max-width: 150px;
+  margin: 0 auto var(--z);
+}
