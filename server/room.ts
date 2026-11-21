@@ -4,6 +4,7 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import { Hono } from 'hono'
 import { RoomResultRequest } from '../shared/contracts'
 import { isValidNickname } from '../shared/nicknames'
+import { clientIp } from './client-ip'
 import type { Config } from './config'
 import { createRoomStore, type RoomStore } from './state'
 
@@ -13,6 +14,7 @@ export type RoomRouteOptions = {
 }
 
 const WINDOW_MS = 60_000
+export const DEFAULT_POSTS_PER_MINUTE = 600
 // Past this many tracked clients, expired windows are swept so the limiter cannot grow without bound.
 const SWEEP_AT = 5_000
 
@@ -22,14 +24,11 @@ function sameToken(given: string, expected: string): boolean {
   return timingSafeEqual(digest(given), digest(expected))
 }
 
-export function clientIp(header: (name: string) => string | undefined): string {
-  const cf = header('cf-connecting-ip')?.trim()
-  if (cf) return cf
-  const forwarded = header('x-forwarded-for')?.split(',')[0]?.trim()
-  return forwarded || 'unknown'
-}
+export { clientIp }
 
 // Fixed one-minute window per IP. Crude, but enough to stop one script from flooding the board.
+// The default is wide because a whole auditorium may share one venue IP; the store keeps one entry
+// per device, which is what really stops a flood from filling the board.
 function createLimiter(limit: number) {
   const windows = new Map<string, { start: number; count: number }>()
   return (key: string, now: number): boolean => {
@@ -49,7 +48,7 @@ function createLimiter(limit: number) {
 export function roomRoutes(
   config: Config,
   store: RoomStore = createRoomStore(),
-  { now = Date.now, postsPerMinute = 30 }: RoomRouteOptions = {},
+  { now = Date.now, postsPerMinute = DEFAULT_POSTS_PER_MINUTE }: RoomRouteOptions = {},
 ) {
   const routes = new Hono()
   const allow = createLimiter(postsPerMinute)

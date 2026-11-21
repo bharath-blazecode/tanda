@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { describe, expect, it } from 'vitest'
 import { RoomState, type RoomResultRequest } from '../shared/contracts'
 import { loadConfig } from './config'
-import { roomRoutes } from './room'
+import { DEFAULT_POSTS_PER_MINUTE, roomRoutes } from './room'
 import { createRoomStore, DEFAULT_MAX_AGE_MS } from './state'
 
 const TOKEN = 'test-token-0123456789'
@@ -82,6 +82,31 @@ describe('POST /api/room/result', () => {
     expect((await post('/api/room/result', result(), { 'cf-connecting-ip': '203.0.113.8' })).status).toBe(204)
     clock.t += 60_000
     expect((await post('/api/room/result', result(), ip)).status).toBe(204)
+  })
+
+  it('lets 200 devices on one shared venue IP all post inside a minute with the default limit', async () => {
+    const clock = { t: T0 }
+    const app = new Hono().route('/api', roomRoutes(loadConfig({}), createRoomStore(), { now: () => clock.t }))
+    const venue = { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.50' }
+    const send = (i: number) =>
+      app.request('/api/room/result', {
+        method: 'POST',
+        headers: venue,
+        body: JSON.stringify(result({ deviceId: `device-${String(i).padStart(4, '0')}-0000` })),
+      })
+    for (let i = 0; i < 200; i++) {
+      clock.t += 250
+      expect((await send(i)).status).toBe(204)
+    }
+    expect(RoomState.parse(await (await app.request('/api/room')).json()).total).toBe(200)
+    expect(DEFAULT_POSTS_PER_MINUTE).toBe(600)
+  })
+
+  it('treats a spoofed non-IP header as unknown', async () => {
+    const { post } = setup({ postsPerMinute: 1 })
+    expect((await post('/api/room/result', result(), { 'cf-connecting-ip': 'spoof-a' })).status).toBe(204)
+    // A different made-up value lands on the same 'unknown' key instead of a fresh window.
+    expect((await post('/api/room/result', result(), { 'cf-connecting-ip': 'spoof-b' })).status).toBe(429)
   })
 
   it('falls back to the first X-Forwarded-For entry for the client IP', async () => {

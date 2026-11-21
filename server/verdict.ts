@@ -8,13 +8,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { Hono } from 'hono'
 import { VerdictRequest, type VerdictResponse } from '../shared/contracts'
-import { cannedLine } from '../src/engine/canned'
+import { STEADY_WITH_ALCOHOL_LINES, cannedLine } from '../src/engine/canned'
 import type { Config } from './config'
 import { clientIp, createLimiter, type Limiter } from './limits'
 import { SYSTEM_PROMPT, buildUserMessage, filterLine } from './prompt'
 
-// Under the client's 4 s so the phone always gets an answer, even a canned one.
-const CLAUDE_TIMEOUT_MS = 3500
+// Well under the client's 4 s so the phone gets our answer, even a canned one, on slow venue wifi.
+const CLAUDE_TIMEOUT_MS = 3000
 const MAX_TOKENS = 150
 
 type ClaudeReply = Pick<Anthropic.Message, 'content' | 'stop_reason'>
@@ -98,7 +98,7 @@ async function askClaude(client: ClaudeClient, model: string, req: VerdictReques
   const text = reply.content
     .map((block) => (block.type === 'text' ? block.text : ''))
     .join(' ')
-  const line = filterLine(text)
+  const line = filterLine(text, { alcohol: req.drinks.alcohol > 0 })
   return line ? { line } : { reason: 'filtered' }
 }
 
@@ -117,14 +117,19 @@ export function verdictRoutes(config: Config, deps: VerdictDeps = {}) {
     if (!parsed.success) return c.json({ error: 'bad_request' }, 400)
     const req = parsed.data
 
-    const canned = (reason: string) => {
+    const pick = Math.floor(random() * 1000)
+    const reply = (line: string, reason: string) => {
       log({ msg: 'verdict', source: 'canned', reason })
-      const line = cannedLine(req.verdict, req.mode, Math.floor(random() * 1000), {
-        handicap: req.handicap,
-        alcohol: req.drinks.alcohol,
-      })
       const body: VerdictResponse = { line, source: 'canned' }
       return c.json(body)
+    }
+    const canned = (reason: string) =>
+      reply(cannedLine(req.verdict, req.mode, pick, { handicap: req.handicap, alcohol: req.drinks.alcohol }), reason)
+
+    // Steady with alcohol is the one screen where a reassuring line would be dangerous, so Claude
+    // never writes it: the fixed non-clearance lines answer, in either mode.
+    if (req.verdict === 'steady' && req.drinks.alcohol > 0) {
+      return reply(STEADY_WITH_ALCOHOL_LINES[pick % STEADY_WITH_ALCOHOL_LINES.length], 'steady_alcohol')
     }
 
     if (!config.verdictEnabled) return canned('disabled')
