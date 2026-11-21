@@ -1,20 +1,26 @@
-// CARD 9, "Room board". The projector polls GET /api/room every 2 seconds (D13).
-// What reaches the board: a generated nickname, the verdict, the score and the mode. Never drinks (D23).
+// CARD 9, "Room board". The projector polls GET /api/room every 1.5 seconds (D13).
+// What reaches the board: a sanitised or generated nickname, the verdict, the score, the mode, and
+// what each present phone is doing right now. Never drinks (D23).
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { Hono } from 'hono'
-import { RoomResultRequest } from '../shared/contracts'
-import { isValidNickname } from '../shared/nicknames'
+import { RoomPresenceRequest, RoomResultRequest, type RoomState } from '../shared/contracts'
+import { boardName } from '../shared/nicknames'
 import { clientIp } from './client-ip'
 import type { Config } from './config'
+import { createPresenceStore, type PresenceStore } from './room-presence'
 import { createRoomStore, type RoomStore } from './state'
 
 export type RoomRouteOptions = {
   now?: () => number
   postsPerMinute?: number
+  presence?: PresenceStore
+  heartbeatsPerMinute?: number
 }
 
 const WINDOW_MS = 60_000
 export const DEFAULT_POSTS_PER_MINUTE = 600
+// 200 phones on one venue IP beating every 15 s is 800 a minute; this leaves room for stage changes.
+export const DEFAULT_HEARTBEATS_PER_MINUTE = 3_000
 // Past this many tracked clients, expired windows are swept so the limiter cannot grow without bound.
 const SWEEP_AT = 5_000
 
@@ -48,26 +54,49 @@ function createLimiter(limit: number) {
 export function roomRoutes(
   config: Config,
   store: RoomStore = createRoomStore(),
-  { now = Date.now, postsPerMinute = DEFAULT_POSTS_PER_MINUTE }: RoomRouteOptions = {},
+  {
+    now = Date.now,
+    postsPerMinute = DEFAULT_POSTS_PER_MINUTE,
+    presence = createPresenceStore(),
+    heartbeatsPerMinute = DEFAULT_HEARTBEATS_PER_MINUTE,
+  }: RoomRouteOptions = {},
 ) {
   const routes = new Hono()
   const allow = createLimiter(postsPerMinute)
+  // Separate windows: a burst of heartbeats must never cost anyone their result post.
+  const allowBeat = createLimiter(heartbeatsPerMinute)
 
   routes.post('/room/result', async (c) => {
     if (!allow(clientIp((name) => c.req.header(name)), now())) {
       return c.json({ error: 'rate_limited' }, 429)
     }
     const parsed = RoomResultRequest.safeParse(await c.req.json().catch(() => null))
-    if (!parsed.success || !isValidNickname(parsed.data.nickname)) {
-      return c.json({ error: 'bad_request' }, 400)
-    }
+    if (!parsed.success) return c.json({ error: 'bad_request' }, 400)
     // The deviceId is only the key for one-entry-per-device; it is never stored in an entry.
-    const { deviceId, ...entry } = parsed.data
-    store.add({ ...entry, at: now() }, deviceId)
+    const { deviceId, nickname: raw, ...rest } = parsed.data
+    const nickname = boardName(raw, deviceId)
+    const at = now()
+    store.add({ ...rest, nickname, at }, deviceId)
+    presence.beat(deviceId, nickname, 'result', at)
     return c.body(null, 204)
   })
 
-  routes.get('/room', (c) => c.json(store.snapshot(now())))
+  routes.post('/room/presence', async (c) => {
+    if (!allowBeat(clientIp((name) => c.req.header(name)), now())) {
+      return c.json({ error: 'rate_limited' }, 429)
+    }
+    const parsed = RoomPresenceRequest.safeParse(await c.req.json().catch(() => null))
+    if (!parsed.success) return c.json({ error: 'bad_request' }, 400)
+    const { deviceId, nickname, stage } = parsed.data
+    presence.beat(deviceId, boardName(nickname, deviceId), stage, now())
+    return c.body(null, 204)
+  })
+
+  routes.get('/room', (c) => {
+    const at = now()
+    const body: RoomState = { ...store.snapshot(at), ...presence.snapshot(at) }
+    return c.json(body)
+  })
 
   routes.post('/room/reset', (c) => {
     const token = c.req.header('x-admin-token')
@@ -75,6 +104,7 @@ export function roomRoutes(
       return c.json({ error: 'forbidden' }, 403)
     }
     store.reset()
+    presence.reset()
     return c.body(null, 204)
   })
 

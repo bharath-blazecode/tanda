@@ -52,7 +52,8 @@ describe('room routes', () => {
     expect(RoomState.safeParse(await res.json()).success).toBe(true)
   })
 
-  it('rejects a nickname that is not from the fixed word lists', async () => {
+  // Changed on purpose (live presence): a typed name is sanitised onto the board, not rejected.
+  it('stores a nickname that is not from the fixed word lists under its sanitised form', async () => {
     const res = await post('/api/room/result', {
       deviceId: verdictRequest.deviceId,
       nickname: 'Free Text',
@@ -60,7 +61,9 @@ describe('room routes', () => {
       score: 90,
       mode: 'demo',
     })
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(204)
+    const board = RoomState.parse(await (await app.request('/api/room')).json())
+    expect(board.feed[0]?.nickname).toBe('Free Text')
   })
 
   it('refuses a reset without the admin token', async () => {
