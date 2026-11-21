@@ -73,12 +73,12 @@ Returns `StandMetrics { swayRms, swayLateralRms, hz, valid }`.
 | Cannot stand, or does not want to | A "Skip this test" link on the intro, never labelled as the lesser choice | The run continues with Choice Tap only |
 | Three invalid tries in a row | Counter | Offer "Skip this test" |
 
-### T2. Choice Tap, 2 warm-up taps plus 12 that count
+### T2. Choice Tap, 2 warm-up taps plus 8 that count
 
 Instruction: *"Four squares. Tap the one that lights up, as fast as you can. The first two don't count."*
 
 - A 2 by 2 grid of large keys fills the lower two thirds of the screen. Each trial waits a random 0.8 to 2.0 s, then one square lights.
-- Each square lights three times across the 12 scored trials, in shuffled order.
+- Each square lights twice across the 8 scored trials, in shuffled order. The count stays a multiple of four so no square is favoured.
 - Timing uses `pointerdown` and `performance.now()`. Only the first pointer of a trial counts.
 - The lit square changes fill and shows a mark, so it does not depend on telling colours apart.
 - The median is taken over correct taps only. Wrong squares and lapses are counted separately.

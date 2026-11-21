@@ -25,6 +25,16 @@ describe('median', () => {
   })
 })
 
+describe('the trial count', () => {
+  it('divides evenly between the four squares, so none is favoured', () => {
+    expect(SCORED_TRIALS % 4).toBe(0)
+  })
+
+  it('is enough taps for a median to mean anything', () => {
+    expect(SCORED_TRIALS).toBeGreaterThanOrEqual(8)
+  })
+})
+
 describe('summariseChoice', () => {
   it('takes the median over correct taps', () => {
     expect(summariseChoice([hit(400), hit(500), hit(600)]).medianMs).toBe(500)

@@ -169,7 +169,7 @@ Rotation rate is used instead of acceleration because Chrome rounds acceleration
 | Metric | Noise floor | Source |
 |---|---|---|
 | sway | 0.30 | None at 20 s; calibrate |
-| choiceRt | 0.12 | Derived from published trial-to-trial variation for 12 taps; calibrate |
+| choiceRt | 0.15 | Derived from published trial-to-trial variation for 12 taps, then scaled by sqrt(12/8) for the 8-tap run; calibrate |
 | choiceWrong | 1 | So one wrong square never counts and two do |
 | hr | 0.15 | Derived from published retest variation of resting heart rate; calibrate with repeat camera readings |
 
