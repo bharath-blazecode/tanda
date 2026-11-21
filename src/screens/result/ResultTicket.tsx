@@ -69,6 +69,7 @@ export function ResultTicket({
     name,
     tags,
     rows,
+    extra,
     verdict: assessment.verdict,
     line,
     // The safety line is on the shared image under exactly the rule it is on the screen (D19):
