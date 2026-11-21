@@ -5,6 +5,7 @@ import { useRef } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { drinksToday } from '../../store/day'
 import { load } from '../../store/local'
+import { isStockBaseline } from '../../store/quick'
 import { InkFilter } from '../../ui'
 import { guessFromDrift, guessLine, isDemoHandicap } from '../demo/guess'
 import { describeDrinks, metricRows, printedAt, serialFor, ticketTags } from './format'
@@ -28,8 +29,10 @@ export function Result() {
   // What the person picked, handed over by Check. Only used to own up to a wrong guess.
   const picked = (location.state as { handicap?: unknown } | null)?.handicap
   // The guess comes from the reading itself, never from the pick.
+  // A quick demo has no handicap to guess: it is a reading against the stock normal.
+  const stock = isStockBaseline(baseline)
   const guess =
-    mode === 'demo'
+    mode === 'demo' && !stock
       ? guessLine(guessFromDrift(assessment.drift), isDemoHandicap(picked) ? picked : undefined)
       : undefined
 
@@ -43,7 +46,11 @@ export function Result() {
         readingId={serialFor(run.at).replace(/^No\. /, '')}
         timestamp={printedAt(run.at)}
         name={stored.nickname}
-        tags={ticketTags({ mode, assessment, baselineClean: baseline.clean })}
+        tags={[
+          ...ticketTags({ mode, assessment, baselineClean: baseline.clean }),
+          // Said on the ticket, so nobody takes a quick demo for a reading against their own normal.
+          ...(stock ? ['Stock normal, not yours'] : []),
+        ]}
         logged={describeDrinks(drinksToday(stored.drinks, run.at))}
         extra={guess}
         againTo={mode === 'demo' ? '/demo' : '/check'}
