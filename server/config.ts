@@ -22,6 +22,9 @@ const Env = z.object({
     .transform((v) => v === 'true'),
   // Without a token the room reset route is disabled.
   ROOM_ADMIN_TOKEN: z.string().min(16).optional(),
+  // Optional durable mirror for the room board. Without it the board lives in memory only.
+  // Not validated beyond being a string: a bad URL degrades to memory only, it never stops the boot.
+  REDIS_URL: z.string().optional(),
   APP_VERSION: z.string().optional(),
   GIT_SHA: z.string().optional(),
 })
@@ -34,6 +37,7 @@ export type Config = {
   verdictModel: (typeof VERDICT_MODELS)[number]
   verdictEnabled: boolean
   roomAdminToken: string | undefined
+  redisUrl: string | undefined
   version: string
   sha: string
 }
@@ -59,6 +63,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     verdictModel: parsed.VERDICT_MODEL,
     verdictEnabled: parsed.VERDICT_ENABLED,
     roomAdminToken: parsed.ROOM_ADMIN_TOKEN,
+    redisUrl: parsed.REDIS_URL,
     version: parsed.APP_VERSION ?? pkg.version,
     sha: parsed.GIT_SHA ?? shaFromFile() ?? 'dev',
   }

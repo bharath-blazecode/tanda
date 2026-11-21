@@ -133,4 +133,29 @@ describe('createRoomStore', () => {
       expect(RoomState.safeParse(store.snapshot(T0 + i)).success).toBe(true)
     }
   })
+  it('merges newer entries, keeps newer ones in memory, skips expired ones and still drops the oldest', () => {
+    const evicted: string[] = []
+    const store = createRoomStore({ maxEntries: 3, onEvict: (ids) => evicted.push(...ids) })
+    store.add(entry({ nickname: 'Calm Ibis', at: T0 + 10 }), 'device-a-xxxx')
+    store.add(entry({ nickname: 'Brisk Emu', verdict: 'wired', at: T0 + 20 }), 'device-b-xxxx')
+    const changed = store.merge(
+      [
+        ['device-a-xxxx', entry({ nickname: 'Calm Ibis', verdict: 'tipsy', at: T0 + 5 })], // older: ignored
+        ['device-b-xxxx', entry({ nickname: 'Brisk Emu', verdict: 'wobbly', at: T0 + 30 })], // newer: wins
+        ['device-c-xxxx', entry({ nickname: 'Zippy Emu', at: T0 + 1 })], // new but oldest: evicted by the cap
+        ['device-d-xxxx', entry({ nickname: 'Brave Ibis', at: T0 + 40 })],
+        ['device-e-xxxx', entry({ at: T0 - DEFAULT_MAX_AGE_MS - 1 })], // expired: skipped
+      ],
+      T0 + 50,
+    )
+    expect(changed).toBe(3)
+    expect(evicted).toEqual(['device-c-xxxx'])
+    const state = store.snapshot(T0 + 50)
+    expect(state.feed.map((e) => [e.nickname, e.verdict])).toEqual([
+      ['Brave Ibis', 'steady'],
+      ['Brisk Emu', 'wobbly'],
+      ['Calm Ibis', 'steady'],
+    ])
+    expect(store.merge([], T0 + 60)).toBe(0)
+  })
 })
