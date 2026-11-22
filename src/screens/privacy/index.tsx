@@ -129,7 +129,7 @@ export function Privacy() {
           <Key quiet onClick={() => setConfirming(true)}>
             Delete everything on this phone
           </Key>
-          <Key quiet onClick={() => navigate(-1)}>
+          <Key quiet onClick={() => navigate('/home')}>
             Back
           </Key>
         </>

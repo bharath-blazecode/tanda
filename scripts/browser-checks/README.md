@@ -7,7 +7,7 @@ Playwright scripts used to verify the portfolio slice in headless Chromium. They
 npm run build
 PORT=3333 STATIC_DIR=dist VERDICT_ENABLED=false node dist-server/index.cjs
 node scripts/browser-checks/flows.cjs /tmp/shots            # all sections, or add a name:
-node scripts/browser-checks/flows.cjs /tmp/shots privacy    # example | personal | reduced | migration | privacy | caffeine
+node scripts/browser-checks/flows.cjs /tmp/shots privacy    # example | personal | reduced | migration | privacy | caffeine | lapses
 node scripts/browser-checks/extra.cjs /tmp/shots            # routes, 320 px layout, keyboard, reduced motion
 ```
 

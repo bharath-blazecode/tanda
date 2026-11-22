@@ -354,6 +354,26 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     await ctx.close();
   }
 
+  if (!only || only === 'lapses') {
+    // A baseline tapping run with no correct taps is never saved as a placeholder.
+    const missAll = async (page) => {
+      await page.getByRole('button', { name: 'Start', exact: true }).click();
+      await page.getByRole('button', { name: 'Next' }).waitFor({ timeout: 40000 }); // every square lapses after 2 s
+      await page.getByRole('button', { name: 'Next' }).click();
+    };
+    const { page, ctx } = await newPage(browser);
+    await page.goto(BASE + '/'); await page.evaluate(() => localStorage.clear());
+    await page.goto(BASE + '/setup');
+    await page.getByRole('button', { name: 'Continue with one test' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.getByRole('button', { name: 'Nothing yet' }).click();
+    await missAll(page);
+    check('no-motion baseline with no correct taps asks again instead of saving', /nothing to keep yet/i.test(await page.locator('body').innerText()));
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('bc:v2')));
+    check('nothing was saved as a baseline', stored.baseline === undefined);
+    await ctx.close();
+  }
+
   await browser.close();
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} checks passed`);

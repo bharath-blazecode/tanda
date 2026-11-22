@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import type { ChoiceMetrics, PulseRecord, StandMetrics } from '../../../shared/contracts'
+import { hasCleanTaps } from '../../engine/compare'
 import { hasAlcohol } from '../../engine/nudge'
 import { buildRun } from '../../engine/run'
 import { getMotionAvailability } from '../../sensors/motion'
@@ -43,6 +44,11 @@ export function Baseline() {
   const [clean, setClean] = useState(routeState.clean ?? !alreadyLogged)
   const [stand, setStand] = useState<StandMetrics | null>(null)
   const [choice, setChoice] = useState<ChoiceMetrics | null>(null)
+  // A tapping run with no clean taps is not a reference anything can be compared with on time, and
+  // without a standing test there would be nothing to save at all, so it is asked for again.
+  const [tapNote, setTapNote] = useState('')
+  const [tapRun, setTapRun] = useState(0)
+  const [tapsLeftOut, setTapsLeftOut] = useState(false)
 
   /** Remember in router state that the drink question is done, then start the tests. */
   const toTests = (isClean: boolean) => {
@@ -167,6 +173,12 @@ export function Baseline() {
           <h2>That is your baseline.</h2>
           <p>Every check from here is compared with it, not with anybody else. A check goes straight to the tests.</p>
           {!clean && <p className="k-small">You had something before this one, so later readings are worth reading loosely.</p>}
+          {tapsLeftOut && (
+            <p className="k-small">
+              The tapping run had no correct taps, so it was left out. Recalibrate to add it; until then checks compare
+              the standing test only.
+            </p>
+          )}
         </Sheet>
         <Key style={{ fontSize: 22 }} onClick={() => navigate('/home')}>
           Done
@@ -196,13 +208,35 @@ export function Baseline() {
           }}
         />
       ) : (
-        <ChoiceTest
-          label={noMotion ? 'No motion sensor here · Choice tap only' : 'Test 2 of 2 · Choice tap'}
-          onDone={(metrics) => {
-            setChoice(metrics)
-            setStep('pulse')
-          }}
-        />
+        <>
+          {tapNote && (
+            <p role="status" style={{ margin: 0, color: 'var(--housing-ink)' }}>
+              {tapNote}
+            </p>
+          )}
+          <ChoiceTest
+            key={tapRun}
+            label={noMotion ? 'No motion sensor here · Choice tap only' : 'Test 2 of 2 · Choice tap'}
+            onDone={(metrics) => {
+              if (!hasCleanTaps(metrics)) {
+                if (stand === null) {
+                  setTapNote('No correct taps in that run, so there is nothing to keep yet. Try it once more.')
+                  setTapRun((n) => n + 1)
+                  return
+                }
+                // The standing test carries the baseline; the taps are left out rather than kept as a placeholder.
+                setTapNote('')
+                setTapsLeftOut(true)
+                setChoice(null)
+                setStep('pulse')
+                return
+              }
+              setTapNote('')
+              setChoice(metrics)
+              setStep('pulse')
+            }}
+          />
+        </>
       )}
       {step === 'choice' && stand !== null && (
         <Key

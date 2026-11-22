@@ -35,6 +35,7 @@ Chromium at 390 by 844 (and 320 by 640 where noted).
 | Personal route: Setup hands over, baseline records sensor and capture length and a skipped pulse, check intro lists what is compared, ticket compares against the baseline, checks are counted, safety line on Home with one beer, recalibration blocked with alcohol, an old ticket keeps its reference after recalibration | 13 of 13 passed | Synthetic motion events |
 | Reduced route: a standing-only baseline with no motion warns before starting; after a reload, Stand Still finds no sensor and the run ends with "No reading" and no ticket; no verdict request | 3 of 3 passed | Synthetic |
 | Migration: v1 record migrates, v1 kept, sharing off, baseline and drinks kept | 3 of 3 passed | Seeded storage |
+| Baseline with no correct taps and no standing test: asked again, nothing saved | 2 of 2 passed | Real lapses (no taps for 2 s each) |
 | Privacy: sharing off by default; on, presence and a simulated result are posted without a handicap; commentary off sends no verdict request; receipt preview omits the name until chosen; turning sharing off withdraws and the board no longer shows the entry; no heartbeat for 16 s after; Start over withdraws first and clears both keys | 12 of 12 passed | Local server, in-memory board |
 | Caffeine and serving: carry-over shown, legacy beer a count, label arithmetic live in the editor, real consumption time stored, edit and undo, standard-drink arithmetic, totals only for detailed entries, unknown tea said to read low, remove and undo, future time refused, bedtime saved and used | 16 of 16 passed | Seeded storage and real form input |
 | Routes load without page errors (12 routes including lab, preview, room, unknown) | Passed | |
@@ -43,7 +44,7 @@ Chromium at 390 by 844 (and 320 by 640 where noted).
 | Keyboard only: arrow keys move the kind choice, a tea with an amount can be added, entries are buttons | 3 of 3 passed | Playwright keyboard input, not a screen reader |
 | Reduced motion: the ticket print animation is off | Passed | Emulated `prefers-reduced-motion` |
 
-Total: 68 of 68 browser checks passed on the final build.
+Total: 70 of 70 browser checks passed on the final build.
 
 ## Measurements
 
