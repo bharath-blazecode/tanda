@@ -28,8 +28,10 @@ export function analyze(samples: readonly MotionReading[]): StandAnalysis {
     warnings.push(
       "Using acceleration. Keep this baseline on the same phone and sensor source.",
     );
+  // The source and capture length travel with the metrics, so a later comparison can refuse to set
+  // degrees a second against metres per second squared (src/engine/compare.ts).
   const result: StandAnalysis = {
-    metrics: { swayRms: 0, swayLateralRms: 0, hz, valid: false },
+    metrics: { swayRms: 0, swayLateralRms: 0, hz, valid: false, source, captureSeconds: CAPTURE_SECONDS },
     source,
     trace: [],
     warnings,
@@ -117,7 +119,14 @@ export function analyze(samples: readonly MotionReading[]): StandAnalysis {
     return fail(
       "Almost no movement recorded. Pick up the phone and hold it against your chest.",
     );
-  result.metrics = { swayRms, swayLateralRms: lateralRms, hz, valid: true };
+  result.metrics = {
+    swayRms,
+    swayLateralRms: lateralRms,
+    hz,
+    valid: true,
+    source,
+    captureSeconds: CAPTURE_SECONDS,
+  };
   return result;
 }
 

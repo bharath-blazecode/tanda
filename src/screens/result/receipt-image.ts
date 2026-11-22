@@ -13,10 +13,18 @@ export type ReceiptData = {
   readingId: string
   timestamp: string
   name?: string
+  /** What the reading was compared with. Always printed when known: provenance is not optional. */
+  reference?: string
   tags: string[]
   rows: [label: string, value: string][]
+  /** Why a test was not compared, one sentence each. */
+  notes?: string[]
   /** One line under the rows: the demo's guess at the handicap. */
   extra?: string
+  /** What was logged today, in words. Only on the image when the person chose to include it. */
+  logged?: string
+  /** Where the stamp's word came from. */
+  labelNote?: string
   verdict: string
   line: string
   /** Mandatory whenever anything alcoholic was logged today, Steady included (D19). */
@@ -36,6 +44,7 @@ export type ReceiptLine =
   | { kind: 'safety'; text: string }
   | { kind: 'next'; text: string }
   | { kind: 'extra'; text: string }
+  | { kind: 'note'; text: string }
   | { kind: 'site'; text: string }
 
 /**
@@ -49,12 +58,16 @@ export function receiptLines(d: ReceiptData): ReceiptLine[] {
     { kind: 'meta', text: d.timestamp },
   ]
   if (d.name) out.push({ kind: 'meta', text: `Subject · ${d.name}` })
+  if (d.reference) out.push({ kind: 'meta', text: d.reference })
   out.push({ kind: 'rule' })
   for (const tag of d.tags) out.push({ kind: 'tag', text: tag })
   for (const [label, value] of d.rows) out.push({ kind: 'row', label, value })
+  for (const note of d.notes ?? []) out.push({ kind: 'note', text: note })
+  if (d.logged) out.push({ kind: 'extra', text: `Logged today · ${d.logged}` })
   if (d.extra) out.push({ kind: 'extra', text: d.extra })
   out.push({ kind: 'rule' })
   out.push({ kind: 'stamp', text: d.verdict.toUpperCase() })
+  if (d.labelNote) out.push({ kind: 'note', text: d.labelNote })
   out.push({ kind: 'quote', text: `“${d.line}”` })
   out.push({ kind: 'byline', text: 'Dr. Kachka' })
   if (d.safety) out.push({ kind: 'safety', text: SAFETY_TEXT })
@@ -62,6 +75,15 @@ export function receiptLines(d: ReceiptData): ReceiptLine[] {
   // Whoever sees the picture should know where to get their own.
   out.push({ kind: 'site', text: SITE })
   return out
+}
+
+/** The image's words as plain text, for the preview shown before saving or sharing. */
+export function receiptText(d: ReceiptData): string[] {
+  return receiptLines(d).flatMap((line) => {
+    if (line.kind === 'rule') return []
+    if (line.kind === 'row') return [`${line.label} · ${line.value}`]
+    return [line.text]
+  })
 }
 
 /** The filename a saved or shared receipt carries. */
@@ -232,6 +254,10 @@ function paint(ctx: CanvasRenderingContext2D, lines: ReceiptLine[], height: numb
       case 'extra':
         y += 18
         block(line.text, `700 34px ${MONO}`, INK, 48, 'left')
+        break
+      case 'note':
+        y += 8
+        block(line.text, `400 28px ${MONO}`, SOFT, 38, 'left')
         break
       case 'stamp': {
         // The one red thing on the ticket, slightly off square like a real stamp.

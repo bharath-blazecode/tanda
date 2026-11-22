@@ -51,10 +51,10 @@ export function CaffeineChart({
         <Axis left={clock(from)} right={clock(to)} />
         {bedtime !== undefined && atBedtimeMg !== null && atBedtimeMg !== undefined && (
           <Label paper>
-            About {Math.round(atBedtimeMg)} mg still on board at {clock(bedtime)}.
+            Estimate: about {Math.round(atBedtimeMg)} mg at {clock(bedtime)}, if caffeine halves every 5 hours.
           </Label>
         )}
-        <Label paper>The band is how differently people clear it: some in two hours, some in eight.</Label>
+        <Label paper>Band: the same log at 2 h and 8 h half-lives. A range of assumptions, not a measurement.</Label>
       </Printed>
     </ChartWindow>
   )

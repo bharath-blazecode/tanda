@@ -22,7 +22,7 @@ export function Stand({
     <Housing className="stand-test">
       <Plate serial={`Stand Still\n${CAPTURE_SECONDS} second capture`} />
       <div className="strip">
-        <span>WHOLE-BODY SWAY</span>
+        <span>SWAY · PHONE ON CHEST</span>
         <span className="timer">
           {test.phase === "running" ? `${test.seconds}s` : `${CAPTURE_SECONDS}s`}
         </span>

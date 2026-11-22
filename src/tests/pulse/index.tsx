@@ -3,6 +3,7 @@
 // ordinary outcome that never marks a result partial and never decides a verdict.
 // No variability figure is shown: D46 checked that claim and it does not hold at this frame rate.
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { PulseRecord } from '../../../shared/contracts'
 import { Key, Label, Rows, Sheet } from '../../ui'
 import { sampleFrame, startCamera, stopCamera, tryTorch, type CameraPermission } from '../../sensors/camera'
 import {
@@ -14,8 +15,13 @@ import {
 } from './analyze'
 import './pulse.css'
 
-/** `onDone` carries a rate, or null for skipped and for every kind of failed reading. */
-type Props = { onDone: (bpm: number | null) => void; label?: string }
+/**
+ * `onDone` carries a scored rate, or null, plus what actually happened. Only a clear reading is
+ * scored. A weak signal is reported as approximate with its figure, for display only. A failed
+ * capture, a blocked camera and a skip are told apart, so the ticket never says "Skipped" for a
+ * reading that was tried and failed, and never implies that no camera reading means no pulse.
+ */
+type Props = { onDone: (bpm: number | null, outcome: PulseRecord) => void; label?: string }
 
 type Phase = 'intro' | 'asking' | 'blocked' | 'settling' | 'reading' | 'result'
 
@@ -154,10 +160,14 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
     frame.current = requestAnimationFrame(tick)
   }, [tick, setPhaseBoth])
 
-  const skip = useCallback(() => {
-    teardown()
-    onDone(null)
-  }, [teardown, onDone])
+  const leave = useCallback(
+    (outcome: PulseRecord) => {
+      teardown()
+      onDone(outcome.status === 'measured' && outcome.bpm !== undefined ? outcome.bpm : null, outcome)
+    },
+    [teardown, onDone],
+  )
+  const skip = useCallback(() => leave({ status: 'skipped' }), [leave])
 
   // The trace is drawn against its own window, so a dim iPhone frame looks the same as a bright one.
   const low = trace.length ? Math.min(...trace) : 0
@@ -207,7 +217,7 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
             <h2>No reading</h2>
             <p>{blocked}</p>
           </Sheet>
-          <Key onClick={skip}>Skip</Key>
+          <Key onClick={() => leave({ status: 'blocked' })}>Skip</Key>
         </>
       )}
 
@@ -251,10 +261,27 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
         <>
           <Sheet grow>
             <Label paper>{label}</Label>
-            <h2>{result.bpm} bpm</h2>
-            <p>Average over the reading.</p>
+            <h2>
+              {result.rough ? 'About ' : ''}
+              {result.bpm} bpm
+            </h2>
+            <p>
+              {result.rough
+                ? 'An approximate figure from a weak signal. It is shown on your ticket, and not used to score it.'
+                : 'An estimate from your fingertip on the camera, averaged over the reading. Not a medical reading.'}
+            </p>
           </Sheet>
-          <Key onClick={() => onDone(result.bpm)}>Next</Key>
+          <Key
+            onClick={() =>
+              leave(
+                result.bpm === null
+                  ? { status: 'unreadable' }
+                  : { status: result.rough ? 'approximate' : 'measured', bpm: result.bpm },
+              )
+            }
+          >
+            Next
+          </Key>
           <Key quiet onClick={begin}>
             Again
           </Key>
@@ -280,7 +307,7 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
             />
           </Sheet>
           <Key onClick={begin}>Try again</Key>
-          <Key quiet onClick={skip}>
+          <Key quiet onClick={() => leave({ status: 'unreadable' })}>
             Skip
           </Key>
         </>

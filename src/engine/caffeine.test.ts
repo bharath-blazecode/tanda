@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Drink } from '../../shared/contracts'
+import type { DrinkInput as Drink } from './serving'
 import {
   HALF_LIFE_FAST_HOURS,
   HALF_LIFE_SLOW_HOURS,
@@ -9,6 +9,8 @@ import {
   doseOnBoardMg,
   lastCallFor,
   peakOf,
+  caffeineSummary,
+  recentDrinks,
 } from './caffeine'
 
 const NOON = new Date('2026-11-21T12:00:00').getTime()
@@ -130,5 +132,62 @@ describe('lastCallFor', () => {
   it('refuses a bedtime that is not in the future', () => {
     expect(lastCallFor([], 100, NOON, 40, NOON)).toBeNull()
     expect(lastCallFor([], 100, NOON - 1000, 40, NOON)).toBeNull()
+  })
+})
+
+describe('carry-over across the 4am day boundary', () => {
+  const morning = new Date('2026-11-22T07:00:00').getTime()
+  const fourAm = new Date('2026-11-22T04:00:00').getTime()
+  const lastNight: Drink = { kind: 'coffee', at: new Date('2026-11-21T22:00:00').getTime() }
+
+  it('keeps yesterday evening\'s coffee in the on-board estimate this morning', () => {
+    expect(recentDrinks([lastNight], morning)).toHaveLength(1)
+    const summary = caffeineSummary([lastNight], morning, morning + 15 * 3_600_000, fourAm)
+    expect(summary.now.mg).toBeGreaterThan(30)
+    expect(summary.carriedOverMg).toBeCloseTo(summary.now.mg, 6)
+  })
+
+  it('drops doses older than the window, and future-dated ones', () => {
+    const old: Drink = { kind: 'coffee', at: morning - 49 * 3_600_000 }
+    const ahead: Drink = { kind: 'coffee', at: morning + 60_000 }
+    expect(recentDrinks([old, ahead], morning)).toEqual([])
+  })
+})
+
+describe('caffeineSummary', () => {
+  const now = new Date('2026-11-22T15:00:00').getTime()
+  const fourAm = new Date('2026-11-22T04:00:00').getTime()
+  const bed = new Date('2026-11-22T23:00:00').getTime()
+
+  it('reports the middle, fast and slow figures now and at bedtime, in order', () => {
+    const s = caffeineSummary([{ kind: 'coffee', at: now - 2 * 3_600_000 }], now, bed, fourAm)
+    expect(s.now.low).toBeLessThan(s.now.mg)
+    expect(s.now.mg).toBeLessThan(s.now.high)
+    expect(s.bedtime.mg).toBeLessThan(s.now.mg)
+    expect(s.bedtime.at).toBe(bed)
+  })
+
+  it('counts what makes the estimate incomplete or assumed', () => {
+    const s = caffeineSummary(
+      [
+        { kind: 'coffee', at: now - 3_600_000 },
+        { kind: 'tea', at: now - 3_600_000, approxTime: true },
+        { kind: 'coffee', at: now - 3_600_000, legacy: true },
+        { kind: 'energy', at: now - 3_600_000, servingMl: 250, caffeine: { basis: 'per100ml', mgPer100ml: 32, source: 'label' } },
+        { kind: 'beer', at: now - 3_600_000 },
+      ],
+      now,
+      bed,
+      fourAm,
+    )
+    expect(s.unknown).toBe(1)
+    expect(s.defaults).toBe(2)
+    expect(s.approxTimes).toBe(1)
+    expect(s.legacy).toBe(1)
+  })
+
+  it('uses label arithmetic for the dose', () => {
+    const label: Drink = { kind: 'energy', at: now - 50 * 60_000, servingMl: 500, caffeine: { basis: 'per100ml', mgPer100ml: 32, source: 'label' } }
+    expect(caffeineSummary([label], now, bed, fourAm).now.mg).toBeCloseTo(160, 6)
   })
 })

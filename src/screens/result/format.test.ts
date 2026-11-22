@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { NudgeKind, type RunResult } from '../../../shared/contracts'
+import { NudgeKind, Verdict, type RunResult } from '../../../shared/contracts'
+import { compareRuns } from '../../engine/compare'
 import { SAFETY_TEXT } from '../../ui/SafetyLine'
 import {
+  comparisonRows,
+  conditionsWords,
   describeDrinks,
-  metricRows,
+  labelNote,
   moodFor,
+  referenceLine,
   nudgeWords,
   quoted,
   serialFor,
@@ -14,7 +18,7 @@ import {
   ticketTags,
 } from './format'
 
-const stand = (swayRms: number) => ({ swayRms, swayLateralRms: swayRms / 2, hz: 60, valid: true })
+const stand = (swayRms: number) => ({ swayRms, swayLateralRms: swayRms / 2, hz: 60, valid: true, source: 'gyroscope' as const })
 const baseline: RunResult = {
   stand: stand(0.2),
   choice: { medianMs: 500, wrong: 1, lapses: 0, trials: 8 },
@@ -27,6 +31,7 @@ const run: RunResult = {
   hr: 77,
   at: 2,
 }
+const rowsFor = (r: RunResult, ref: RunResult = baseline) => comparisonRows(r, ref, compareRuns(ref, r))
 
 describe('signedPercent', () => {
   it('signs the change from the normal', () => {
@@ -47,46 +52,60 @@ describe('signedCount', () => {
   })
 })
 
-describe('metricRows', () => {
-  it('prints one plain row per metric in the drift record', () => {
-    const rows = metricRows({ sway: 1.6, choiceRt: -0.6, choiceWrong: 2, hr: 0.6 }, run, baseline)
-    expect(rows).toEqual([
-      ['Body sway', '+50%'],
-      ['Choice time', '-10%'],
-      ['Wrong squares', '+2'],
+describe('comparisonRows', () => {
+  it('prints one plain row per test, compared with the stored reference', () => {
+    expect(rowsFor(run).rows).toEqual([
+      ['Stand still', '+50%'],
+      ['Tap time', '-10%'],
+      ['Wrong or missed', '+2'],
       ['Pulse', '+10%'],
     ])
-  })
-  it('leaves out metrics the engine did not score, except the pulse', () => {
-    const rows = metricRows({ choiceRt: 0, choiceWrong: 0 }, { ...run, stand: undefined }, baseline)
-    expect(rows.map(([label]) => label)).toEqual(['Choice time', 'Wrong squares', 'Pulse'])
+    expect(rowsFor(run).notes).toEqual([])
   })
 
-  it('says Skipped rather than dropping the pulse row', () => {
-    // The pulse is the one step a person chooses to do or not. A missing row reads as a bug;
-    // "Skipped" reads as a choice.
-    const rows = metricRows({ choiceRt: 0, choiceWrong: 0 }, { ...run, hr: undefined }, baseline)
-    expect(rows.at(-1)).toEqual(['Pulse', 'Skipped'])
+  it('says Skipped for a standing test that was not taken, and keeps the pulse row last', () => {
+    const { rows } = rowsFor({ ...run, stand: undefined })
+    expect(rows.map(([label]) => label)).toEqual(['Stand still', 'Tap time', 'Wrong or missed', 'Pulse'])
+    expect(rows[0]).toEqual(['Stand still', 'Skipped'])
   })
 
-  it('says Skipped when neither run has a pulse', () => {
-    const rows = metricRows({ choiceRt: 0 }, { ...run, hr: undefined }, { ...baseline, hr: undefined })
-    expect(rows.at(-1)).toEqual(['Pulse', 'Skipped'])
+  it('explains a sensor change instead of printing a number across units', () => {
+    const accel = { ...stand(0.03), source: 'acceleration' as const }
+    const { rows, notes } = rowsFor({ ...run, stand: accel })
+    expect(rows[0]).toEqual(['Stand still', 'Not compared'])
+    expect(notes.join(' ')).toMatch(/different motion sensor/)
+  })
+
+  it('prints No clean taps instead of a placeholder time, and still counts the errors', () => {
+    const { rows, notes } = rowsFor({ ...run, choice: { medianMs: 2000, wrong: 0, lapses: 8, trials: 8 } })
+    expect(rows).toContainEqual(['Tap time', 'No clean taps'])
+    expect(rows).toContainEqual(['Wrong or missed', '+7'])
+    expect(notes.join(' ')).toMatch(/correct tap/)
+  })
+
+  it('tells every pulse outcome apart', () => {
+    const pulseRow = (r: RunResult, ref: RunResult = baseline) => rowsFor(r, ref).rows.at(-1)
+    const noHr = { ...run, hr: undefined }
+    expect(pulseRow({ ...noHr, pulse: { status: 'skipped' } })).toEqual(['Pulse', 'Skipped'])
+    expect(pulseRow({ ...noHr, pulse: { status: 'unreadable' } })).toEqual(['Pulse', 'No reading'])
+    expect(pulseRow({ ...noHr, pulse: { status: 'blocked' } })).toEqual(['Pulse', 'No camera'])
+    expect(pulseRow({ ...noHr, pulse: { status: 'approximate', bpm: 91.4 } })).toEqual(['Pulse', 'about 91 bpm'])
+    expect(pulseRow(noHr)).toEqual(['Pulse', 'Not taken'])
+  })
+
+  it('says an unreadable pulse is not evidence about the pulse itself', () => {
+    const { notes } = rowsFor({ ...run, hr: undefined, pulse: { status: 'unreadable' } })
+    expect(notes.join(' ')).toMatch(/says nothing about your pulse/)
   })
 
   it('shows the reading, not a change, when only this run has a pulse', () => {
-    // Nothing to compare it with, so a percentage would be a number we cannot honestly state.
-    const rows = metricRows({ choiceRt: 0 }, { ...run, hr: 71.6 }, { ...baseline, hr: undefined })
+    const { rows, notes } = rowsFor({ ...run, hr: 71.6 }, { ...baseline, hr: undefined })
     expect(rows.at(-1)).toEqual(['Pulse', '72 bpm'])
+    expect(notes.join(' ')).toMatch(/not compared/)
   })
 
-  it('keeps the pulse row last, under the wrong squares', () => {
-    const rows = metricRows({ sway: 1, choiceRt: 0, choiceWrong: 1, hr: 0.5 }, run, baseline)
-    expect(rows.map(([label]) => label)).toEqual(['Body sway', 'Choice time', 'Wrong squares', 'Pulse'])
-  })
   it('never prints a raw drift number', () => {
-    const rows = metricRows({ sway: 2.345, choiceRt: 1.234, choiceWrong: 2 }, run, baseline)
-    for (const [, value] of rows) expect(value).not.toMatch(/2\.345|1\.234/)
+    for (const [, value] of rowsFor(run).rows) expect(value).not.toMatch(/\d\.\d{2,}/)
   })
 })
 
@@ -103,13 +122,28 @@ describe('nudgeWords', () => {
 describe('ticketTags', () => {
   const plain = { partial: false, confidence: 'high' as const }
   it('shows nothing for a clean, full, real reading', () => {
-    expect(ticketTags({ mode: 'real', assessment: plain, baselineClean: true })).toEqual([])
+    expect(ticketTags({ mode: 'real', assessment: plain, baselineClean: true, reference: 'personal' })).toEqual([])
   })
-  it('tags demo, partial and loose readings', () => {
+  it('tags simulated, example, partial and loose readings, provenance first', () => {
     expect(
-      ticketTags({ mode: 'demo', assessment: { partial: true, confidence: 'low' }, baselineClean: true }),
-    ).toEqual(['Simulated', 'Partial reading: no Stand Still', 'Loose reading'])
+      ticketTags({ mode: 'demo', assessment: { partial: true, confidence: 'low' }, baselineClean: true, reference: 'example' }),
+    ).toEqual(['Simulated', 'Example reference, not your baseline', 'Partial reading', 'Loose reading'])
     expect(ticketTags({ mode: 'real', assessment: plain, baselineClean: false })).toEqual(['Loose reading'])
+  })
+})
+
+describe('provenance and label wording', () => {
+  it('describes the tier as recording conditions, never as confidence', () => {
+    expect([conditionsWords('high'), conditionsWords('medium'), conditionsWords('low')]).toEqual(['good', 'fair', 'poor'])
+  })
+  it('prints what the reading was compared with', () => {
+    expect(referenceLine({ kind: 'example', run: baseline, clean: true })).toBe('Against · example numbers')
+    expect(referenceLine({ kind: 'personal', run: baseline, clean: true })).toMatch(/^Against · your baseline, /)
+  })
+  it('says Wired and Tipsy come from the log, not from detection', () => {
+    expect(labelNote('wired')).toMatch(/does not detect caffeine or alcohol/)
+    expect(labelNote('tipsy')).toMatch(/does not detect caffeine or alcohol/)
+    expect(labelNote('steady')).toMatch(/threshold/)
   })
 })
 
@@ -139,7 +173,9 @@ describe('copy rules', () => {
       ...NudgeKind.options.map(nudgeWords),
       stampNote('demo'),
       stampNote('real'),
-      ...ticketTags({ mode: 'demo', assessment: { partial: true, confidence: 'low' }, baselineClean: false }),
+      ...ticketTags({ mode: 'demo', assessment: { partial: true, confidence: 'low' }, baselineClean: false, reference: 'example' }),
+      ...Verdict.options.map(labelNote),
+      ...rowsFor({ ...run, hr: undefined, pulse: { status: 'unreadable' }, stand: { ...stand(0.1), source: 'acceleration' } }).notes,
       SAFETY_TEXT,
     ]
     for (const words of copy) expect(words).not.toMatch(BANNED)

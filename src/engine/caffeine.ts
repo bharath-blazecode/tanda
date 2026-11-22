@@ -5,8 +5,7 @@
 // The model is the one in docs/05-architecture.md: a dose rises to a peak at about 50 minutes,
 // then halves every 5 hours. Half-life varies a lot between people (genetics, the pill, smoking,
 // pregnancy), which is why the chart carries a band rather than a line.
-import type { Drink } from '../../shared/contracts'
-import { CAFFEINE_MG } from './nudge'
+import { caffeineMgFor, CAFFEINE_KINDS, type DrinkInput } from './serving'
 
 /** Minutes from the first sip to the most on board. */
 export const PEAK_MINUTES = 50
@@ -29,10 +28,10 @@ export function doseOnBoardMg(doseMg: number, minutesSince: number, halfLifeHour
 }
 
 /** Total caffeine on board at a moment, in mg, from everything logged. */
-export function caffeineOnBoardMg(drinks: readonly Drink[], at: number, halfLifeHours = HALF_LIFE_HOURS): number {
+export function caffeineOnBoardMg(drinks: readonly DrinkInput[], at: number, halfLifeHours = HALF_LIFE_HOURS): number {
   return drinks.reduce((total, drink) => {
-    const dose = CAFFEINE_MG[drink.kind]
-    if (dose === undefined) return total
+    const dose = caffeineMgFor(drink).mg
+    if (dose === null) return total
     return total + doseOnBoardMg(dose, (at - drink.at) / 60000, halfLifeHours)
   }, 0)
 }
@@ -52,7 +51,7 @@ export type CaffeinePoint = {
  * A fast half-life means less is left, so `low` uses the fast one.
  */
 export function caffeineCurve(
-  drinks: readonly Drink[],
+  drinks: readonly DrinkInput[],
   from: number,
   to: number,
   stepMinutes = 10,
@@ -86,7 +85,7 @@ export function peakOf(points: readonly CaffeinePoint[]): CaffeinePoint | null {
  * stop", and the caller chooses the target.
  */
 export function lastCallFor(
-  drinks: readonly Drink[],
+  drinks: readonly DrinkInput[],
   doseMg: number,
   bedtime: number,
   targetMg: number,
@@ -108,4 +107,70 @@ export function lastCallFor(
     }
   }
   return bedtime
+}
+
+/**
+ * How far back a dose still matters to the estimate. Ten slow half-lives leave under 0.1% of a dose,
+ * so 48 hours covers everything the slow edge of the band can still see.
+ */
+export const RECENT_HOURS = 48
+
+/**
+ * Drinks close enough to matter for caffeine on board. This is deliberately separate from "today",
+ * which ends at 4am for counting (src/store/day.ts): yesterday evening's coffee is not today's
+ * intake, but some of it is still on board this morning.
+ */
+export function recentDrinks<T extends DrinkInput>(drinks: readonly T[], now: number, hours = RECENT_HOURS): T[] {
+  const from = now - hours * 3_600_000
+  return drinks.filter((d) => d.at >= from && d.at <= now)
+}
+
+export type CaffeineSummary = {
+  /** On board now at the middle half-life, and at the fast and slow edges. */
+  now: { mg: number; low: number; high: number }
+  /** The same at bedtime. */
+  bedtime: { at: number; mg: number; low: number; high: number }
+  /** How much of `now.mg` comes from drinks before the 4am boundary. */
+  carriedOverMg: number
+  /** Caffeinated entries in the window whose amount is unknown, so the estimate reads low. */
+  unknown: number
+  /** Entries using the app's default dose, not a label or the person's figure. */
+  defaults: number
+  /** Entries with a rough time ("about an hour ago"). */
+  approxTimes: number
+  /** Entries migrated from v1, which only ever knew "a coffee". */
+  legacy: number
+}
+
+/** Everything the chart shows, as numbers, so it can be printed as text for anyone not using the chart. */
+export function caffeineSummary(
+  drinks: readonly DrinkInput[],
+  now: number,
+  bedtime: number,
+  dayStartAt: number,
+): CaffeineSummary {
+  const recent = recentDrinks(drinks, now)
+  const caffeinated = recent.filter((d) => CAFFEINE_KINDS.has(d.kind))
+  const before = recent.filter((d) => d.at < dayStartAt)
+  const at = (t: number) => ({
+    mg: caffeineOnBoardMg(recent, t),
+    low: caffeineOnBoardMg(recent, t, HALF_LIFE_FAST_HOURS),
+    high: caffeineOnBoardMg(recent, t, HALF_LIFE_SLOW_HOURS),
+  })
+  let unknown = 0
+  let defaults = 0
+  for (const d of caffeinated) {
+    const figure = caffeineMgFor(d)
+    if (figure.mg === null) unknown++
+    else if (figure.origin === 'default') defaults++
+  }
+  return {
+    now: at(now),
+    bedtime: { at: bedtime, ...at(bedtime) },
+    carriedOverMg: caffeineOnBoardMg(before, now),
+    unknown,
+    defaults,
+    approxTimes: caffeinated.filter((d) => d.approxTime).length,
+    legacy: caffeinated.filter((d) => d.legacy).length,
+  }
 }

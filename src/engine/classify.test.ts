@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import type { Drink, RunResult } from '../../shared/contracts'
+import type { RunResult } from '../../shared/contracts'
+import type { DrinkInput as Drink } from './serving'
 import { assess, LEARNING_CHECKS, MIN_HZ, scoreFor, totalDrift, type AssessInput } from './classify'
 import { DRIFT_THRESHOLD, PULSE_CAP } from './metrics'
 
 const run = (over: Partial<RunResult> = {}): RunResult => ({
-  stand: { swayRms: 1, swayLateralRms: 0.5, hz: 50, valid: true },
+  stand: { swayRms: 1, swayLateralRms: 0.5, hz: 50, valid: true, source: 'gyroscope' },
   choice: { medianMs: 400, wrong: 0, lapses: 0, trials: 12 },
   at: 0,
   ...over,
 })
 
 /** A check that drifts well past the threshold on sway alone. */
-const drifted = () => run({ stand: { swayRms: 2.5, swayLateralRms: 1, hz: 50, valid: true } })
+const drifted = () => run({ stand: { swayRms: 2.5, swayLateralRms: 1, hz: 50, valid: true, source: 'gyroscope' } })
 
 const beer: Drink[] = [{ kind: 'beer', at: 0 }]
 const coffee: Drink[] = [{ kind: 'coffee', at: 0 }]
@@ -127,12 +128,12 @@ describe('confidence', () => {
   })
 
   it('drops on a slow sample rate', () => {
-    const slow = run({ stand: { swayRms: 1, swayLateralRms: 0.5, hz: MIN_HZ - 1, valid: true } })
+    const slow = run({ stand: { swayRms: 1, swayLateralRms: 0.5, hz: MIN_HZ - 1, valid: true, source: 'gyroscope' } })
     expect(assess(input({ run: slow })).confidence).toBe('medium')
   })
 
   it('drops on a sample rate far from the baseline’s', () => {
-    const off = run({ stand: { swayRms: 1, swayLateralRms: 0.5, hz: 20, valid: true } })
+    const off = run({ stand: { swayRms: 1, swayLateralRms: 0.5, hz: 20, valid: true, source: 'gyroscope' } })
     expect(assess(input({ run: off })).confidence).toBe('medium')
   })
 

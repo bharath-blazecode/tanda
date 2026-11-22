@@ -16,7 +16,9 @@ import {
   Label,
 } from "../../ui";
 import { ResultBird } from "./ResultBird";
+import { receiptText } from "./receipt-image";
 import { canShareReceipt, saveReceipt, shareReceipt } from "./share";
+import { Toggle } from "../../ui";
 
 export type ResultTicketProps = {
   assessment: Assessment;
@@ -34,8 +36,19 @@ export type ResultTicketProps = {
   extra?: string;
   /** What was logged today, in words. The label behind the verdict, never a measurement. */
   logged?: string;
-  /** Where "Run again" goes. A demo reading goes back to the demo. */
+  /** Why a test has no change beside it, one sentence each. Printed under the rows and on the image. */
+  notes?: string[];
+  /** What the reading was compared with, e.g. "Against · your baseline, Sun 22 Nov 09:10". */
+  reference?: string;
+  /** Where the stamp's word came from. */
+  labelNote?: string;
+  /** Recording conditions in a word: good, fair or poor. Only printed when not good. */
+  conditions?: string;
+  /** The small print on the stamp. A simulated reading says so on the stamp itself. */
+  stampNote?: string;
+  /** Where "Run again" goes, and the router state it carries. A demo reading goes back to the demo. */
   againTo?: string;
+  againState?: unknown;
 };
 const nudges: Record<Assessment["nudge"], string> = {
   "carry-on": "Carry on.",
@@ -57,7 +70,13 @@ export function ResultTicket({
   tags = [],
   extra,
   logged,
+  notes = [],
+  reference,
+  labelNote,
+  conditions,
+  stampNote = "Certified by a bin chicken",
   againTo = "/check",
+  againState,
 }: ResultTicketProps) {
   // The data producer owns the verdict. The screen renders the supplied assessment.
   // Keep the fixed safety line visible for every Tipsy presentation as well.
@@ -66,13 +85,22 @@ export function ResultTicket({
   // offered where it does rather than failing in someone's hand.
   const [busy, setBusy] = useState<"save" | "share" | null>(null);
   const [note, setNote] = useState("");
+  // What goes on an image that leaves the phone is the person's choice, field by field. The name
+  // and the drink log are off until turned on. Provenance tags, the reference and the safety line
+  // are not choices: an exported copy must never be the one that drops them.
+  const [withName, setWithName] = useState(false);
+  const [withLog, setWithLog] = useState(false);
   const receipt = {
     readingId,
     timestamp,
-    name,
+    name: withName ? name : undefined,
+    logged: withLog ? logged : undefined,
+    reference,
     tags,
     rows,
+    notes,
     extra,
+    labelNote,
     verdict: assessment.verdict,
     line,
     // The safety line is on the shared image under exactly the rule it is on the screen (D19):
@@ -116,6 +144,12 @@ export function ResultTicket({
                   Subject · {name}
                 </>
               )}
+              {reference && (
+                <>
+                  <br />
+                  {reference}
+                </>
+              )}
             </span>
           </header>
           {sample && <Label paper>Sample data · animation preview</Label>}
@@ -142,23 +176,23 @@ export function ResultTicket({
           )}
           {tags.length > 0 && <p className="result-tag">{tags.join(" · ")}</p>}
           {rows.length > 0 && <Rows items={rows} />}
+          {notes.length > 0 && (
+            <ul className="k-notes">
+              {notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          )}
           {logged && <p className="result-extra">Logged today · {logged}</p>}
           {extra && <p className="result-extra">{extra}</p>}
-          {tags.length === 0 && assessment.partial && (
-            <p className="result-tag">Partial reading · Stand Still skipped</p>
-          )}
-          {tags.length === 0 && assessment.confidence !== "high" && (
-            <p className="result-tag">
-              Loose reading · {assessment.confidence} confidence
-            </p>
+          {conditions && conditions !== "good" && (
+            <p className="result-tag">Recording conditions · {conditions}</p>
           )}
           <div className="k-stamp-wrap result-verdict">
-            <Stamp
-              verdict={assessment.verdict}
-              note="Certified by a bin chicken"
-            />
+            <Stamp verdict={assessment.verdict} note={stampNote} />
             <ResultBird mood={assessment.verdict} animate={animate} />
           </div>
+          {labelNote && <p className="result-extra">{labelNote}</p>}
           <Quote byline="Dr. Kachka">“{line}”</Quote>
           {safety && (
             <div className="result-safety">
@@ -168,7 +202,7 @@ export function ResultTicket({
           <Stub label="Next">{nudges[assessment.nudge]}</Stub>
         </Ticket>
         <nav className="k-keys k-keys--2" aria-label="After your reading">
-          <Link className="k-key k-key--quiet result-link" to={againTo}>
+          <Link className="k-key k-key--quiet result-link" to={againTo} state={againState}>
             Run again
           </Link>
           <Link className="k-key k-key--quiet result-link" to="/home">
@@ -177,6 +211,23 @@ export function ResultTicket({
         </nav>
         {!sample && (
           <>
+            <fieldset className="result-share-fields">
+              <legend className="k-label">On a saved or shared image</legend>
+              {name && <Toggle checked={withName} onChange={setWithName} label="Include my name" />}
+              {logged && <Toggle checked={withLog} onChange={setWithLog} label="Include what I logged" />}
+              <p className="result-fine">
+                Always included: whether it was simulated, what it was compared with, and the safety line when alcohol
+                is logged.
+              </p>
+              <details className="result-preview-text">
+                <summary>What the image will say</summary>
+                <ul>
+                  {receiptText(receipt).map((text, i) => (
+                    <li key={`${i}:${text}`}>{text}</li>
+                  ))}
+                </ul>
+              </details>
+            </fieldset>
             <nav className="k-keys k-keys--2" aria-label="Keep this reading">
               <button
                 type="button"

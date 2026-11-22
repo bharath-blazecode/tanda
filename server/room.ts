@@ -3,7 +3,7 @@
 // what each present phone is doing right now. Never drinks (D23).
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { Hono } from 'hono'
-import { RoomPresenceRequest, RoomResultRequest, type RoomState } from '../shared/contracts'
+import { RoomPresenceRequest, RoomResultRequest, RoomWithdrawRequest, type RoomState } from '../shared/contracts'
 import { deviceNickname } from '../shared/nicknames'
 import { clientIp } from './client-ip'
 import type { Config } from './config'
@@ -104,6 +104,26 @@ export function roomRoutes(
     if (!throttle.admit(ip, deviceId, at)) return c.body(null, 204)
     // The store ignores a change inside its 2 s gap and only refreshes the heartbeat on a repeat.
     presence.beat(deviceId, nameFor(nickname, deviceId), stage, at)
+    return c.body(null, 204)
+  })
+
+  // Stop sharing: the device's result and its live row leave the board now, not in 12 hours. It
+  // answers 204 whether or not there was an entry, so it cannot be used to test which device IDs
+  // are on the board. A device ID is not an account: anyone holding it could already overwrite that
+  // entry, so letting them remove it adds no new power.
+  routes.post('/room/withdraw', async (c) => {
+    const ip = clientIp((name) => c.req.header(name))
+    if (!allow(ip, now())) {
+      return c.json({ error: 'rate_limited' }, 429)
+    }
+    const parsed = RoomWithdrawRequest.safeParse(await c.req.json().catch(() => null))
+    if (!parsed.success) return c.json({ error: 'bad_request' }, 400)
+    presence.remove(parsed.data.deviceId)
+    try {
+      await store.remove(parsed.data.deviceId, now())
+    } catch {
+      return c.json({ error: 'withdrawal_unconfirmed' }, 503)
+    }
     return c.body(null, 204)
   })
 

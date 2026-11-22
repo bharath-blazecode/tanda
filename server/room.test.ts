@@ -459,3 +459,58 @@ describe('ROOM_NAMES=generated', () => {
     expect((await board()).feed[0]!.nickname).toBe('Big Kev')
   })
 })
+
+describe('POST /api/room/withdraw', () => {
+  it('takes the device off the board and out of the live list at once', async () => {
+    const { post, board } = setup()
+    await post('/api/room/result', result())
+    await post('/api/room/presence', { deviceId: result().deviceId, nickname: 'Calm Quokka', stage: 'idle' })
+    expect((await board()).total).toBe(1)
+    const res = await post('/api/room/withdraw', { deviceId: result().deviceId })
+    expect(res.status).toBe(204)
+    const state = await board()
+    expect(state.total).toBe(0)
+    expect(state.feed).toEqual([])
+    expect(state.liveCount ?? 0).toBe(0)
+  })
+
+  it('leaves everyone else on the board', async () => {
+    const { post, board } = setup()
+    await post('/api/room/result', result())
+    await post('/api/room/result', result({ deviceId: '00000000-0000-4000-8000-000000000002', nickname: 'Brisk Emu' }))
+    await post('/api/room/withdraw', { deviceId: result().deviceId })
+    const state = await board()
+    expect(state.total).toBe(1)
+    expect(state.feed[0].nickname).toBe('Brisk Emu')
+  })
+
+  it('answers the same for a device that was never on the board, so it reveals nothing', async () => {
+    const { post } = setup()
+    const res = await post('/api/room/withdraw', { deviceId: '00000000-0000-4000-8000-00000000dead' })
+    expect(res.status).toBe(204)
+    expect(await res.text()).toBe('')
+  })
+
+  it('refuses a malformed body', async () => {
+    const { post } = setup()
+    expect((await post('/api/room/withdraw', { deviceId: 'short' })).status).toBe(400)
+    expect((await post('/api/room/withdraw', { nope: true })).status).toBe(400)
+  })
+
+  it('is rate limited per IP like a result post', async () => {
+    const { post } = setup({ postsPerMinute: 2 })
+    const headers = { 'x-forwarded-for': '203.0.113.9' }
+    const statuses = []
+    for (let i = 0; i < 3; i++) statuses.push((await post('/api/room/withdraw', { deviceId: result().deviceId }, headers)).status)
+    expect(statuses).toEqual([204, 204, 429])
+  })
+
+  it('lets a person who shares again come back with a new result', async () => {
+    const { post, board, clock } = setup()
+    await post('/api/room/result', result())
+    await post('/api/room/withdraw', { deviceId: result().deviceId })
+    clock.t += 15_000
+    await post('/api/room/result', result({ verdict: 'wired', score: 70 }))
+    expect((await board()).total).toBe(1)
+  })
+})

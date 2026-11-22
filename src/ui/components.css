@@ -287,3 +287,128 @@
   font: 400 13px/1.45 var(--mono);
   color: var(--ink-soft);
 }
+
+/* ---------------- Form controls ----------------
+   Native inputs in the instrument's materials. 44px minimum targets; focus uses the shared ring. */
+
+.k-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: var(--s3);
+  row-gap: var(--s1);
+  color: var(--housing-ink);
+}
+.k-toggle--paper { color: var(--ink); }
+.k-toggle__box {
+  appearance: none;
+  width: 52px;
+  height: 30px;
+  margin: 0;
+  border: 2px solid var(--housing-hi);
+  background: var(--bench);
+  position: relative;
+  cursor: pointer;
+  flex: none;
+}
+.k-toggle--paper .k-toggle__box { border-color: var(--ink); background: var(--chart); }
+.k-toggle__box::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: var(--housing-dim);
+}
+.k-toggle--paper .k-toggle__box::after { background: var(--ink-soft); }
+.k-toggle__box:checked { background: var(--chart); border-color: var(--grid-strong); }
+.k-toggle--paper .k-toggle__box:checked { background: var(--ink); border-color: var(--ink); }
+.k-toggle__box:checked::after { left: auto; right: 3px; background: var(--ink); }
+.k-toggle--paper .k-toggle__box:checked::after { background: var(--receipt); }
+.k-toggle__box:disabled { opacity: .45; cursor: not-allowed; }
+.k-toggle__label { font: 700 15px/1.3 var(--mono); cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.k-toggle__hint { grid-column: 2; margin: 0; font-size: 13px; color: var(--housing-dim); }
+.k-toggle--paper .k-toggle__hint { color: var(--ink-soft); }
+
+.k-segmented { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.k-segmented legend { padding: 0; margin-bottom: var(--s2); }
+.k-segmented__row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--s2); }
+.k-segmented__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 44px;
+  padding: var(--s2);
+  border: 2px solid var(--ink);
+  background: var(--chart);
+  color: var(--ink);
+  font: 700 14px/1.2 var(--mono);
+  cursor: pointer;
+}
+.k-segmented__item input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.k-segmented__item.is-on { background: var(--ink); color: var(--receipt); }
+.k-segmented__item:has(input:focus-visible) { outline: 3px solid var(--pencil); outline-offset: 2px; }
+
+.k-field { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.k-field__row { display: flex; align-items: center; gap: var(--s2); }
+.k-field__input {
+  /* 18px keeps iPhone Safari from zooming the page on focus (it zooms below 16px). */
+  font: 700 18px/1.2 var(--mono);
+  color: var(--ink);
+  background: var(--chart);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  appearance: none;
+  padding: var(--s2) var(--s3);
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+}
+.k-field__unit { font: 700 14px/1 var(--mono); color: var(--ink-soft); white-space: nowrap; }
+.k-field__hint { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+/* Notes printed under the rows of a ticket or sheet: what was not compared, and why. */
+.k-notes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.k-notes li { font: 400 13px/1.4 var(--mono); color: var(--ink-soft); }
+
+/* ---------------- Entries ----------------
+   A list of tappable rows on paper: the drink log. Each row is a native button. */
+.k-entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.k-entries li + li { border-top: 1px dotted var(--ink-soft); }
+.k-entry {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 2px var(--s3);
+  padding: var(--s2) 0;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  font: 400 15px/1.35 var(--mono);
+  text-align: left;
+  cursor: pointer;
+}
+.k-entry b { font-weight: 700; }
+.k-entry__time { font-weight: 700; font-variant-numeric: tabular-nums; }
+.k-entry__detail { grid-column: 1 / -1; font-size: 13px; color: var(--ink-soft); }
+
+/* A text button inside a sheet's sentence. Ink on paper, underlined, with a 44px tall target. */
+.k-inline-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--s1);
+  background: none;
+  border: 0;
+  color: var(--ink);
+  font: 700 13px/1.2 var(--mono);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

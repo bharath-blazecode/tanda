@@ -2,37 +2,33 @@
 // a nudge is a closed enum, and the words for it live in one file that a test greps (D19).
 // - Tipsy always maps to ride-or-friend.
 // - Any alcohol logged today shows the safety line, whatever the verdict.
-import type { Drink, NudgeKind, Verdict } from '../../shared/contracts'
+import type { NudgeKind, Verdict } from '../../shared/contracts'
+import { ALCOHOL_KINDS, CAFFEINE_KINDS, DEFAULT_CAFFEINE_MG, tallyCaffeine, type DrinkInput } from './serving'
 
-const ALCOHOL = new Set(['beer', 'wine', 'spirit'])
+/** The app's one-tap defaults, in mg. Kept under this name for older imports; see serving.ts. */
+export const CAFFEINE_MG = DEFAULT_CAFFEINE_MG
 
 /**
- * Caffeine per drink, in mg. Starting values from docs/05-architecture.md.
- * CARD 14 owns the on-board decay curve in caffeine.ts; it should import these rather than
- * restate them, so the two never drift apart.
+ * Past this much logged in a day, the stub suggests pausing caffeine even when the reading is steady.
+ * A product prompt, not a safety limit or anyone's guidance: see the evidence ledger.
  */
-export const CAFFEINE_MG: Partial<Record<Drink['kind'], number>> = {
-  coffee: 100,
-  energy: 80,
-}
-
-/** Past this much in a day, say something even when the reading is steady. */
 export const CAFFEINE_LIMIT_MG = 400
 
-export function hasAlcohol(drinksToday: Drink[]): boolean {
-  return drinksToday.some((d) => ALCOHOL.has(d.kind))
+export function hasAlcohol(drinksToday: readonly DrinkInput[]): boolean {
+  return drinksToday.some((d) => ALCOHOL_KINDS.has(d.kind))
 }
 
-export function hasCaffeine(drinksToday: Drink[]): boolean {
-  return drinksToday.some((d) => CAFFEINE_MG[d.kind] !== undefined)
+/** Any caffeinated kind counts, including one whose amount is unknown. */
+export function hasCaffeine(drinksToday: readonly DrinkInput[]): boolean {
+  return drinksToday.some((d) => CAFFEINE_KINDS.has(d.kind))
 }
 
-/** Total consumed today, not what is still on board. The limit rule is about the day's intake. */
-export function caffeineMgToday(drinksToday: Drink[]): number {
-  return drinksToday.reduce((total, d) => total + (CAFFEINE_MG[d.kind] ?? 0), 0)
+/** Known caffeine drunk today, not what is still on board. Unknown amounts add nothing here. */
+export function caffeineMgToday(drinksToday: readonly DrinkInput[]): number {
+  return tallyCaffeine(drinksToday).mg
 }
 
-export function nudgeFor(verdict: Verdict, drinksToday: Drink[]): { nudge: NudgeKind; showSafetyLine: boolean } {
+export function nudgeFor(verdict: Verdict, drinksToday: readonly DrinkInput[]): { nudge: NudgeKind; showSafetyLine: boolean } {
   const alcohol = hasAlcohol(drinksToday)
 
   // Safety first, and in this order: these two rules outrank everything below them.

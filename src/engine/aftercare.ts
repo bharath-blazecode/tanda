@@ -7,30 +7,35 @@
 // is why `only-time` is attached to every alcohol case and cannot be configured away. A list of
 // remedies with a countdown would be read as "do these and you are done", which is the clearance
 // claim this product does not make (CLAUDE.md, product rules).
-import type { Drink } from '../../shared/contracts'
 import { caffeineOnBoardMg } from './caffeine'
 import { CAFFEINE_LIMIT_MG, caffeineMgToday, hasAlcohol, hasCaffeine } from './nudge'
+import type { DrinkInput } from './serving'
 
+// Three tags were retired on 22 Nov 2026 because the evidence ledger could not support them as
+// written: salty food and fruit as fluid replacement (food-ideas), "expect to wake early"
+// (alcohol-and-sleep), and caffeine as a diuretic that needs water alongside (water-with-caffeine).
 export type CareTag =
   | 'only-time'
   | 'water-between'
   | 'food-with-it'
-  | 'food-ideas'
-  | 'alcohol-and-sleep'
-  | 'water-with-caffeine'
   | 'caffeine-over-limit'
   | 'caffeine-at-bedtime'
 
 /** Local bedtime used when nobody has said otherwise. */
 export const DEFAULT_BEDTIME_HOUR = 23
 
-/** Enough left to be worth a line: about a quarter of a cup. Descriptive, not a threshold. */
+/** Enough left to be worth a line: a quarter of the app's default cup. A product setting, not a sleep threshold. */
 export const BEDTIME_NOTICE_MG = 25
 
 /** The next time the clock reads `hour`, at or after `now`. */
 export function nextBedtime(now: number, hour = DEFAULT_BEDTIME_HOUR): number {
+  return nextBedtimeAt(now, hour * 60)
+}
+
+/** The next time the local clock reads `minutes` after midnight, strictly after `now`. */
+export function nextBedtimeAt(now: number, minutes: number): number {
   const at = new Date(now)
-  at.setHours(hour, 0, 0, 0)
+  at.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
   if (at.getTime() <= now) at.setDate(at.getDate() + 1)
   return at.getTime()
 }
@@ -48,20 +53,25 @@ export type Care = {
  * What to show alongside a result. `drinksToday` is already filtered to the current day by
  * src/store/day.ts; this function does not decide what counts as today.
  */
-export function careFor(drinksToday: readonly Drink[], now: number, bedtimeAt?: number): Care {
+export function careFor(
+  drinksToday: readonly DrinkInput[],
+  now: number,
+  bedtimeAt?: number,
+  /** Drinks still on board, which can reach back past the 4am boundary. Defaults to today's. */
+  onBoard: readonly DrinkInput[] = drinksToday,
+): Care {
   const bedtime = bedtimeAt ?? nextBedtime(now)
   const drinks = [...drinksToday]
   const tags: CareTag[] = []
 
   if (hasAlcohol(drinks)) {
     // Order matters: the honest line comes first so it cannot be read as a footnote to a remedy.
-    tags.push('only-time', 'water-between', 'food-with-it', 'food-ideas', 'alcohol-and-sleep')
+    tags.push('only-time', 'water-between', 'food-with-it')
   }
 
   const caffeineTodayMg = caffeineMgToday(drinks)
-  const caffeineAtBedtimeMg = hasCaffeine(drinks) ? caffeineOnBoardMg(drinks, bedtime) : null
+  const caffeineAtBedtimeMg = hasCaffeine(onBoard) ? caffeineOnBoardMg(onBoard, bedtime) : null
 
-  if (hasCaffeine(drinks)) tags.push('water-with-caffeine')
   if (caffeineTodayMg >= CAFFEINE_LIMIT_MG) tags.push('caffeine-over-limit')
   if (caffeineAtBedtimeMg !== null && caffeineAtBedtimeMg >= BEDTIME_NOTICE_MG) tags.push('caffeine-at-bedtime')
 

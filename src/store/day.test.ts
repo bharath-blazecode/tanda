@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Drink } from '../../shared/contracts'
+import type { DrinkInput as Drink } from '../engine/serving'
 import { dayStart, drinksToday } from './day'
 
 const at = (iso: string) => new Date(iso).getTime()

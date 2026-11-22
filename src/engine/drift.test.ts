@@ -81,8 +81,8 @@ describe('driftFor', () => {
 
 describe('a run with only one scored test', () => {
   it('scores sway alone when the tapping test was skipped in both runs', () => {
-    const a = { stand: { swayRms: 1, swayLateralRms: 1, hz: 50, valid: true }, at: 0 }
-    const b = { stand: { swayRms: 2, swayLateralRms: 1, hz: 50, valid: true }, at: 1 }
+    const a = { stand: { swayRms: 1, swayLateralRms: 1, hz: 50, valid: true, source: 'gyroscope' as const }, at: 0 }
+    const b = { stand: { swayRms: 2, swayLateralRms: 1, hz: 50, valid: true, source: 'gyroscope' as const }, at: 1 }
     const d = driftFor(a, b)
     expect(d.sway).toBeGreaterThan(0)
     expect(d.choiceRt).toBeUndefined()

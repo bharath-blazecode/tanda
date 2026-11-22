@@ -1,6 +1,7 @@
 // CARD 5. baseline + run -> normalised drift per metric, clipped to -3..3.
 // Formulas: docs/05-architecture.md, Scoring. Pure: no DOM, no network, no Date.now().
 import type { Drift, RunResult } from '../../shared/contracts'
+import { compareRuns, tapErrors } from './compare'
 import { NOISE_FLOOR } from './metrics'
 
 /** Drift is clipped to this either way, so one wild reading cannot swamp the sum. */
@@ -32,21 +33,25 @@ function countDrift(check: number, baseline: number, floor: number): number | un
 
 export function driftFor(baseline: RunResult, run: RunResult): Drift {
   const drift: Drift = {}
+  // Only what compare.ts accepts: same sensor, same capture, real taps, a measured pulse.
+  const can = compareRuns(baseline, run)
 
-  // Sway needs both runs to have stood still, and both readings to be usable.
-  if (baseline.stand?.valid && run.stand?.valid) {
+  if (can.stand.compared && baseline.stand && run.stand) {
     drift.sway = ratioDrift(run.stand.swayRms, baseline.stand.swayRms, NOISE_FLOOR.sway)
   }
 
-  // Taps need both runs to have tapped. Skipping the tapping test is allowed when the standing
-  // test was done, so this is no longer guaranteed.
-  if (baseline.choice && run.choice) {
-    drift.choiceRt = ratioDrift(run.choice.medianMs, baseline.choice.medianMs, NOISE_FLOOR.choiceRt)
-    drift.choiceWrong = countDrift(run.choice.wrong, baseline.choice.wrong, NOISE_FLOOR.choiceWrong)
+  // Errors are wrong squares plus missed ones, both real counts. The median time only counts when
+  // both runs had a clean tap: otherwise it is a 2000 ms placeholder, not a reaction time.
+  if (can.choice.compared && baseline.choice && run.choice) {
+    if (can.reactionTime) {
+      drift.choiceRt = ratioDrift(run.choice.medianMs, baseline.choice.medianMs, NOISE_FLOOR.choiceRt)
+    }
+    drift.choiceWrong = countDrift(tapErrors(run.choice), tapErrors(baseline.choice), NOISE_FLOOR.choiceWrong)
   }
 
-  // The pulse term exists only when both runs have one (D46).
-  if (baseline.hr !== undefined && run.hr !== undefined) {
+  // The pulse term exists only when both runs have a measured one (D46). Approximate readings
+  // never reach `hr`: the contract refuses them.
+  if (can.pulse.compared && baseline.hr !== undefined && run.hr !== undefined) {
     drift.hr = ratioDrift(run.hr, baseline.hr, NOISE_FLOOR.hr)
   }
 

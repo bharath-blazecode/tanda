@@ -84,6 +84,48 @@ describe('mirrored room store', () => {
     expect(store.snapshot(T0).total).toBe(0)
   })
 
+  it('deletes a withdrawn device from the mirror', async () => {
+    const { mirror, hash } = fakeMirror()
+    const { store } = createMirroredRoom(mirror, { log: quietLog().log })
+    store.add(entry(), 'device-aaaa-1111')
+    store.add(entry({ nickname: 'Brisk Emu' }), 'device-bbbb-2222')
+    await flush()
+    expect(await store.remove('device-aaaa-1111', T0)).toBe(true)
+    await flush()
+    expect([...hash.keys()]).toEqual(['device-bbbb-2222'])
+    expect(store.snapshot(T0).total).toBe(1)
+  })
+
+  it('never lets a mirror read that predates a withdrawal bring the entry back', async () => {
+    // The delete has not reached Redis yet (or failed): the hash still holds the old entry.
+    const { mirror, state } = fakeMirror({ 'device-aaaa-1111': JSON.stringify(entry({ at: T0 })) })
+    const room = createMirroredRoom(mirror, { now: () => T0 + 1000, log: quietLog().log })
+    await room.hydrate()
+    expect(room.store.snapshot(T0 + 1000).total).toBe(1)
+    state.mode = 'reject' // the HDEL fails
+    const app = createApp(loadConfig({}), { store: room.store })
+    const withdraw = () => app.request('/api/room/withdraw', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deviceId: 'device-aaaa-1111' }),
+    })
+    expect((await withdraw()).status).toBe(503)
+    state.mode = 'ok'
+    await room.sync()
+    expect(room.store.snapshot(T0 + 1000).total).toBe(0)
+    expect((await withdraw()).status).toBe(204)
+  })
+
+  it('accepts a newer entry for a withdrawn device, because the person shared again', async () => {
+    const { mirror, hash } = fakeMirror()
+    const room = createMirroredRoom(mirror, { now: () => T0 + 6000, log: quietLog().log })
+    room.store.remove('device-aaaa-1111', T0 + 1000)
+    await flush()
+    // Written after the withdrawal, for example by another instance taking the new result.
+    hash.set('device-aaaa-1111', JSON.stringify(entry({ at: T0 + 5000, verdict: 'wired' })))
+    await room.sync()
+    expect(room.store.snapshot(T0 + 6000).feed[0]?.verdict).toBe('wired')
+  })
+
   it('removes evicted and expired entries from the mirror', async () => {
     const { mirror, hash } = fakeMirror()
     const { store } = createMirroredRoom(mirror, { storeOptions: { maxEntries: 2 }, log: quietLog().log })

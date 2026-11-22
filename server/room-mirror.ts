@@ -126,6 +126,11 @@ export function createMirroredRoom(
   let lastLog = -Infinity
   // Bumped on reset, so a read that started before a reset cannot bring the old board back.
   let generation = 0
+  // Withdrawn devices and when. A mirror read that started before a withdrawal, or a delete that has
+  // not landed yet, must not bring the entry back. A newer post (the person shared again) is allowed.
+  // Bounded, and forgotten once anything older would have expired anyway.
+  const withdrawn = new Map<string, number>()
+  const MAX_WITHDRAWN = 5_000
 
   const report = (err: unknown) => {
     errorCount++
@@ -163,7 +168,9 @@ export function createMirroredRoom(
       const drop = [...junk]
       for (const [deviceId, entry] of pairs) {
         const nickname = names(entry.nickname, deviceId)
-        if (nickname === null || at - entry.at > maxAgeMs || entry.at - at > MAX_FUTURE_MS) drop.push(deviceId)
+        const gone = withdrawn.get(deviceId)
+        if (gone !== undefined && entry.at <= gone) drop.push(deviceId)
+        else if (nickname === null || at - entry.at > maxAgeMs || entry.at - at > MAX_FUTURE_MS) drop.push(deviceId)
         else kept.push([deviceId, { ...entry, nickname }])
       }
       if (drop.length > 0) fire(() => mirror.remove(drop))
@@ -185,7 +192,24 @@ export function createMirroredRoom(
     reset() {
       inner.reset()
       generation++
+      withdrawn.clear()
       fire(() => mirror.clear())
+    },
+    async remove(deviceId, at) {
+      const had = inner.remove(deviceId, at)
+      withdrawn.delete(deviceId)
+      withdrawn.set(deviceId, at)
+      for (const [id, when] of withdrawn) {
+        if (withdrawn.size <= MAX_WITHDRAWN && at - when <= maxAgeMs) break
+        withdrawn.delete(id)
+      }
+      try {
+        await withTimeout(() => mirror.remove([deviceId]), callTimeoutMs)
+      } catch (error) {
+        report(error)
+        throw error
+      }
+      return had
     },
     merge: (pairs, at) => inner.merge(pairs, at),
   }

@@ -1,14 +1,26 @@
 // CARD 7. Result (docs/04-screens-spec.md, section 7).
-// The last reading, printed on the ticket. Everything comes from storage, so a reload prints the
-// same ticket again with no network call (the bird's line was saved with the result).
+// The last reading, printed on the ticket. Everything comes from the stored result, including the
+// reference it was compared with, so a reload prints the same ticket with no network call, and a
+// later recalibration cannot change the numbers on an old ticket.
 import { useRef } from 'react'
 import { Navigate, useLocation } from 'react-router'
+import { compareRuns } from '../../engine/compare'
 import { drinksToday } from '../../store/day'
 import { load } from '../../store/local'
-import { isStockBaseline } from '../../store/quick'
+import type { CheckRouteState } from '../../store/quick'
 import { InkFilter } from '../../ui'
 import { guessFromDrift, guessLine, isDemoHandicap } from '../demo/guess'
-import { describeDrinks, metricRows, printedAt, serialFor, ticketTags } from './format'
+import {
+  comparisonRows,
+  conditionsWords,
+  describeDrinks,
+  labelNote,
+  printedAt,
+  referenceLine,
+  serialFor,
+  stampNote,
+  ticketTags,
+} from './format'
 import { ResultPreview } from './Preview'
 import { ResultTicket } from './ResultTicket'
 import './result.css'
@@ -20,40 +32,47 @@ export function Result() {
   // The four verdict animations on sample data, for the lab page and the pitch.
   if (new URLSearchParams(location.search).has('preview')) return <ResultPreview />
 
-  const { baseline, lastResult: last } = stored
-  // A ticket compares with a baseline; without either there is nothing to print.
-  if (!baseline) return <Navigate to="/" replace />
+  const last = stored.lastResult
   if (!last) return <Navigate to="/home" replace />
 
-  const { run, assessment, line, mode } = last
+  const { run, assessment, line, mode, reference } = last
+  const can = compareRuns(reference.run, run)
+  const { rows, notes } = comparisonRows(run, reference.run, can)
   // What the person picked, handed over by Check. Only used to own up to a wrong guess.
   const picked = (location.state as { handicap?: unknown } | null)?.handicap
-  // The guess comes from the reading itself, never from the pick.
-  // A quick demo has no handicap to guess: it is a reading against the stock normal.
-  const stock = isStockBaseline(baseline)
+  // The guess comes from the reading itself, never from the pick. An example run had no handicap.
   const guess =
-    mode === 'demo' && !stock
+    mode === 'demo' && reference.kind === 'personal'
       ? guessLine(guessFromDrift(assessment.drift), isDemoHandicap(picked) ? picked : undefined)
       : undefined
+
+  const again: { to: string; state?: CheckRouteState } =
+    reference.kind === 'example'
+      ? { to: '/check', state: { reference: 'example', answered: true } }
+      : mode === 'demo'
+        ? { to: '/demo' }
+        : { to: '/check' }
 
   return (
     <>
       <InkFilter />
       <ResultTicket
         assessment={assessment}
-        rows={metricRows(assessment.drift, run, baseline.run)}
+        rows={rows}
+        notes={notes}
         line={line.trim().replace(/^["“]+|["”]+$/g, '').trim()}
         readingId={serialFor(run.at).replace(/^No\. /, '')}
         timestamp={printedAt(run.at)}
         name={stored.nickname}
-        tags={[
-          ...ticketTags({ mode, assessment, baselineClean: baseline.clean }),
-          // Said on the ticket, so nobody takes a quick demo for a reading against their own normal.
-          ...(stock ? ['Stock normal, not yours'] : []),
-        ]}
+        reference={referenceLine(reference)}
+        tags={ticketTags({ mode, assessment, baselineClean: reference.clean, reference: reference.kind })}
+        conditions={conditionsWords(assessment.confidence)}
+        stampNote={stampNote(mode)}
+        labelNote={labelNote(assessment.verdict)}
         logged={describeDrinks(drinksToday(stored.drinks, run.at))}
         extra={guess}
-        againTo={mode === 'demo' ? '/demo' : '/check'}
+        againTo={again.to}
+        againState={again.state}
       />
     </>
   )

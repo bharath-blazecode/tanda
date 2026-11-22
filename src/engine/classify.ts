@@ -1,7 +1,9 @@
 // CARD 5. drift + the drink log -> verdict, confidence, score, nudge.
 // The sensors give the amount of drift; the log gives it a name (D17, D18).
-import type { Assessment, Confidence, Drift, Handicap, RunResult } from '../../shared/contracts'
-import type { Drink, Mode } from '../../shared/contracts'
+import type { Assessment, Confidence, Drift, Handicap, ReferenceKind, RunResult } from '../../shared/contracts'
+import type { Mode } from '../../shared/contracts'
+import type { DrinkInput } from './serving'
+import { compareRuns, type Comparability } from './compare'
 import { driftFor, pos } from './drift'
 import { DRIFT_CLIP } from './drift'
 import { DRIFT_THRESHOLD, PULSE_CAP } from './metrics'
@@ -11,9 +13,11 @@ export type AssessInput = {
   baseline: RunResult
   baselineClean: boolean
   run: RunResult
-  drinksToday: Drink[]
+  drinksToday: readonly DrinkInput[]
   mode: Mode
   checksSinceBaseline: number // the first few "faster than baseline" readings are learning, not drift
+  /** `example` is the quick demo's fixed numbers: no handicap was chosen, so none is guessed. */
+  reference?: ReferenceKind
 }
 
 /** For the first few checks a faster tap is practice, not improvement worth crediting. */
@@ -40,10 +44,15 @@ export function scoreFor(drift: Drift): number {
   return 100 - Math.round(100 * Math.min(1, Math.max(0, mean / DRIFT_CLIP)))
 }
 
-function confidenceFor(input: AssessInput): Confidence {
+/**
+ * The recording-conditions tier: how much the comparison can be leaned on given what was recorded.
+ * It is not a probability and not diagnostic confidence (see the evidence ledger).
+ */
+function confidenceFor(input: AssessInput, can: Comparability): Confidence {
   let steps = 0
-  if (!input.run.stand?.valid) steps++
+  if (!can.stand.compared) steps++
   if (!input.baselineClean) steps++
+  steps += can.caveats.length
 
   const hz = input.run.stand?.hz
   const baseHz = input.baseline.stand?.hz
@@ -70,6 +79,7 @@ function guessHandicap(drift: Drift, baseline: RunResult, run: RunResult): Handi
 }
 
 export function assess(input: AssessInput): Assessment {
+  const can = compareRuns(input.baseline, input.run)
   const drift = driftFor(input.baseline, input.run)
 
   // Early on, a faster tap is the person learning the test. Do not bank it as improvement.
@@ -88,14 +98,32 @@ export function assess(input: AssessInput): Assessment {
 
   const { nudge, showSafetyLine } = nudgeFor(verdict, input.drinksToday)
 
+  // A guess only makes sense when the person chose a handicap, which an example run never does.
+  const guessed =
+    input.mode === 'demo' && input.reference !== 'example' ? guessHandicap(drift, input.baseline, input.run) : undefined
+
   return {
     verdict,
-    confidence: confidenceFor(input),
+    confidence: confidenceFor(input, can),
     drift,
     score: scoreFor(drift),
     nudge,
     showSafetyLine,
-    partial: !input.run.stand?.valid,
-    ...(input.mode === 'demo' ? { guessedHandicap: guessHandicap(drift, input.baseline, input.run) } : {}),
+    // Partial: one of the two scored tests was not compared, for whatever reason.
+    partial: !can.stand.compared || !can.choice.compared,
+    ...(guessed ? { guessedHandicap: guessed } : {}),
   }
+}
+
+export type Evaluation = { ok: true; assessment: Assessment; comparability: Comparability } | { ok: false; comparability: Comparability }
+
+/**
+ * The entry point for a screen. Refuses to produce a verdict when neither scored test could be
+ * compared: an empty comparison used to print as Steady 100, which reads as an all-clear for a
+ * reading that never happened.
+ */
+export function evaluate(input: AssessInput): Evaluation {
+  const comparability = compareRuns(input.baseline, input.run)
+  if (!comparability.any) return { ok: false, comparability }
+  return { ok: true, assessment: assess(input), comparability }
 }

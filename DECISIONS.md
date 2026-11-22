@@ -220,6 +220,88 @@ It replaces the working titles Body Check and Buzz Check. The name lives in one 
 - **Secrets:** the Anthropic key and the room admin token live only in the Dokploy environment.
 - **Cost of a redeploy:** the server restarts, so the room board and the in-memory limits reset. Freeze merges at 16:15 (D29).
 
+## Portfolio slice (22 Nov 2026, after the hackathon)
+
+Decisions made while turning the hackathon build into a portfolio project. The discovery pack that
+led to them is `docs/portfolio/DISCOVERY.md`; the evidence behind every claim is
+`docs/portfolio/research/EVIDENCE-LEDGER.md`.
+
+**D49. Local data moves to schema v2 under a new key, and the v1 record stays as a rollback copy.** Default 22 Nov.
+v1 wiped the whole record whenever any field failed validation, and had no migrations. v2 lives under
+`bc:v2`, validates field by field so a bad drink costs only that drink, and migrates `bc:v1` once
+without touching it. Rolling the app back to a v1 build therefore finds its own data, as it was before
+the upgrade, instead of a record it would reject and wipe. Start over removes both keys. Rejected: an
+in-place upgrade under `bc:v1` (a rollback would wipe everything), and two migrations (v2 then v3) for
+the two stages of this slice (more surface for the same data).
+
+**D50. The example reference is never a baseline.** Default 22 Nov.
+The quick demo used to write fixed numbers into the baseline and mark them with a reading time of zero.
+That overwrote anything recorded before, kept later visits in demo mode without saying so, and let an
+old ticket recompute its percentages against whatever baseline came later. Now the example numbers live
+in code, a run against them is always mode `demo` and tagged as an example, and every stored result
+keeps a copy of the reference it was actually compared with. The route is carried in router state, so a
+reload mid-run keeps it.
+
+**D51. A comparison needs the same sensor, the same capture length and a real measurement.** Default 22 Nov.
+Reproduced on main before the change: gyroscope (deg/s) against acceleration (m/s²) clipped sway to
+plus or minus 3, which could print Tipsy from a sensor change alone; a check with no test in common
+printed Steady 100; and the 2000 ms "no clean taps" placeholder was scored as a reaction time. Now
+`src/engine/compare.ts` decides per test whether a comparison exists. A known sensor or capture change
+is not compared and the ticket says why. A reading from before v2 with no recorded sensor is compared
+and lowers the recording-conditions tier by one step. When neither scored test can be compared there is
+no verdict, no ticket, no board post and no Claude call. Only a measured pulse is scored; an approximate
+one is shown with "about" and the contract refuses it in the scored field.
+
+**D52. A missed tap counts as an error, like a wrong one.** Default 22 Nov. Changes the scoring in `docs/05-architecture.md`.
+Keeping the placeholder median out of scoring would otherwise let a run with no taps at all read as
+Steady, which rewards a worse reading. Wrong plus missed squares are both real counts, so the error term
+uses their sum, with the same noise floor of one. The median time is compared only when both runs had
+at least one clean tap.
+
+**D53. Recalibrating is blocked while alcohol is logged today.** Default 22 Nov. Narrows D21.
+D21 said re-recording a baseline is blocked while drinks are logged, but nothing enforced it. A baseline
+recorded after alcohol makes every later comparison look better than it is. A first baseline can still
+be recorded after a drink and is marked as not clean, as before. Caffeine does not block recalibrating,
+because a caffeine-first visitor would otherwise be locked out for the day; it marks the baseline as
+not clean instead.
+
+**D54. The room screen is off until a person turns it on, in both entry paths.** Default 22 Nov. Amends D23.
+D23 said real mode is off by default and demo mode is on with a notice; the code turned it on for both.
+Now one visible switch on Landing and on the Privacy screen controls it, off by default for both paths,
+and records migrated from v1 restart with it off because v1 never asked. Turning it off withdraws the
+device's board entry and live row at once (`POST /api/room/withdraw`). Start over withdraws first, then
+clears the phone. A device ID is not an account: it can overwrite or withdraw its own board entry, and
+nothing more.
+
+**D55. A saved or shared receipt carries the name and the drink log only when chosen.** Default 22 Nov.
+The image leaves the phone and cannot be recalled. Provenance tags, the reference and the safety line are
+not choices.
+
+**D56. Claude commentary stays on by default, with a switch.** Default 22 Nov.
+It sends numbers and closed enums only, never a name, device ID or free text (D9), and it is the
+project's honest AI feature. The Privacy screen lists exactly what is sent. Off, no request is made and
+a built-in line is printed.
+
+**D57. 400 mg is the app's prompt to pause, not anyone's guidance.** Default 22 Nov. Amends the dose note in D41 without rewriting it.
+D41 attributes 400 mg a day and 200 mg a serving to FSANZ as recommended maximums. FSANZ's caffeine page,
+read once on 22 Nov through a third-party fetch tool, says there is no recognised health-based guidance
+value for caffeine, and cites an expert group finding of anxiety in children at about 3 mg/kg a day.
+EFSA's 2015 opinion is the likely origin of 400 mg, for healthy non-pregnant adults, but it could not be
+retrieved here. Until both are read directly, the product names no authority for 400 mg and says it is
+not a safe limit. Evidence row L23 and L24.
+
+**D58. A drink records when it was drunk, what was in it and where each number came from.** Default 22 Nov.
+One tap still logs a drink now. "Add with details" and editing record the time it was actually drunk
+(separate from when it was typed, and markable as a rough guess), the serving in mL, the share drunk,
+caffeine as mg per serving or mg per 100 mL from a label or the person's estimate, and for alcohol the
+label's standard-drink number or its ABV. The arithmetic is shown in words as it is typed. Nothing is
+invented: an empty volume stays unknown, tea has no default dose, and an alcohol entry without detail
+stays a count, never one standard drink. Migrated v1 entries keep their default doses written down as
+assumptions and are never turned into standard drinks. Each add, edit or removal can be undone on Home.
+Caffeine detail applies to caffeinated kinds and alcohol detail to alcoholic kinds; a mixed drink is two
+entries for now. The day still ends at 4am for counting; the on-board estimate carries caffeine across
+it. Bedtime is a setting that places a marker and predicts nothing.
+
 ---
 
 ## Process

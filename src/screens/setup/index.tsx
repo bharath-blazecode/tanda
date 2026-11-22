@@ -7,7 +7,7 @@
 // - A permission can be granted and still deliver nothing. That is what an in-app browser does,
 //   and the room gets this link through Slack, so it is the likeliest way a judge gets stuck.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import {
   detectMotion,
   motionSupport,
@@ -28,6 +28,14 @@ function isBrave(): boolean {
 
 export function Setup() {
   const navigate = useNavigate()
+  const location = useLocation()
+  // Where Setup hands over: the quick demo goes to an example check, everything else to a baseline.
+  // A boolean, so the callbacks below keep a stable identity across renders.
+  const toExample = (location.state as { next?: unknown } | null)?.next === 'example'
+  const goNext = useCallback(
+    () => (toExample ? navigate('/check', { state: { reference: 'example' } }) : navigate('/baseline')),
+    [navigate, toExample],
+  )
   const [phase, setPhase] = useState<Phase>('checking')
   const [copied, setCopied] = useState(false)
   const timers = useRef<number[]>([])
@@ -40,8 +48,8 @@ export function Setup() {
   )
 
   const handOver = useCallback(() => {
-    timers.current.push(window.setTimeout(() => navigate('/baseline'), HANDOVER_MS))
-  }, [navigate])
+    timers.current.push(window.setTimeout(goNext, HANDOVER_MS))
+  }, [goNext])
 
   // detectMotion records the outcome for Baseline and Check; this only picks what to show.
   const settle = useCallback(
@@ -75,7 +83,7 @@ export function Setup() {
 
   const oneTest = () => {
     setMotionAvailability('unavailable')
-    navigate('/baseline')
+    goNext()
   }
 
   const copyLink = async () => {
@@ -145,7 +153,9 @@ export function Setup() {
           </>
         )}
 
-        <p className="k-small">Your readings stay on this phone. No account, nothing to sign.</p>
+        <p className="k-small">
+          Motion and camera readings are worked out on this phone. The raw samples are never uploaded. No account.
+        </p>
       </Sheet>
 
       {(phase === 'idle' || phase === 'requesting') && (
