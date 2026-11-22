@@ -61,12 +61,12 @@ Screenshots show the running app at a mobile viewport. The receipt uses **sample
 | **Stand Still** | Uses phone motion data to measure sway during a ten-second standing test. |
 | **Choice Tap** | Measures reaction time and accuracy across four squares, with two warm-ups and eight scored taps. |
 | **Camera pulse** | An optional finger-on-camera pulse estimate. It contributes only when the baseline also has pulse data, and cannot determine a verdict by itself. |
-| **Drink log and caffeine curve** | Records drinks on the device and estimates caffeine remaining through the day, with aftercare prompts. |
+| **Drink log and caffeine curve** | Records drinks on the device and draws an illustrative caffeine estimate from the log, using the dose and half-life assumptions it shows. It is arithmetic on what you logged, not a measurement of you. |
 | **Receipt** | Prints the baseline comparison, verdict, bird animation and commentary; supports saving and browser-dependent sharing. |
 | **The Room** | A shared board of names, live activity and results. Drink logs are not posted to it. |
 | **Demo modes** | A quick entry from the landing screen, plus an optional challenge using your other hand or a spin where motion is available. |
 
-The quick demo skips recording a personal baseline. It uses a built-in stock baseline, offers each test once with skip controls, and labels the result **Simulated** and **Stock normal, not yours**. The stock baseline includes standing and tapping values, so a camera pulse reading is shown but does not contribute to that demo's score. The wearable ring and motion magnifier discussed in early plans are not part of the current app flow.
+The quick demo skips recording a personal baseline. It compares against fixed example numbers, chosen on build day and not drawn from any study, offers each test once with skip controls, and labels the result **Simulated** and **Example reference, not your baseline** on the screen, after a reload and on a saved receipt. It never writes those numbers into your personal baseline. The example has standing and tapping values only, so a camera pulse reading is shown but not compared. The wearable ring and motion magnifier discussed in early plans are not part of the current app flow.
 
 ## How it works
 
@@ -74,7 +74,7 @@ The quick demo skips recording a personal baseline. It uses a built-in stock bas
 
 Claude writes the short line on the ticket; **it does not decide the verdict or the safety advice**. Without an API key, or when the service fails, the app uses a built-in line instead. The instrument still works.
 
-Baseline readings and drink history are stored in the browser's `localStorage`. The verdict request sends numeric summaries and fixed categories to the server; when Claude is enabled, selected summaries are passed to it for the commentary. Joining the room sends your display name, activity and result to the shared board. Starting from the landing page joins the board by default. There are no user accounts.
+Baseline readings and drink history are stored in the browser's `localStorage`. The verdict request sends numeric summaries and fixed categories to the server; when Claude is enabled, selected summaries are passed to it for the commentary. Joining the room sends your display name, activity and result to the shared board. The room screen is off until you turn it on, and turning it off takes you off the board. The Privacy screen lists what stays on the phone and what leaves it. There are no user accounts.
 
 ## Run locally
 

@@ -71,7 +71,9 @@ export function buildUserMessage(req: VerdictRequest): string {
   lines.push(`Alcoholic drinks logged today: ${req.drinks.alcohol}`)
   lines.push(`Local time: ${req.localHour}:00 (${timeOfDay(req.localHour)})`)
 
-  if (req.mode === 'demo') {
+  if (req.mode === 'demo' && req.reference === 'example') {
+    lines.push('Example mode: compared with fixed example numbers, not with this person. No handicap was chosen.')
+  } else if (req.mode === 'demo') {
     lines.push('Demo mode: the person messed up the test on purpose to see what happens.')
     if (req.handicap) lines.push(`Handicap the app guessed: they ${HANDICAP_TEXT[req.handicap]}`)
   }

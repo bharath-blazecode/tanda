@@ -45,19 +45,15 @@ describe('careFor', () => {
     expect(care.tags).toContain('only-time')
   })
 
-  it('offers water, food and the sleep note alongside alcohol', () => {
+  it('offers water and food alongside alcohol, after only-time', () => {
     const care = careFor([drink('beer')], NOON)
-    expect(care.tags).toContain('water-between')
-    expect(care.tags).toContain('food-with-it')
-    expect(care.tags).toContain('food-ideas')
-    expect(care.tags).toContain('alcohol-and-sleep')
+    expect(care.tags).toEqual(['only-time', 'water-between', 'food-with-it'])
   })
 
   it('does not bring alcohol lines to a coffee-only day', () => {
     const care = careFor([drink('coffee')], NOON)
     expect(care.tags).not.toContain('only-time')
-    expect(care.tags).not.toContain('food-ideas')
-    expect(care.tags).toContain('water-with-caffeine')
+    expect(care.tags).not.toContain('water-between')
   })
 
   it('mentions the daily guide only once the day is past it', () => {

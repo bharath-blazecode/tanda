@@ -124,7 +124,10 @@ export function verdictRoutes(config: Config, deps: VerdictDeps = {}) {
       return c.json(body)
     }
     const canned = (reason: string) =>
-      reply(cannedLine(req.verdict, req.mode, pick, { handicap: req.handicap, alcohol: req.drinks.alcohol }), reason)
+      reply(
+        cannedLine(req.verdict, req.mode, pick, { handicap: req.handicap, alcohol: req.drinks.alcohol, reference: req.reference }),
+        reason,
+      )
 
     // Steady with alcohol is the one screen where a reassuring line would be dangerous, so Claude
     // never writes it: the fixed non-clearance lines answer, in either mode.

@@ -250,6 +250,9 @@ export const VerdictRequest = z.object({
   }),
   localHour: z.number().int().min(0).max(23),
   handicap: Handicap.optional(),
+  // A closed enum like the rest. `example` tells the bird the comparison was with fixed example
+  // numbers, so it does not tease a handicap nobody chose or call them the person's normal.
+  reference: ReferenceKind.optional(),
 })
 export type VerdictRequest = z.infer<typeof VerdictRequest>
 

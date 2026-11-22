@@ -44,6 +44,8 @@ export type ResultTicketProps = {
   labelNote?: string;
   /** Recording conditions in a word: good, fair or poor. Only printed when not good. */
   conditions?: string;
+  /** The small print on the stamp. A simulated reading says so on the stamp itself. */
+  stampNote?: string;
   /** Where "Run again" goes, and the router state it carries. A demo reading goes back to the demo. */
   againTo?: string;
   againState?: unknown;
@@ -72,6 +74,7 @@ export function ResultTicket({
   reference,
   labelNote,
   conditions,
+  stampNote = "Certified by a bin chicken",
   againTo = "/check",
   againState,
 }: ResultTicketProps) {
@@ -186,10 +189,7 @@ export function ResultTicket({
             <p className="result-tag">Recording conditions · {conditions}</p>
           )}
           <div className="k-stamp-wrap result-verdict">
-            <Stamp
-              verdict={assessment.verdict}
-              note="Certified by a bin chicken"
-            />
+            <Stamp verdict={assessment.verdict} note={stampNote} />
             <ResultBird mood={assessment.verdict} animate={animate} />
           </div>
           {labelNote && <p className="result-extra">{labelNote}</p>}

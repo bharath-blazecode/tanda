@@ -14,30 +14,18 @@ export const CARE_COPY: Record<CareTag, CareCopy> = {
   },
   'water-between': {
     title: 'Water between them',
-    body: 'A glass of water between drinks. It will not change your reading, but tomorrow will be kinder.',
+    body: 'A glass of water between drinks slows the pace of the night. It does not change your reading or remove alcohol already in you.',
   },
   'food-with-it': {
     title: 'Eat something',
-    body: 'Food slows how fast alcohol arrives. That helps with the next one, not the last one.',
-  },
-  'food-ideas': {
-    title: 'While you wait',
-    body: 'Water, something salty, and fruit with water in it: watermelon, orange, a banana. You are replacing fluid and salt, not undoing anything.',
-  },
-  'alcohol-and-sleep': {
-    title: 'About tonight',
-    body: 'Alcohol gets you to sleep faster and then breaks up the second half of the night. Expect to wake early.',
-  },
-  'water-with-caffeine': {
-    title: 'A glass alongside',
-    body: 'Caffeine is a mild diuretic, so keep a glass of water next to it.',
+    body: 'Have food if you are drinking. It does not undo what you have already had.',
   },
   'caffeine-over-limit': {
-    title: 'Over the daily guide',
-    body: 'That is past 400 mg today, which is the usual daily guide for adults.',
+    title: 'A lot of caffeine today',
+    body: 'Over 400 mg logged today. The app uses that number as a prompt to pause, not as a safe limit. Advice differs between countries and between people, and some need far less.',
   },
   'caffeine-at-bedtime': {
     title: 'Still with you at bedtime',
-    body: 'Caffeine halves about every five hours, so an afternoon cup is still partly on board at midnight.',
+    body: 'The estimate assumes caffeine halves every five hours, which varies a lot between people. It cannot tell you whether you will sleep.',
   },
 }

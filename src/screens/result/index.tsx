@@ -18,6 +18,7 @@ import {
   printedAt,
   referenceLine,
   serialFor,
+  stampNote,
   ticketTags,
 } from './format'
 import { ResultPreview } from './Preview'
@@ -66,6 +67,7 @@ export function Result() {
         reference={referenceLine(reference)}
         tags={ticketTags({ mode, assessment, baselineClean: reference.clean, reference: reference.kind })}
         conditions={conditionsWords(assessment.confidence)}
+        stampNote={stampNote(mode)}
         labelNote={labelNote(assessment.verdict)}
         logged={describeDrinks(drinksToday(stored.drinks, run.at))}
         extra={guess}

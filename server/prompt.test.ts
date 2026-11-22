@@ -41,6 +41,13 @@ describe('buildUserMessage', () => {
     expect(msg).toContain('spun around')
   })
 
+  it('says an example run compared with fixed numbers and had no handicap', () => {
+    const msg = buildUserMessage({ ...base, mode: 'demo', verdict: 'wobbly', reference: 'example' })
+    expect(msg).toContain('fixed example numbers')
+    expect(msg).toContain('No handicap was chosen')
+    expect(msg).not.toContain('messed up the test on purpose')
+  })
+
   it('tells Claude a steady result proves nothing when alcohol was logged', () => {
     const msg = buildUserMessage({ ...base, verdict: 'steady', drift: { sway: 0 } })
     expect(msg).toContain('Steady tests prove nothing beyond standing and tapping')

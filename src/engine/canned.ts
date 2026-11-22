@@ -1,7 +1,7 @@
 // CARD 8 owns this file. Local fallback lines, shown at once and kept if Claude does not answer in 4 s.
 // Used by the client and by the server's fallback, so both print the same voice.
 // Voice: Dr. Bin Chicken, dry and unimpressed. Never mentions driving, medicine or the law.
-import type { Handicap, Mode, Verdict } from '../../shared/contracts'
+import type { Handicap, Mode, ReferenceKind, Verdict } from '../../shared/contracts'
 
 export const REAL_LINES: Record<Verdict, readonly string[]> = {
   steady: [
@@ -57,7 +57,31 @@ export const DEMO_NO_DRIFT_LINES: readonly string[] = [
   'The handicap did nothing. I remain as unimpressed as ever.',
 ]
 
-export type CannedContext = { handicap?: Handicap; alcohol?: number }
+// Against the quick demo's example numbers: not the person's normal, and no handicap was chosen.
+export const EXAMPLE_LINES: Record<Verdict, readonly string[]> = {
+  steady: [
+    'Close to the example numbers. They are not yours, so I am not impressed either way.',
+    'Near the stock figures. Record your own baseline if you want a reading about you.',
+    'Matches numbers I made up on build day. Congratulations on resembling a spreadsheet.',
+  ],
+  wired: [
+    'Off the example numbers, with caffeine on the books. Those numbers were never yours.',
+    'Twitchier than the stock figures. Your own baseline would say more than I can.',
+    'Faster and messier than the example. Logged, loosely.',
+  ],
+  tipsy: [
+    'Off the example numbers, with drinks on the books. They were never your normal.',
+    'Further from the stock figures than expected. Your own baseline would tell you more.',
+    'Drifted from numbers that were never yours. Logged, with a sigh.',
+  ],
+  wobbly: [
+    'Off the example numbers with nothing logged. They were never yours to begin with.',
+    'Away from the stock figures. A bin chicken cannot read much into that, and neither should you.',
+    'Not like the example. Record your own baseline and we can talk.',
+  ],
+}
+
+export type CannedContext = { handicap?: Handicap; alcohol?: number; reference?: ReferenceKind }
 
 function choose(lines: readonly string[], pick: number): string {
   const i = Math.abs(Math.floor(Number.isFinite(pick) ? pick : 0)) % lines.length
@@ -67,6 +91,11 @@ function choose(lines: readonly string[], pick: number): string {
 // `pick` chooses deterministically (callers pass a random or rotating number); `context` refines the
 // choice when the caller knows the handicap guess or the alcohol count. Two-argument calls still work.
 export function cannedLine(verdict: Verdict, mode: Mode, pick = 0, context: CannedContext = {}): string {
+  // Steady with alcohol is the one line that must never read as clearance, whatever else applies.
+  if (verdict === 'steady' && (context.alcohol ?? 0) > 0 && context.reference === 'example') {
+    return choose(STEADY_WITH_ALCOHOL_LINES, pick)
+  }
+  if (context.reference === 'example') return choose(EXAMPLE_LINES[verdict], pick)
   if (mode === 'demo') {
     if (verdict === 'steady') return choose(DEMO_NO_DRIFT_LINES, pick)
     if (context.handicap) return choose(DEMO_LINES[context.handicap], pick)
@@ -81,5 +110,6 @@ export function allCannedLines(): string[] {
     ...STEADY_WITH_ALCOHOL_LINES,
     ...Object.values(DEMO_LINES).flat(),
     ...DEMO_NO_DRIFT_LINES,
+    ...Object.values(EXAMPLE_LINES).flat(),
   ]
 }

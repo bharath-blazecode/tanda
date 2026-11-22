@@ -105,7 +105,7 @@ export function Check() {
     const handicap = assessment.guessedHandicap
 
     // The line is the bird's, not the engine's. A canned one stands unless Claude answers in time.
-    let line = cannedLine(assessment.verdict, mode, now, { alcohol, handicap })
+    let line = cannedLine(assessment.verdict, mode, now, { alcohol, handicap, reference: reference.kind })
     let lineSource: 'claude' | 'canned' = 'canned'
     if (current.aiCommentary) {
       const answer = await requestVerdictLine({
@@ -118,6 +118,7 @@ export function Check() {
         drinks: { caffeineMg: Math.min(2000, caffeineMg), alcohol: Math.min(40, alcohol) },
         localHour: new Date(now).getHours(),
         handicap,
+        reference: reference.kind,
       })
       if (answer) {
         line = answer.line

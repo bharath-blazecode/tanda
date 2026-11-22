@@ -4,6 +4,7 @@ import { MAX_LINE_CHARS, filterLine } from '../../server/prompt'
 import {
   DEMO_LINES,
   DEMO_NO_DRIFT_LINES,
+  EXAMPLE_LINES,
   REAL_LINES,
   STEADY_WITH_ALCOHOL_LINES,
   allCannedLines,
@@ -53,5 +54,21 @@ describe('cannedLine', () => {
     expect(cannedLine('wobbly', 'demo', 0, { handicap: 'jacks' })).toBe(DEMO_LINES.jacks[0])
     expect(cannedLine('steady', 'demo', 1, { handicap: 'spin' })).toBe(DEMO_NO_DRIFT_LINES[1])
     expect(cannedLine('wobbly', 'demo')).toBe(REAL_LINES.wobbly[0])
+  })
+})
+
+describe('example runs', () => {
+  it('never call the example numbers the person\'s normal, nor mention a handicap', () => {
+    for (const verdict of Verdict.options) {
+      for (const line of EXAMPLE_LINES[verdict]) {
+        expect(line).not.toMatch(/your normal range|handicap|on purpose|sabotage/i)
+      }
+    }
+  })
+
+  it('are picked for an example reference, and steady with alcohol still gets the non-clearance line', () => {
+    expect(cannedLine('wobbly', 'demo', 0, { reference: 'example' })).toBe(EXAMPLE_LINES.wobbly[0])
+    expect(cannedLine('steady', 'demo', 1, { reference: 'example' })).toBe(EXAMPLE_LINES.steady[1])
+    expect(cannedLine('steady', 'demo', 1, { reference: 'example', alcohol: 2 })).toBe(STEADY_WITH_ALCOHOL_LINES[1])
   })
 })
