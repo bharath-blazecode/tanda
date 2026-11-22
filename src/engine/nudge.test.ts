@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Drink } from '../../shared/contracts'
+import type { DrinkInput as Drink } from './serving'
 import { CAFFEINE_LIMIT_MG, CAFFEINE_MG, caffeineMgToday, nudgeFor } from './nudge'
 
 const beer: Drink[] = [{ kind: 'beer', at: 0 }]

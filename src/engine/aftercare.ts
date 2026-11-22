@@ -7,9 +7,9 @@
 // is why `only-time` is attached to every alcohol case and cannot be configured away. A list of
 // remedies with a countdown would be read as "do these and you are done", which is the clearance
 // claim this product does not make (CLAUDE.md, product rules).
-import type { Drink } from '../../shared/contracts'
 import { caffeineOnBoardMg } from './caffeine'
 import { CAFFEINE_LIMIT_MG, caffeineMgToday, hasAlcohol, hasCaffeine } from './nudge'
+import type { DrinkInput } from './serving'
 
 export type CareTag =
   | 'only-time'
@@ -48,7 +48,7 @@ export type Care = {
  * What to show alongside a result. `drinksToday` is already filtered to the current day by
  * src/store/day.ts; this function does not decide what counts as today.
  */
-export function careFor(drinksToday: readonly Drink[], now: number, bedtimeAt?: number): Care {
+export function careFor(drinksToday: readonly DrinkInput[], now: number, bedtimeAt?: number): Care {
   const bedtime = bedtimeAt ?? nextBedtime(now)
   const drinks = [...drinksToday]
   const tags: CareTag[] = []

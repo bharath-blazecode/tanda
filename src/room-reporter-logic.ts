@@ -52,8 +52,9 @@ export function resultToPost(
     verdict,
     score,
     mode: last.mode,
-    // The stored result keeps only the app's guess at the handicap, and only in demo mode.
-    ...(last.mode === 'demo' && guessedHandicap ? { handicap: guessedHandicap } : {}),
+    // The stored result keeps only the app's guess at the handicap, and only in demo mode. An example
+    // run had no handicap at all, so it never carries one onto "Dizziest after the handicap".
+    ...(last.mode === 'demo' && last.reference.kind === 'personal' && guessedHandicap ? { handicap: guessedHandicap } : {}),
   }
 }
 

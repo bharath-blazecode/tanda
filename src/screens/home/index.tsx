@@ -5,42 +5,35 @@ import { useLocation, useNavigate } from 'react-router'
 import type { Drink, Stored } from '../../../shared/contracts'
 import { careFor } from '../../engine/aftercare'
 import { caffeineCurve } from '../../engine/caffeine'
-import { CAFFEINE_MG, hasAlcohol } from '../../engine/nudge'
+import { hasAlcohol } from '../../engine/nudge'
+import { CAFFEINE_KINDS, tallyAlcohol, tallyCaffeine } from '../../engine/serving'
 import { dayStart, drinksToday } from '../../store/day'
 import { load, update } from '../../store/local'
 import { CaffeineChart, CareCard, Housing, Key, Keys, Label, Plate, Rows, SafetyLine, Sheet } from '../../ui'
-
-const LABELS: Record<Drink['kind'], string> = {
-  coffee: 'Coffee',
-  energy: 'Energy drink',
-  beer: 'Beer',
-  wine: 'Wine',
-  spirit: 'Spirit',
-}
-
-/** Past this many alcoholic drinks the safety line stays up for the rest of the night. */
-const PERSISTENT_SAFETY_DRINKS = 4
+import { DRINK_LABELS as LABELS } from '../log/presets'
+import { printedAt } from '../result/format'
 
 const UNDO_MS = 5000
 
 const clock = (at: number) =>
   new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 
+/** One line of totals. Known caffeine is added up; unknown amounts are counted, never guessed. */
 function totalsLine(today: Drink[]): string {
   const counts = new Map<Drink['kind'], number>()
   for (const d of today) counts.set(d.kind, (counts.get(d.kind) ?? 0) + 1)
-
-  const caffeineMg = today.reduce((sum, d) => sum + (CAFFEINE_MG[d.kind] ?? 0), 0)
-  const alcohol = today.filter((d) => CAFFEINE_MG[d.kind] === undefined).length
+  const caffeine = tallyCaffeine(today)
+  const alcohol = tallyAlcohol(today).entries
 
   const parts: string[] = []
   for (const [kind, n] of counts) {
-    if (CAFFEINE_MG[kind] === undefined) continue
+    if (!CAFFEINE_KINDS.has(kind)) continue
     parts.push(`${n} ${LABELS[kind].toLowerCase()}${n > 1 ? 's' : ''}`)
   }
-  const caffeine = parts.length ? `${parts.join(', ')}, about ${caffeineMg} mg caffeine.` : ''
+  const unknown = caffeine.unknown > 0 ? ` (${caffeine.unknown} with no amount, not counted)` : ''
+  const caffeineText = parts.length ? `${parts.join(', ')}: about ${Math.round(caffeine.mg)} mg caffeine${unknown}.` : ''
   const booze = alcohol ? `${alcohol} alcoholic drink${alcohol > 1 ? 's' : ''}.` : ''
-  return [caffeine, booze].filter(Boolean).join(' ')
+  return [caffeineText, booze].filter(Boolean).join(' ')
 }
 
 export function Home() {
@@ -66,8 +59,9 @@ export function Home() {
   // One reading of the clock for the whole render, so the log, the curve and the bedtime agree.
   const now = Date.now()
   const today = drinksToday(stored.drinks, now)
-  const alcoholCount = today.filter((d) => CAFFEINE_MG[d.kind] === undefined).length
-  const showSafety = hasAlcohol(today) && alcoholCount >= PERSISTENT_SAFETY_DRINKS
+  // Any alcohol logged today keeps the fixed line up here as well as on every result (D19).
+  const showSafety = hasAlcohol(today)
+  const baseline = stored.baseline
 
   const care = careFor(today, now)
   // An hour past bedtime, so the marker is not jammed against the right edge.
@@ -89,11 +83,30 @@ export function Home() {
           </>
         )}
 
-        {stored.baseline && !stored.baseline.clean && (
-          <p className="k-small">Baseline taken after a drink.</p>
-        )}
-
         {showSafety && <SafetyLine />}
+      </Sheet>
+
+      <Sheet>
+        <Label paper>Your baseline</Label>
+        {baseline ? (
+          <>
+            <Rows
+              items={[
+                ['Recorded', printedAt(baseline.run.at)],
+                ['Checks since', baseline.checks === undefined ? 'not counted' : String(baseline.checks)],
+              ]}
+            />
+            {!baseline.clean && <p className="k-small">Taken after a drink, so read comparisons loosely.</p>}
+          </>
+        ) : (
+          <p>
+            None yet. Kachka compares you with yourself, so a check needs one recording of your normal first. It takes
+            about a minute.
+          </p>
+        )}
+        {stored.lastResult?.reference.kind === 'example' && !baseline && (
+          <p className="k-small">Your last ticket used example numbers. Record a baseline for a comparison with yourself.</p>
+        )}
       </Sheet>
 
       {showCurve && (
@@ -112,14 +125,25 @@ export function Home() {
         <Key style={{ fontSize: 22 }} onClick={() => navigate('/log')}>
           Log a drink
         </Key>
-        <Key style={{ fontSize: 22 }} onClick={() => navigate('/check')}>
-          Run a check
+        <Key style={{ fontSize: 22 }} onClick={() => navigate(baseline ? '/check' : '/baseline')}>
+          {baseline ? 'Run a check' : 'Record baseline'}
         </Key>
       </Keys>
 
-      <Key quiet onClick={() => navigate('/demo')}>
-        Demo challenge
-      </Key>
+      {baseline ? (
+        <Keys>
+          <Key quiet onClick={() => navigate('/baseline')}>
+            Recalibrate
+          </Key>
+          <Key quiet onClick={() => navigate('/demo')}>
+            Demo challenge
+          </Key>
+        </Keys>
+      ) : (
+        <Key quiet onClick={() => navigate('/check', { state: { reference: 'example' } })}>
+          Try with example numbers
+        </Key>
+      )}
     </Housing>
   )
 }

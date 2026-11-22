@@ -5,8 +5,7 @@
 // The model is the one in docs/05-architecture.md: a dose rises to a peak at about 50 minutes,
 // then halves every 5 hours. Half-life varies a lot between people (genetics, the pill, smoking,
 // pregnancy), which is why the chart carries a band rather than a line.
-import type { Drink } from '../../shared/contracts'
-import { CAFFEINE_MG } from './nudge'
+import { caffeineMgFor, type DrinkInput } from './serving'
 
 /** Minutes from the first sip to the most on board. */
 export const PEAK_MINUTES = 50
@@ -29,10 +28,10 @@ export function doseOnBoardMg(doseMg: number, minutesSince: number, halfLifeHour
 }
 
 /** Total caffeine on board at a moment, in mg, from everything logged. */
-export function caffeineOnBoardMg(drinks: readonly Drink[], at: number, halfLifeHours = HALF_LIFE_HOURS): number {
+export function caffeineOnBoardMg(drinks: readonly DrinkInput[], at: number, halfLifeHours = HALF_LIFE_HOURS): number {
   return drinks.reduce((total, drink) => {
-    const dose = CAFFEINE_MG[drink.kind]
-    if (dose === undefined) return total
+    const dose = caffeineMgFor(drink).mg
+    if (dose === null) return total
     return total + doseOnBoardMg(dose, (at - drink.at) / 60000, halfLifeHours)
   }, 0)
 }
@@ -52,7 +51,7 @@ export type CaffeinePoint = {
  * A fast half-life means less is left, so `low` uses the fast one.
  */
 export function caffeineCurve(
-  drinks: readonly Drink[],
+  drinks: readonly DrinkInput[],
   from: number,
   to: number,
   stepMinutes = 10,
@@ -86,7 +85,7 @@ export function peakOf(points: readonly CaffeinePoint[]): CaffeinePoint | null {
  * stop", and the caller chooses the target.
  */
 export function lastCallFor(
-  drinks: readonly Drink[],
+  drinks: readonly DrinkInput[],
   doseMg: number,
   bedtime: number,
   targetMg: number,

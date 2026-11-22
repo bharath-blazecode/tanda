@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { useNavigate } from 'react-router'
 import type { DrinkKind } from '../../../shared/contracts'
 import { update } from '../../store/local'
+import { presetDrink } from './presets'
 import { Housing, Key, Label, Plate, Sheet } from '../../ui'
 
 const DRINKS: { kind: DrinkKind; label: string }[] = [
@@ -25,7 +26,7 @@ export function Log() {
     const now = Date.now()
     if (now - lastTap.current < DOUBLE_TAP_MS) return
     lastTap.current = now
-    update((current) => ({ ...current, drinks: [...current.drinks, { kind, at: now }] }))
+    update((current) => ({ ...current, drinks: [...current.drinks, presetDrink(kind, now, now)] }))
     navigate('/home', { state: { undo: now } })
   }
 

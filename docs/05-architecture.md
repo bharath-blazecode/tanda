@@ -164,7 +164,7 @@ Rewritten on 21 Nov after the research (D15 to D18). All numbers are starting va
 
 Rotation rate is used instead of acceleration because Chrome rounds acceleration to 0.1 m/s², which is about the size of quiet standing sway, while rotation rate is rounded to 0.1 deg/s, well below it.
 
-**Drift per metric.** `raw = (check - baseline) / baseline` for sway and choice time. For wrong squares, `raw = check - baseline`. Then `d = raw / floor`, clipped to -3..3.
+**Drift per metric.** `raw = (check - baseline) / baseline` for sway and choice time. For errors, `raw = (wrong + missed now) - (wrong + missed then)` (D52). Then `d = raw / floor`, clipped to -3..3. A metric is only computed when `src/engine/compare.ts` says the two runs can be compared: same motion sensor, same capture length, a clean tap in both runs for choice time, a measured pulse in both for hr (D51).
 
 | Metric | Noise floor | Source |
 |---|---|---|

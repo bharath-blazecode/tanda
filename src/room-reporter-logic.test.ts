@@ -35,10 +35,11 @@ describe('effectiveStage', () => {
 })
 
 const stored = (over: Partial<Stored> = {}): Stored => ({
-  v: 1,
+  v: 2,
   deviceId: '00000000-0000-4000-8000-000000000001',
   nickname: 'Calm Quokka',
   shareToRoom: true,
+  aiCommentary: true,
   drinks: [],
   lastResult: {
     run: { choice: { medianMs: 420, wrong: 0, lapses: 0, trials: 12 }, at: NOW - 1000 },
@@ -53,6 +54,7 @@ const stored = (over: Partial<Stored> = {}): Stored => ({
     },
     line: 'Hello.',
     mode: 'real',
+    reference: { kind: 'personal', run: { choice: { medianMs: 400, wrong: 0, lapses: 0, trials: 12 }, at: NOW - 86_400_000 }, clean: true },
   },
   ...over,
 })
@@ -91,6 +93,21 @@ describe('resultToPost', () => {
     expect(resultToPost(demo, null, NOW)).toMatchObject({ mode: 'demo', handicap: 'spin' })
     const real = stored({ lastResult: { ...base, assessment: { ...base.assessment, guessedHandicap: 'spin' } } })
     expect(resultToPost(real, null, NOW)).not.toHaveProperty('handicap')
+  })
+
+  it('posts an example run as simulated, and never with a handicap nobody chose', () => {
+    const base = stored().lastResult!
+    const example = stored({
+      lastResult: {
+        ...base,
+        mode: 'demo',
+        reference: { ...base.reference, kind: 'example' },
+        assessment: { ...base.assessment, guessedHandicap: 'spin' },
+      },
+    })
+    const post = resultToPost(example, null, NOW)
+    expect(post).toMatchObject({ mode: 'demo' })
+    expect(post).not.toHaveProperty('handicap')
   })
 })
 

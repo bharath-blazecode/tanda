@@ -4,7 +4,6 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { ChartWindow, Housing, Key, Plate, Printed } from '../../ui'
 import { load, reset, update } from '../../store/local'
-import { STOCK_BASELINE, setQuickDemo } from '../../store/quick'
 
 const NAME_MAX = 16
 // Stored.nickname has min(3): a shorter value would fail validation on the next load() and wipe the record.
@@ -21,27 +20,23 @@ export function chooseName(typed: string, generated: string): string {
 export function Landing() {
   const navigate = useNavigate()
   const stored = load()
-  const returning = stored.baseline !== undefined
+  // Anyone with something on this phone, not only someone with a baseline: a quick-demo visitor
+  // has a ticket and a log, and should find them again.
+  const returning = stored.baseline !== undefined || stored.lastResult !== undefined || stored.drinks.length > 0
   const [name, setName] = useState(stored.nickname)
 
   // A form, so Enter (shown as "Go") in the field does exactly what the Start key does.
   const start = (event: FormEvent) => {
     event.preventDefault()
-    setQuickDemo(false)
-    update((s) => ({ ...s, nickname: chooseName(name, s.nickname), shareToRoom: true }))
-    navigate('/setup')
+    update((s) => ({ ...s, nickname: chooseName(name, s.nickname) }))
+    navigate('/setup', { state: { next: 'baseline' } })
   }
 
-  // The short way through: a stock normal on file, so every test runs once and prints a ticket.
+  // The short way through: every test once against example numbers, then a ticket. Nothing is
+  // written into the personal baseline, so this can never overwrite one (schema v2).
   const quickDemo = () => {
-    setQuickDemo(true)
-    update((s) => ({
-      ...s,
-      nickname: chooseName(name, s.nickname),
-      shareToRoom: true,
-      baseline: STOCK_BASELINE,
-    }))
-    navigate('/setup')
+    update((s) => ({ ...s, nickname: chooseName(name, s.nickname) }))
+    navigate('/setup', { state: { next: 'example' } })
   }
 
   return (
@@ -63,8 +58,8 @@ export function Landing() {
             Wired or wobbly?
           </h2>
           <p style={{ margin: 0, maxWidth: '30ch', background: 'var(--chart)', display: 'inline' }}>
-            Log a drink. Stand still, then tap fast. A bin chicken will judge how far you have drifted
-            from your own normal.
+            Log a coffee or a drink. Stand still, then tap fast. A bin chicken will judge how far you
+            have drifted from your own normal.
           </p>
         </Printed>
       </ChartWindow>
@@ -89,7 +84,7 @@ export function Landing() {
             <Key type="submit">Start</Key>
           </form>
           <Key quiet onClick={quickDemo}>
-            Quick demo · 1 minute
+            Quick demo · example numbers
           </Key>
         </>
       )}

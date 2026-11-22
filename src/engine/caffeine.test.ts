@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Drink } from '../../shared/contracts'
+import type { DrinkInput as Drink } from './serving'
 import {
   HALF_LIFE_FAST_HOURS,
   HALF_LIFE_SLOW_HOURS,

@@ -220,6 +220,51 @@ It replaces the working titles Body Check and Buzz Check. The name lives in one 
 - **Secrets:** the Anthropic key and the room admin token live only in the Dokploy environment.
 - **Cost of a redeploy:** the server restarts, so the room board and the in-memory limits reset. Freeze merges at 16:15 (D29).
 
+## Portfolio slice (22 Nov 2026, after the hackathon)
+
+Decisions made while turning the hackathon build into a portfolio project. The discovery pack that
+led to them is `docs/portfolio/DISCOVERY.md`; the evidence behind every claim is
+`docs/portfolio/research/EVIDENCE-LEDGER.md`.
+
+**D49. Local data moves to schema v2 under a new key, and the v1 record stays as a rollback copy.** Default 22 Nov.
+v1 wiped the whole record whenever any field failed validation, and had no migrations. v2 lives under
+`bc:v2`, validates field by field so a bad drink costs only that drink, and migrates `bc:v1` once
+without touching it. Rolling the app back to a v1 build therefore finds its own data, as it was before
+the upgrade, instead of a record it would reject and wipe. Start over removes both keys. Rejected: an
+in-place upgrade under `bc:v1` (a rollback would wipe everything), and two migrations (v2 then v3) for
+the two stages of this slice (more surface for the same data).
+
+**D50. The example reference is never a baseline.** Default 22 Nov.
+The quick demo used to write fixed numbers into the baseline and mark them with a reading time of zero.
+That overwrote anything recorded before, kept later visits in demo mode without saying so, and let an
+old ticket recompute its percentages against whatever baseline came later. Now the example numbers live
+in code, a run against them is always mode `demo` and tagged as an example, and every stored result
+keeps a copy of the reference it was actually compared with. The route is carried in router state, so a
+reload mid-run keeps it.
+
+**D51. A comparison needs the same sensor, the same capture length and a real measurement.** Default 22 Nov.
+Reproduced on main before the change: gyroscope (deg/s) against acceleration (m/s²) clipped sway to
+plus or minus 3, which could print Tipsy from a sensor change alone; a check with no test in common
+printed Steady 100; and the 2000 ms "no clean taps" placeholder was scored as a reaction time. Now
+`src/engine/compare.ts` decides per test whether a comparison exists. A known sensor or capture change
+is not compared and the ticket says why. A reading from before v2 with no recorded sensor is compared
+and lowers the recording-conditions tier by one step. When neither scored test can be compared there is
+no verdict, no ticket, no board post and no Claude call. Only a measured pulse is scored; an approximate
+one is shown with "about" and the contract refuses it in the scored field.
+
+**D52. A missed tap counts as an error, like a wrong one.** Default 22 Nov. Changes the scoring in `docs/05-architecture.md`.
+Keeping the placeholder median out of scoring would otherwise let a run with no taps at all read as
+Steady, which rewards a worse reading. Wrong plus missed squares are both real counts, so the error term
+uses their sum, with the same noise floor of one. The median time is compared only when both runs had
+at least one clean tap.
+
+**D53. Recalibrating is blocked while alcohol is logged today.** Default 22 Nov. Narrows D21.
+D21 said re-recording a baseline is blocked while drinks are logged, but nothing enforced it. A baseline
+recorded after alcohol makes every later comparison look better than it is. A first baseline can still
+be recorded after a drink and is marked as not clean, as before. Caffeine does not block recalibrating,
+because a caffeine-first visitor would otherwise be locked out for the day; it marks the baseline as
+not clean instead.
+
 ---
 
 ## Process

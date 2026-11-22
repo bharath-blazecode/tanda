@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Drink } from '../../shared/contracts'
+import type { DrinkInput as Drink } from './serving'
 import { BEDTIME_NOTICE_MG, careFor, nextBedtime } from './aftercare'
 
 const NOON = new Date('2026-11-21T12:00:00').getTime()

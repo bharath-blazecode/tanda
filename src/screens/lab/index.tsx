@@ -8,7 +8,7 @@ import { PulseTest } from '../../tests/pulse'
 import { careFor } from '../../engine/aftercare'
 import { caffeineCurve } from '../../engine/caffeine'
 import { CaffeineChart, CareCard } from '../../ui'
-import type { Drink } from '../../../shared/contracts'
+import type { DrinkInput } from '../../engine/serving'
 import { dayStart } from '../../store/day'
 import { StandTest } from '../../tests/stand'
 import { Placeholder } from '../placeholder'
@@ -67,7 +67,7 @@ export function LabCare() {
   const now = Date.now()
   const hour = 3600000
   // A day with both in it, so every tag is on the page at once.
-  const drinks: Drink[] = [
+  const drinks: DrinkInput[] = [
     { kind: 'coffee', at: now - 6 * hour },
     { kind: 'coffee', at: now - 2 * hour },
     { kind: 'energy', at: now - 40 * 60000 },

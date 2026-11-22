@@ -34,8 +34,17 @@ export type ResultTicketProps = {
   extra?: string;
   /** What was logged today, in words. The label behind the verdict, never a measurement. */
   logged?: string;
-  /** Where "Run again" goes. A demo reading goes back to the demo. */
+  /** Why a test has no change beside it, one sentence each. Printed under the rows and on the image. */
+  notes?: string[];
+  /** What the reading was compared with, e.g. "Against · your baseline, Sun 22 Nov 09:10". */
+  reference?: string;
+  /** Where the stamp's word came from. */
+  labelNote?: string;
+  /** Recording conditions in a word: good, fair or poor. Only printed when not good. */
+  conditions?: string;
+  /** Where "Run again" goes, and the router state it carries. A demo reading goes back to the demo. */
   againTo?: string;
+  againState?: unknown;
 };
 const nudges: Record<Assessment["nudge"], string> = {
   "carry-on": "Carry on.",
@@ -57,7 +66,12 @@ export function ResultTicket({
   tags = [],
   extra,
   logged,
+  notes = [],
+  reference,
+  labelNote,
+  conditions,
   againTo = "/check",
+  againState,
 }: ResultTicketProps) {
   // The data producer owns the verdict. The screen renders the supplied assessment.
   // Keep the fixed safety line visible for every Tipsy presentation as well.
@@ -70,9 +84,12 @@ export function ResultTicket({
     readingId,
     timestamp,
     name,
+    reference,
     tags,
     rows,
+    notes,
     extra,
+    labelNote,
     verdict: assessment.verdict,
     line,
     // The safety line is on the shared image under exactly the rule it is on the screen (D19):
@@ -116,6 +133,12 @@ export function ResultTicket({
                   Subject · {name}
                 </>
               )}
+              {reference && (
+                <>
+                  <br />
+                  {reference}
+                </>
+              )}
             </span>
           </header>
           {sample && <Label paper>Sample data · animation preview</Label>}
@@ -142,15 +165,17 @@ export function ResultTicket({
           )}
           {tags.length > 0 && <p className="result-tag">{tags.join(" · ")}</p>}
           {rows.length > 0 && <Rows items={rows} />}
+          {notes.length > 0 && (
+            <ul className="k-notes">
+              {notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          )}
           {logged && <p className="result-extra">Logged today · {logged}</p>}
           {extra && <p className="result-extra">{extra}</p>}
-          {tags.length === 0 && assessment.partial && (
-            <p className="result-tag">Partial reading · Stand Still skipped</p>
-          )}
-          {tags.length === 0 && assessment.confidence !== "high" && (
-            <p className="result-tag">
-              Loose reading · {assessment.confidence} confidence
-            </p>
+          {conditions && conditions !== "good" && (
+            <p className="result-tag">Recording conditions · {conditions}</p>
           )}
           <div className="k-stamp-wrap result-verdict">
             <Stamp
@@ -159,6 +184,7 @@ export function ResultTicket({
             />
             <ResultBird mood={assessment.verdict} animate={animate} />
           </div>
+          {labelNote && <p className="result-extra">{labelNote}</p>}
           <Quote byline="Dr. Kachka">“{line}”</Quote>
           {safety && (
             <div className="result-safety">
@@ -168,7 +194,7 @@ export function ResultTicket({
           <Stub label="Next">{nudges[assessment.nudge]}</Stub>
         </Ticket>
         <nav className="k-keys k-keys--2" aria-label="After your reading">
-          <Link className="k-key k-key--quiet result-link" to={againTo}>
+          <Link className="k-key k-key--quiet result-link" to={againTo} state={againState}>
             Run again
           </Link>
           <Link className="k-key k-key--quiet result-link" to="/home">
