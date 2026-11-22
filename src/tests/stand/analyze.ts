@@ -1,11 +1,11 @@
-import type { StandMetrics } from "../../../shared/contracts";
+import { STAND_CAPTURE_SECONDS, STAND_PROTOCOL_VERSION, type StandMetrics } from "../../../shared/contracts";
 import { bandpass, rms } from "./signal";
 import {
   measuredHz,
   type MotionReading,
   type Vector,
 } from "../../sensors/motion";
-export const CAPTURE_SECONDS = 10;
+export const CAPTURE_SECONDS = STAND_CAPTURE_SECONDS;
 export const SETTLE_SECONDS = 2;
 export type StandAnalysis = {
   metrics: StandMetrics;
@@ -17,47 +17,74 @@ export type StandAnalysis = {
 function magnitude(v: Vector): number {
   return Math.hypot(v.x, v.y, v.z);
 }
-export function analyze(samples: readonly MotionReading[]): StandAnalysis {
-  const hz = measuredHz(samples);
-  const gyro =
-    samples.length > 0 && samples.every((sample) => sample.rotation !== null);
-  const source = gyro ? "gyroscope" : "acceleration";
-  const warnings = [];
-  if (hz < 15) warnings.push("Low sample rate. Read this loosely.");
-  if (!gyro)
-    warnings.push(
-      "Using acceleration. Keep this baseline on the same phone and sensor source.",
-    );
-  // The source and capture length travel with the metrics, so a later comparison can refuse to set
-  // degrees a second against metres per second squared (src/engine/compare.ts).
+/** Coarse device-axis gravity signature. Useful for refusing a known mismatch;
+ * a matching signature cannot establish the person's stance or grip. */
+function placement(v: Vector | null | undefined): StandMetrics["placement"] {
+  if (!v) return undefined;
+  const length = magnitude(v);
+  if (length < 5 || length > 15) return undefined;
+  const limit = length * Math.cos(Math.PI / 6);
+  if (Math.abs(v.x) >= limit) return v.x > 0 ? "landscape-left" : "landscape-right";
+  if (Math.abs(v.y) >= limit) return v.y > 0 ? "portrait-up" : "portrait-down";
+  if (Math.abs(v.z) >= limit) return v.z > 0 ? "face-up" : "face-down";
+  return undefined;
+}
+type SensorField = "rotation" | "acceleration";
+type Observed = MotionReading & { value: Vector };
+
+/** Work on one field in its own units. Bound interpolation by the observed cadence,
+ * so a stall on a fast phone cannot masquerade as a normal interval on a slow one. */
+function windowFor(samples: readonly MotionReading[], field: SensorField, start: number) {
+  const frames: Observed[] = [];
+  for (const sample of samples) {
+    const value = sample[field];
+    if (value && [value.x, value.y, value.z].every(Number.isFinite))
+      frames.push({ ...sample, value });
+  }
+  if (frames.length < 2) return null;
+  const hz = measuredHz(frames);
+  // 10 Hz leaves margin above Nyquist for the existing 3 Hz low-pass.
+  if (hz < 10 - 1e-6) return null;
+  const intervals = frames.slice(1).map((s, i) => s.t - frames[i].t);
+  const sorted = intervals.slice().sort((a, b) => a - b);
+  const period = sorted[Math.floor(sorted.length / 2)];
+  const tolerance = 1e-6;
+  const boundary = Math.min(0.15, 1.75 * period) + tolerance;
+  if (frames[0].t - start > boundary || start + CAPTURE_SECONDS - frames.at(-1)!.t > boundary) return null;
+  const maxGap = Math.min(0.2, 2.5 * period) + tolerance;
+  if (intervals.some(gap => gap > maxGap)) return null;
+  const gaps = intervals.filter(gap => gap > 1.75 * period + tolerance).length;
+  if (gaps > Math.max(1, Math.floor(0.02 * intervals.length))) return null;
+  return { frames, hz, period, recovered: gaps > 0 };
+}
+
+export function analyze(samples: readonly MotionReading[], startedAt = samples[0]?.t ?? 0): StandAnalysis {
+  const warnings: string[] = [];
   const result: StandAnalysis = {
-    metrics: { swayRms: 0, swayLateralRms: 0, hz, valid: false, source, captureSeconds: CAPTURE_SECONDS },
-    source,
+    metrics: { swayRms: 0, swayLateralRms: 0, hz: 0, valid: false },
+    source: "gyroscope",
     trace: [],
     warnings,
     reason: null,
   };
   const fail = (reason: string) => ({ ...result, reason });
-  if (samples.length < 2 || samples.at(-1)!.t - samples[0].t < CAPTURE_SECONDS - 0.5)
-    return fail("Capture interrupted. Start again.");
-  const origin = samples[0].t;
-  const settled = samples.filter(
-    (sample) => sample.t - origin >= SETTLE_SECONDS,
-  );
-  if (hz < 5 || settled.length < 20)
-    return fail(
-      "Too few motion readings. Try opening this link in your phone browser.",
-    );
-  if (
-    samples.some(
-      (sample, i) =>
-        i > 0 &&
-        (sample.t <= samples[i - 1].t || sample.t - samples[i - 1].t > 0.5),
-    )
-  )
-    return fail(
-      "Motion readings stopped or arrived out of order. Start again.",
-    );
+  if (!Number.isFinite(startedAt) || samples.some((sample, i) =>
+    !Number.isFinite(sample.t) || sample.t < startedAt || sample.t > startedAt + CAPTURE_SECONDS + 1e-6 ||
+    (i > 0 && sample.t <= samples[i - 1].t)))
+    return fail("Motion readings arrived outside the recording window or out of order. Try Stand Still again.");
+  const angular = windowFor(samples, "rotation", startedAt);
+  const window = angular ?? windowFor(samples, "acceleration", startedAt);
+  if (!window)
+    return fail("Too few continuous motion readings. Keep this page open and try Stand Still again.");
+  const { frames, hz, period, recovered } = window;
+  const gyro = angular !== null;
+  const source = gyro ? "gyroscope" : "acceleration";
+  result.source = source;
+  if (hz < 15) warnings.push("Low sample rate. Read this loosely.");
+  if (!gyro) warnings.push("Using acceleration. Keep this baseline on the same phone and sensor source.");
+  if (recovered) warnings.push("Recovered a brief gap using adjacent readings from the same sensor.");
+  const origin = frames[0].t;
+  const settled = samples.filter(sample => sample.t - startedAt >= SETTLE_SECONDS);
   // Movement is the signal being measured. Flag large movements for context
   // rather than discarding an otherwise complete recording.
   if (
@@ -71,7 +98,7 @@ export function analyze(samples: readonly MotionReading[]): StandAnalysis {
   const reference = settled.find(
     (sample) => sample.gravity && magnitude(sample.gravity) > 5,
   )?.gravity;
-  if (
+  const placementChanged = !!(
     reference &&
     settled.some((sample) => {
       if (!sample.gravity || magnitude(sample.gravity) < 5) return false;
@@ -84,36 +111,35 @@ export function analyze(samples: readonly MotionReading[]): StandAnalysis {
         Math.cos((25 * Math.PI) / 180)
       );
     })
-  )
-    warnings.push(
+  );
+  if (placementChanged) warnings.push(
       "The phone tilted during capture. Your reading includes this movement; keep it against your chest for a consistent comparison.",
     );
-  const field = gyro ? "rotation" : "acceleration";
-  if (samples.some((sample) => !sample[field]))
-    return fail(
-      "This phone did not provide a continuous sensor source. Start again.",
-    );
-  const rate = Math.min(60, hz);
-  const count = Math.floor((samples.at(-1)!.t - origin) * rate) + 1;
+  // Maintain source cadence through the filter. Decimating a 120 Hz source to
+  // 60 Hz first would alias 59.5 Hz vibration into an apparent 0.5 Hz sway.
+  const span = frames.at(-1)!.t - origin;
+  const count = Math.min(Math.round(span / period) + 1, frames.length + Math.ceil(frames.length * 0.02));
+  const rate = (count - 1) / span;
   let index = 0;
   const interpolate = (axis: "x" | "y") =>
     Array.from({ length: count }, (_, i) => {
       const t = origin + i / rate;
-      while (index < samples.length - 2 && samples[index + 1].t < t) index++;
-      const a = samples[index],
-        b = samples[index + 1];
+      while (index < frames.length - 2 && frames[index + 1].t < t) index++;
+      const a = frames[index],
+        b = frames[index + 1];
       const fraction = (t - a.t) / (b.t - a.t);
-      return a[field]![axis] + (b[field]![axis] - a[field]![axis]) * fraction;
+      return a.value[axis] + (b.value[axis] - a.value[axis]) * fraction;
     });
   const forward = bandpass(interpolate("x"), rate);
   index = 0;
   const lateral = bandpass(interpolate("y"), rate);
   result.trace = lateral
-    .map((value, i) => ({ t: i / rate, lateral: value, forward: forward[i] }))
+    .map((value, i) => ({ t: origin - startedAt + i / rate, lateral: value, forward: forward[i] }))
     .filter((point) => point.t >= SETTLE_SECONDS);
   const lateralRms = rms(result.trace.map((point) => point.lateral));
   const forwardRms = rms(result.trace.map((point) => point.forward));
   const swayRms = Math.hypot(lateralRms, forwardRms);
+  if (!Number.isFinite(swayRms)) return fail("Motion values were unreadable. Try Stand Still again.");
   // Provisional floor, exposed in the lab for physical calibration.
   if (swayRms < (gyro ? 0.005 : 0.0005))
     return fail(
@@ -126,6 +152,10 @@ export function analyze(samples: readonly MotionReading[]): StandAnalysis {
     valid: true,
     source,
     captureSeconds: CAPTURE_SECONDS,
+    protocolVersion: STAND_PROTOCOL_VERSION,
+    placement: placement(reference),
+    ...(placementChanged ? { placementChanged: true } : {}),
+    ...(recovered ? { recovered: true } : {}),
   };
   return result;
 }
@@ -141,8 +171,11 @@ export function analyzeStand(
         sample.ra !== null && sample.rb !== null && sample.rg !== null
           ? { x: sample.rb, y: sample.rg, z: sample.ra }
           : null,
-      acceleration: { x: sample.ax, y: sample.ay, z: sample.az },
-      gravity: { x: sample.ax, y: sample.ay, z: sample.az },
+      // Legacy ax/ay/az may include gravity. Only a named linear source can
+      // enter the acceleration metric.
+      acceleration: sample.linearAcceleration ?? null,
+      // The scaffold does not identify a distinct gravity-inclusive source.
+      gravity: null,
     })),
   ).metrics;
 }

@@ -9,6 +9,9 @@ import { z } from 'zod'
 export const StandSource = z.enum(['gyroscope', 'acceleration'])
 export type StandSource = z.infer<typeof StandSource>
 
+export const STAND_PROTOCOL_VERSION = 2
+export const STAND_CAPTURE_SECONDS = 10
+
 export const StandMetrics = z.object({
   swayRms: z.number().nonnegative(),
   swayLateralRms: z.number().nonnegative(),
@@ -17,6 +20,11 @@ export const StandMetrics = z.object({
   // Recorded from schema v2 on. Absent on older readings, which means "not recorded", never "the
   // same as now": the engine refuses to compare two readings whose sources are known to differ.
   source: StandSource.optional(),
+  /** Absent on historical records. Recovery uses a complete same-source capture. */
+  placement: z.enum(['portrait-up', 'portrait-down', 'landscape-left', 'landscape-right', 'face-up', 'face-down']).optional(),
+  placementChanged: z.literal(true).optional(),
+  protocolVersion: z.number().int().positive().optional(),
+  recovered: z.literal(true).optional(),
   /** Length of the capture, settling included, in seconds. Absent on older readings. */
   captureSeconds: z.number().positive().max(120).optional(),
 })
