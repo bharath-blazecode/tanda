@@ -29,8 +29,13 @@ export const BEDTIME_NOTICE_MG = 25
 
 /** The next time the clock reads `hour`, at or after `now`. */
 export function nextBedtime(now: number, hour = DEFAULT_BEDTIME_HOUR): number {
+  return nextBedtimeAt(now, hour * 60)
+}
+
+/** The next time the local clock reads `minutes` after midnight, strictly after `now`. */
+export function nextBedtimeAt(now: number, minutes: number): number {
   const at = new Date(now)
-  at.setHours(hour, 0, 0, 0)
+  at.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
   if (at.getTime() <= now) at.setDate(at.getDate() + 1)
   return at.getTime()
 }
@@ -48,7 +53,13 @@ export type Care = {
  * What to show alongside a result. `drinksToday` is already filtered to the current day by
  * src/store/day.ts; this function does not decide what counts as today.
  */
-export function careFor(drinksToday: readonly DrinkInput[], now: number, bedtimeAt?: number): Care {
+export function careFor(
+  drinksToday: readonly DrinkInput[],
+  now: number,
+  bedtimeAt?: number,
+  /** Drinks still on board, which can reach back past the 4am boundary. Defaults to today's. */
+  onBoard: readonly DrinkInput[] = drinksToday,
+): Care {
   const bedtime = bedtimeAt ?? nextBedtime(now)
   const drinks = [...drinksToday]
   const tags: CareTag[] = []
@@ -59,7 +70,7 @@ export function careFor(drinksToday: readonly DrinkInput[], now: number, bedtime
   }
 
   const caffeineTodayMg = caffeineMgToday(drinks)
-  const caffeineAtBedtimeMg = hasCaffeine(drinks) ? caffeineOnBoardMg(drinks, bedtime) : null
+  const caffeineAtBedtimeMg = hasCaffeine(onBoard) ? caffeineOnBoardMg(onBoard, bedtime) : null
 
   if (caffeineTodayMg >= CAFFEINE_LIMIT_MG) tags.push('caffeine-over-limit')
   if (caffeineAtBedtimeMg !== null && caffeineAtBedtimeMg >= BEDTIME_NOTICE_MG) tags.push('caffeine-at-bedtime')

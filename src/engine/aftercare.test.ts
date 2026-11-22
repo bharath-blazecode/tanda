@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DrinkInput as Drink } from './serving'
-import { BEDTIME_NOTICE_MG, careFor, nextBedtime } from './aftercare'
+import { BEDTIME_NOTICE_MG, careFor, nextBedtime, nextBedtimeAt } from './aftercare'
 
 const NOON = new Date('2026-11-21T12:00:00').getTime()
 const hours = (n: number) => n * 3600000
@@ -85,5 +85,26 @@ describe('careFor', () => {
     const drinks = [drink('beer')]
     careFor(drinks, NOON)
     expect(drinks).toHaveLength(1)
+  })
+})
+
+describe('bedtime the person chose', () => {
+  it('finds the next 22:30 after now', () => {
+    const at = new Date(nextBedtimeAt(NOON, 22 * 60 + 30))
+    expect([at.getHours(), at.getMinutes(), at.getDate()]).toEqual([22, 30, new Date(NOON).getDate()])
+  })
+
+  it('rolls an after-midnight bedtime to the next morning', () => {
+    const at = new Date(nextBedtimeAt(NOON, 60))
+    expect(at.getHours()).toBe(1)
+    expect(at.getDate()).toBe(new Date(NOON).getDate() + 1)
+  })
+
+  it('counts caffeine still on board from before the 4am boundary at bedtime', () => {
+    const lastNight = new Date('2026-11-20T23:00:00').getTime()
+    const coffee = { kind: 'coffee' as const, at: lastNight }
+    const withCarry = careFor([], NOON, undefined, [coffee])
+    expect(withCarry.caffeineAtBedtimeMg).not.toBeNull()
+    expect(careFor([], NOON).caffeineAtBedtimeMg).toBeNull()
   })
 })
