@@ -18,7 +18,9 @@ function host(DeviceMotionEvent: unknown, isSecureContext = true) {
   return target;
 }
 function motion(target: EventTarget, fields: Record<string, unknown>) {
-  target.dispatchEvent(Object.assign(new Event("devicemotion"), fields));
+  const event = Object.assign(new Event("devicemotion"), fields);
+  Object.defineProperty(event, "timeStamp", { value: performance.now() });
+  target.dispatchEvent(event);
 }
 const nulls = {
   acceleration: { x: null, y: null, z: null },
@@ -123,4 +125,35 @@ describe("detectMotion", () => {
     expect(add).not.toHaveBeenCalled();
     expect(getMotionAvailability()).toBe("unavailable");
   });
+});
+
+it("rejects gravity alone when neither measurement source is available", () => {
+  expect(isUsable(readMotion({ accelerationIncludingGravity: real.accelerationIncludingGravity } as never, 0))).toBe(false);
+});
+
+it("ignores a permission decision arriving after Setup has been abandoned", async () => {
+  let resolve!: (result: string) => void;
+  const target = host({ requestPermission: () => new Promise(done => { resolve = done; }) });
+  const add = vi.spyOn(target, "addEventListener");
+  const controller = new AbortController();
+  const pending = detectMotion(1000, controller.signal);
+  controller.abort();
+  resolve("granted");
+  await vi.advanceTimersByTimeAsync(1000);
+  await pending;
+  expect(add).not.toHaveBeenCalled();
+  expect(getMotionAvailability()).toBe("unknown");
+});
+
+it("detaches a live Setup probe immediately on cancellation", async () => {
+  const target = host({});
+  const remove = vi.spyOn(target, "removeEventListener");
+  const controller = new AbortController();
+  const pending = detectMotion(1000, controller.signal);
+  await vi.advanceTimersByTimeAsync(0);
+  controller.abort();
+  await pending;
+  expect(remove).toHaveBeenCalledWith("devicemotion", expect.any(Function));
+  expect(getMotionAvailability()).toBe("unknown");
+  expect(vi.getTimerCount()).toBe(0);
 });

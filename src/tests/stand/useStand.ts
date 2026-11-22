@@ -38,7 +38,6 @@ export function useStand(
   }
   useEffect(() => {
     const interrupt = () => {
-      if (!document.hidden) return;
       cancel();
       setPhase((previous) => {
         if (["permission", "countdown", "running"].includes(previous)) {
@@ -50,13 +49,13 @@ export function useStand(
         return previous;
       });
     };
-    const leave = () => cancel();
-    document.addEventListener("visibilitychange", interrupt);
-    window.addEventListener("pagehide", leave);
+    const hidden = () => { if (document.hidden) interrupt(); };
+    document.addEventListener("visibilitychange", hidden);
+    window.addEventListener("pagehide", interrupt);
     return () => {
       cancel();
-      document.removeEventListener("visibilitychange", interrupt);
-      window.removeEventListener("pagehide", leave);
+      document.removeEventListener("visibilitychange", hidden);
+      window.removeEventListener("pagehide", interrupt);
     };
   }, []);
   function start() {
@@ -149,7 +148,7 @@ export function useStand(
           setPhase("countdown");
         }
         lastEvent = now;
-        if (startedAt && now - startedAt <= CAPTURE_SECONDS * 1000)
+        if (startedAt && sample.t >= startedAt / 1000 && sample.t <= startedAt / 1000 + CAPTURE_SECONDS)
           captured.push(sample);
       });
       timer = setInterval(() => {
@@ -195,7 +194,7 @@ export function useStand(
           stopMusic();
           beep(990, 0.4);
           navigator.vibrate?.([80, 70, 80]);
-          const result = analyze(captured);
+          const result = analyze(captured, startedAt / 1000);
           if (!result.metrics.valid) {
             setError(result.reason ?? "Start again.");
             setPhase("error");
