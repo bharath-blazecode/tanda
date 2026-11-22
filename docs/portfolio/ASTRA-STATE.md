@@ -35,3 +35,37 @@ The feature branch starts at the PR #56 merge, `5b839ea`. The comparison fixture
 recovery rules, browser checks, production access limitation and physical-phone release
 protocol are recorded in [PULSE-B1.md](PULSE-B1.md). Physical validation and owner review
 remain open.
+
+### Phase B2 · Stand Still
+
+Branch `feat/phase-b2-motion` starts at PR #57 merge `d9c08e73043758ee2eb9680c63b77d2624d1b95e`.
+Historical Stand branch `b6f0dad` is already an ancestor. Baseline fixtures reproduced seven
+analyzer failures, four acquisition/lifecycle failures and two missing-provenance comparison
+failures. One absent rotation reading could flip the units of the whole recording. At 120 Hz
+a 59.5 Hz oscillation folded into apparent slow motion under the old 60 Hz resampling cap.
+
+- `8c68de8` uses DOM event time and capture bounds, rejects stale delivery, and cleans up abandoned probes.
+- `aff36f3` validates one sensor over the full timed task and filters at source cadence.
+  Eligibility requires at least 10 Hz, endpoint coverage within 1.75 median intervals (cap 150 ms),
+  and gaps within 2.5 median intervals (cap 200 ms). Gaps above 1.75 intervals are limited to
+  about 2% and flagged as recovered. A valid linear-acceleration window can substitute for an
+  unusable gyro window in its own units. Shortening to the calmest segment would bias RMS.
+  Stitching attempts would alter the settling interval and filter history. Neither is used.
+- `8895e8b` and `f8cd336` keep old records readable and compare new standing results only
+  with the same protocol, sensor, duration, similar cadence (ratio at most 1.25), and compatible
+  observed placement. A substantial detected tilt excludes the standing comparison. Missing
+  gravity or isolated recovery lowers the recording-conditions tier. The browser has no reliable
+  hardware IMU identity. Same-phone instructions and browser-local baselines remain essential.
+  Existing personal baselines retain comparable taps. Refresh an old standing baseline to
+  resume standing comparisons. The example reference remains simulated. A failed Stand can
+  be repeated without restarting the session. No raw samples are saved.
+
+The full suite reached 664 passing tests. Targeted motion, Stand and comparison suites reached
+86. Production build and synthetic Chromium lifecycle checks passed. On the host, 301 ten-second
+analyses after 50 warm-ups gave median/p95 times of 0.317/0.708 ms at 60 Hz and 0.563/1.046 ms
+at 120 Hz, versus 0.203/0.363 and 0.263/0.397 ms on main. These are desktop processing costs.
+Use the phone pilot before release. [Scientific review, browser procedure and phone protocol](MOTION-VALIDATION.md)
+
+Next decision is owner review and physical validation. Later privacy, connected wellbeing,
+caffeine, accessibility, performance, 3D, animation, scroll, social and commercial readiness
+work remains on the roadmap.

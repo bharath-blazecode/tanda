@@ -27,16 +27,15 @@ An original, quiet 72 BPM lo-fi cue plays during capture, starting after the sta
 
 The analyzer resamples timestamped readings and applies a 0.2–3 Hz first-order high-pass/low-pass cascade to each tilt axis. It filters the settling samples too, then excludes them from RMS calculation. Gyroscope beta and gamma are preferred. Acceleration x and y form the fallback. The two source types have different units and must not be compared against each other.
 
-The result reports combined sway RMS, lateral RMS, measured Hz and sensor source. The side-to-side trace replays in 2 seconds. Reduced-motion preferences show the completed trace immediately. Confidence warnings flag acceleration fallback and rates below 15 Hz.
+The result reports combined RMS, device y-axis RMS, measured Hz and sensor source. The y-axis trace replays in 2 seconds. Reduced-motion preferences show the completed trace immediately. Confidence warnings flag acceleration fallback and rates below 15 Hz.
 
 Complete recordings with large linear acceleration or a gravity-vector tilt change above 25 degrees after settling now produce a reading and replay with a warning, rather than forcing a retry. The movement remains in the calculation; it is not clipped or removed. These warnings cannot distinguish body sway from moving the phone separately.
 
-Missing readings, gaps over 0.5 seconds, interrupted captures, discontinuous sensor sources, and near-zero traces still invalidate a run. Hiding the page, leaving it, cancelling, or unmounting stops collection. The near-zero floors are provisional and need calibration on real phones. These heuristics do not establish measurement accuracy.
+Protocol v2 checks each source independently over the timed capture and prefers a qualifying gyroscope window. A few isolated dropped frames can be recovered between observed neighbors of the same source and marked on the reading. A source with sustained loss, substantial gaps at its actual cadence or insufficient rate cannot qualify. If neither source qualifies, Stand can be retried on its own. Separate attempts are never joined. Near-zero traces remain unreadable. Hiding the page, leaving it, cancelling, or unmounting stops collection. The near-zero floors are provisional and need calibration on real phones. These heuristics do not establish measurement accuracy.
 
 ## Acceptance status
 
-- TypeScript checking and production build passed.
-- 17 Stand Still tests passed; the complete integrated suite passed 115 tests, covering sensor normalization, permission handling, listener cleanup, synthetic signal analysis, the complete capture/beep lifecycle, denial, missing events, cancellation, and page hiding.
+- The original Stand implementation had 17 Stand tests and 115 tests in its integrated suite. For the B2 browser checks and phone study, see [Motion validation](../../../docs/portfolio/MOTION-VALIDATION.md).
 - The user reported a successful iPhone test of the standalone lab on 21 November 2026. The subsequent scaffold/UI integration still needs a phone retest. Phone model, browser, numeric readings, and silent-switch behavior have not yet been recorded.
 - Android physical verification remains pending.
 
