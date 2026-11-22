@@ -35,6 +35,9 @@ const NOT_COMPARED_VALUE: Record<NotCompared, string> = {
   'not-in-reference': 'Not compared',
   unusable: 'No reading',
   'reference-unusable': 'Not compared',
+  'protocol-changed': 'Not compared',
+  'placement-changed': 'Not compared',
+  'cadence-changed': 'Not compared',
   'unknown-source': 'Not compared',
   'trial-count-changed': 'Not compared',
   'sensor-changed': 'Not compared',
@@ -46,6 +49,9 @@ const NOT_COMPARED_NOTE: Partial<Record<NotCompared, string>> = {
   'not-in-reference': 'is not in the reference, so there is nothing to compare it with.',
   unusable: 'did not give a usable reading this time.',
   'reference-unusable': 'in the reference was not usable.',
+  'protocol-changed': 'used a different or unknown protocol. Record a new baseline.',
+  'placement-changed': 'had different or changing phone placement.',
+  'cadence-changed': 'used a different motion sampling rate from the reference.',
   'unknown-source': 'has no recorded sensor to match. Record a new baseline.',
   'trial-count-changed': 'used a different number of trials. Record a new baseline.',
   'sensor-changed':
@@ -66,6 +72,8 @@ export function comparisonRows(run: RunResult, reference: RunResult, can: Compar
 
   if (can.stand.compared && run.stand && reference.stand) {
     rows.push(['Stand still', signedPercent(run.stand.swayRms, reference.stand.swayRms)])
+    if (can.caveats.includes('unverified-placement')) notes.push('Phone orientation could not be verified in both recordings.')
+    if (run.stand.recovered || reference.stand.recovered) notes.push('Stand still used a recovered same-sensor recording.')
   } else if (!can.stand.compared) {
     rows.push(['Stand still', NOT_COMPARED_VALUE[can.stand.reason]])
     const note = NOT_COMPARED_NOTE[can.stand.reason]

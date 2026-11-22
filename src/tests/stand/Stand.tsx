@@ -102,7 +102,7 @@ export function Stand({
                 <dd>{test.reading.metrics.swayRms.toFixed(4)}</dd>
               </div>
               <div>
-                <dt>Side-to-side RMS</dt>
+                <dt>Device y-axis RMS</dt>
                 <dd>{test.reading.metrics.swayLateralRms.toFixed(4)}</dd>
               </div>
               <div>

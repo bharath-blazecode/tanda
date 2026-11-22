@@ -72,10 +72,10 @@ export function Trace({
       <canvas
         ref={ref}
         role="img"
-        aria-label="Replay of measured side-to-side sway"
+        aria-label="Replay of measured device y-axis motion"
       />
       <span className="legend">
-        SIDE-TO-SIDE SWAY
+        DEVICE Y-AXIS MOTION
         {baseline?.source === reading.source && (
           <span className="baseline">Blue · previous run</span>
         )}

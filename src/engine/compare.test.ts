@@ -184,6 +184,42 @@ describe('plannedComparison', () => {
   it('warns before a check that a standing-only baseline cannot be compared without motion', () => {
     expect(plannedComparison({ stand: gyro(), at: 1 }, false)).toEqual({ stand: false, choice: false })
     expect(plannedComparison({ stand: gyro(), choice: taps(), at: 1 }, false)).toEqual({ stand: false, choice: true })
-    expect(plannedComparison({ stand: gyro(), choice: taps(), at: 1 }, true)).toEqual({ stand: true, choice: true })
+    expect(plannedComparison({ stand: gyro(0.6, { protocolVersion: 2 }), choice: taps(), at: 1 }, true)).toEqual({ stand: true, choice: true })
+  })
+})
+
+describe('B2 standing protocol provenance', () => {
+  const current = { ...gyro(), protocolVersion: 2 }
+  it('keeps taps comparable when only the stored standing protocol is unknown', () => {
+    const can = compareRuns({ stand: gyro(), choice: taps(), at: 1 }, { stand: current, choice: taps(), at: 2 })
+    expect(can.stand).toEqual({ compared: false, reason: 'protocol-changed' })
+    expect(can.choice.compared).toBe(true)
+  })
+  it('requires capture duration on both sides of a current comparison', () => {
+    expect(compareRuns({ stand: { ...current, captureSeconds: undefined }, at: 1 }, { stand: current, at: 2 }).stand.compared).toBe(false)
+  })
+})
+
+describe('B2 recording conditions', () => {
+  const stand = { ...gyro(), protocolVersion: 2, placement: 'portrait-up' as const }
+  const baseline = { stand, choice: taps(), at: 1 }
+  it.each([
+    [{ hz: 30 }, 'cadence-changed'],
+    [{ placement: 'face-up' }, 'placement-changed'],
+    [{ placementChanged: true }, 'placement-changed'],
+  ] as const)('excludes incompatible standing data while retaining tapping', (change, reason) => {
+    const run = { ...baseline, stand: { ...stand, ...change }, at: 2 }
+    expect(compareRuns(baseline, run).stand).toEqual({ compared: false, reason })
+    expect(compareRuns(baseline, run).choice.compared).toBe(true)
+    expect(driftFor(baseline, run).sway).toBeUndefined()
+  })
+  it('retains provenance across schema validation and lowers confidence for recovery', () => {
+    const run = RunResult.parse({ ...baseline, stand: { ...stand, recovered: true } })
+    expect(run.stand?.recovered).toBe(true)
+    expect(assess(input(baseline, run)).confidence).toBe('medium')
+  })
+  it('carries uncertainty about missing gravity into the recording conditions', () => {
+    const run = { ...baseline, stand: { ...stand, placement: undefined } }
+    expect(compareRuns(baseline, run).caveats).toContain('unverified-placement')
   })
 })
