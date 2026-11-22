@@ -146,14 +146,8 @@ describe('analyzePulse', () => {
     expect(got.bpm).toBeNull()
   })
 
-  it('takes a clear rhythm even when the frame gate was unhappy', () => {
-    // Deliberate. A phone hunting for an exposure can push frames outside the single-frame
-    // gate while the pulse is still plainly there, and gating on coverage first threw those
-    // readings away. A steady rhythm is better evidence of a finger on a lens than any one frame.
-    const got = analyzePulse(capture({ bpm: 72, covered: false }))
-    expect(got.reason).toBe('ok')
-    expect(got.bpm!).toBeGreaterThan(69)
-    expect(got.coveredFraction).toBe(0)
+  it('rejects periodic light when the lens was uncovered', () => {
+    expect(analyzePulse(capture({ bpm: 72, covered: false }))).toMatchObject({ bpm: null, reason: 'not-covered' })
   })
 
   it('reports what it saw, so a failure on a real phone can be diagnosed', () => {

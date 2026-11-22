@@ -18,8 +18,6 @@ const PATCH = 48
 
 // These bounds are deliberately generous. A phone with no torch runs its auto-exposure hard
 // against a covered lens, so a real fingertip wanders far more than a clean test signal does.
-// The gate only chooses which advice to give on a failure; a clear rhythm is accepted whatever
-// it says (see analyzePulse), so being strict here only ever lost good readings.
 /** A covered lens is red-dominant, because a fingertip passes red light and blocks the rest. */
 const MIN_RED_DOMINANCE = 1.25
 /** Saturated white or pure black both mean the lens is not covered by a finger. */

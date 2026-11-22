@@ -9,8 +9,9 @@ import { sampleFrame, startCamera, stopCamera, tryTorch, type CameraPermission }
 import {
   CAPTURE_SECONDS,
   SETTLE_SECONDS,
-  analyzePulse,
+  analyzePulseAttempts,
   type PulseAnalysis,
+  type PulseAttempt,
   type PulseSample,
 } from './analyze'
 import './pulse.css'
@@ -40,7 +41,7 @@ const BLOCKED_REASON: Record<CameraPermission, string> = {
 }
 
 const FAILURE_TEXT: Record<Exclude<PulseAnalysis['reason'], 'ok'>, string> = {
-  'too-short': 'That was too short to read. Try again, or skip.',
+  'too-short': 'That was too short to read. Try again with the same finger, or skip.',
   'not-covered': 'The lens was not covered for long enough. Cover it completely, then try again.',
   'no-rhythm': 'No steady rhythm in that one. Hold still, press gently, then try again.',
 }
@@ -59,8 +60,14 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
   const stream = useRef<MediaStream | null>(null)
   const frame = useRef<number | null>(null)
   const samples = useRef<PulseSample[]>([])
+  // Retry context belongs to this pulse step only, never to the person's stored reading.
+  const attempts = useRef<PulseAttempt[]>([])
+  const acquisition = useRef<string | undefined>(undefined)
+  const settlingSince = useRef(0)
+  const generation = useRef(0)
   const coveredSince = useRef<number | null>(null)
   const startedAt = useRef<number | null>(null)
+  const presentedFrame = useRef<number | null>(null)
   const phaseRef = useRef<Phase>('intro')
 
   const setPhaseBoth = useCallback((next: Phase) => {
@@ -69,27 +76,79 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
   }, [])
 
   const teardown = useCallback(() => {
+    generation.current += 1
     if (frame.current !== null) cancelAnimationFrame(frame.current)
     frame.current = null
     stopCamera(stream.current)
     stream.current = null
+    if (video.current) video.current.srcObject = null
   }, [])
 
   // Hard requirement: the camera light must go out when this component leaves the screen.
-  useEffect(() => teardown, [teardown])
+  useEffect(() => () => {
+    teardown()
+    attempts.current = []
+    samples.current = []
+  }, [teardown])
+
+  useEffect(() => {
+    const interrupt = () => {
+      attempts.current = []
+      samples.current = []
+      if (!['asking', 'settling', 'reading'].includes(phaseRef.current)) return
+      teardown()
+      setResult(null)
+      setPhaseBoth('intro')
+    }
+    const visibilityChanged = () => { if (document.hidden) interrupt() }
+    document.addEventListener('visibilitychange', visibilityChanged)
+    window.addEventListener('pagehide', interrupt)
+    return () => {
+      document.removeEventListener('visibilitychange', visibilityChanged)
+      window.removeEventListener('pagehide', interrupt)
+    }
+  }, [setPhaseBoth, teardown])
 
   const finish = useCallback(() => {
+    const now = performance.now()
     teardown()
-    const analysis = analyzePulse(samples.current)
+    attempts.current = [...attempts.current, { samples: samples.current, endedAt: now, acquisition: acquisition.current }].slice(-2)
+    const analysis = analyzePulseAttempts(attempts.current, now)
     setResult(analysis)
     setPhaseBoth('result')
   }, [teardown, setPhaseBoth])
 
-  const tick = useCallback(() => {
+  const tick = useCallback((run: number) => {
+    if (run !== generation.current) return
+    frame.current = null
     const element = video.current
     const sheet = canvas.current
     if (!element || !sheet) return
     const now = performance.now()
+
+    // A stalled camera must still finish the timed capture. Repeated frames do not count as
+    // new measurements, but the clock keeps running while we wait for the next real frame.
+    if (phaseRef.current === 'reading' && startedAt.current !== null) {
+      const elapsed = now - startedAt.current
+      setLeft(Math.max(0, Math.ceil((TOTAL_MS - elapsed) / 1000)))
+      if (elapsed >= TOTAL_MS) {
+        finish()
+        return
+      }
+    }
+
+    if (phaseRef.current === 'settling' && now - settlingSince.current >= TOTAL_MS) {
+      finish()
+      return
+    }
+    const presented = element.getVideoPlaybackQuality?.().totalVideoFrames ?? element.currentTime
+    if (presented !== undefined) {
+      if (presented === presentedFrame.current) {
+        frame.current = requestAnimationFrame(() => tick(run))
+        return
+      }
+      presentedFrame.current = presented
+    }
     const sample = sampleFrame(element, sheet, now)
 
     if (sample) {
@@ -119,27 +178,31 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
           covered: sample.covered,
         })
         setTrace((old) => [...old, sample.red].slice(-TRACE_POINTS))
-        const elapsed = startedAt.current === null ? 0 : now - startedAt.current
-        setLeft(Math.max(0, Math.ceil((TOTAL_MS - elapsed) / 1000)))
-        if (elapsed >= TOTAL_MS) {
-          finish()
-          return
-        }
       }
     }
-    frame.current = requestAnimationFrame(tick)
+    frame.current = requestAnimationFrame(() => tick(run))
   }, [finish, setPhaseBoth])
 
   const begin = useCallback(async () => {
+    teardown()
+    const run = generation.current
     setResult(null)
     setTrace([])
+    setCovered(false)
+    setLitTorch(false)
+    setBlocked('')
     samples.current = []
     coveredSince.current = null
     startedAt.current = null
+    presentedFrame.current = null
     setLeft(SETTLE_SECONDS + CAPTURE_SECONDS)
     setPhaseBoth('asking')
 
     const opened = await startCamera()
+    if (run !== generation.current) {
+      if ('stream' in opened) stopCamera(opened.stream)
+      return
+    }
     if ('error' in opened) {
       setBlocked(BLOCKED_REASON[opened.error])
       setPhaseBoth('blocked')
@@ -155,19 +218,38 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
         // Autoplay can refuse even a muted stream; the frames still arrive.
       }
     }
-    setLitTorch(await tryTorch(opened.stream))
+    if (run !== generation.current) {
+      stopCamera(opened.stream)
+      return
+    }
+    const torch = await tryTorch(opened.stream)
+    if (run !== generation.current) {
+      stopCamera(opened.stream)
+      return
+    }
+    const settings = opened.stream.getVideoTracks?.()[0]?.getSettings?.()
+    acquisition.current = settings?.deviceId
+      ? JSON.stringify([settings.deviceId, settings.width, settings.height, settings.facingMode, torch])
+      : undefined
+    settlingSince.current = performance.now()
+    setLitTorch(torch)
     setPhaseBoth('settling')
-    frame.current = requestAnimationFrame(tick)
-  }, [tick, setPhaseBoth])
+    frame.current = requestAnimationFrame(() => tick(run))
+  }, [teardown, tick, setPhaseBoth])
 
   const leave = useCallback(
     (outcome: PulseRecord) => {
       teardown()
+      attempts.current = []
+      samples.current = []
       onDone(outcome.status === 'measured' && outcome.bpm !== undefined ? outcome.bpm : null, outcome)
     },
     [teardown, onDone],
   )
-  const skip = useCallback(() => leave({ status: 'skipped' }), [leave])
+  const skip = useCallback(() => {
+    setPhaseBoth('intro')
+    leave({ status: 'skipped' })
+  }, [leave, setPhaseBoth])
 
   // The trace is drawn against its own window, so a dim iPhone frame looks the same as a bright one.
   const low = trace.length ? Math.min(...trace) : 0
@@ -204,10 +286,15 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
       )}
 
       {phase === 'asking' && (
-        <Sheet grow>
-          <Label paper>{label}</Label>
-          <p>Asking for the camera.</p>
-        </Sheet>
+        <>
+          <Sheet grow>
+            <Label paper>{label}</Label>
+            <p>Asking for the camera.</p>
+          </Sheet>
+          <Key quiet onClick={skip}>
+            Skip
+          </Key>
+        </>
       )}
 
       {phase === 'blocked' && (
@@ -266,7 +353,7 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
               {result.bpm} bpm
             </h2>
             <p>
-              {result.rough
+              {result.combined ? 'Approximate from two compatible captures. Shown on your ticket and unscored.' : result.rough
                 ? 'An approximate figure from a weak signal. It is shown on your ticket, and not used to score it.'
                 : 'An estimate from your fingertip on the camera, averaged over the reading. Not a medical reading.'}
             </p>
@@ -276,14 +363,14 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
               leave(
                 result.bpm === null
                   ? { status: 'unreadable' }
-                  : { status: result.rough ? 'approximate' : 'measured', bpm: result.bpm },
+                  : { status: result.rough ? 'approximate' : 'measured', bpm: result.bpm, ...(result.combined ? { combined: true as const } : {}) },
               )
             }
           >
             Next
           </Key>
           <Key quiet onClick={begin}>
-            Again
+            Again · same finger
           </Key>
         </>
       )}
@@ -306,7 +393,7 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
               ]}
             />
           </Sheet>
-          <Key onClick={begin}>Try again</Key>
+          <Key onClick={begin}>Try again · same finger</Key>
           <Key quiet onClick={() => leave({ status: 'unreadable' })}>
             Skip
           </Key>
