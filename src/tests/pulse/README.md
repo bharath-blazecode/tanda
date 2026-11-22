@@ -55,7 +55,7 @@ harmonic. Flat channels, sparse frames, non-finite or backwards timestamps, came
 Frames must average at least 12 samples per second. Where the browser exposes presented-frame
 counts, the capture loop samples each video frame only once.
 
-**Try again** keeps the last two completed captures in memory for up to 90 seconds. Each capture
+**Try again · same finger** can use evidence less than 90 seconds old from the last two captures in this step. Each capture
 is analyzed separately; time gaps and separate attempts are never stitched into a continuous
 waveform. If both contain a credible contiguous section of at least eight seconds, and their
 rates agree within 8 bpm or 10%, those sections can support a rough estimate. Contradictory
@@ -64,9 +64,11 @@ A good new standalone reading takes priority over history.
 
 Rough results say **About … bpm**. Retry estimates explain that they use usable sections of both
 readings. They are displayed only and do not enter the baseline or verdict calculation. Skip,
-Next and leaving the pulse step clear retry history; no raw camera data is persisted or uploaded.
+Next, backgrounding and leaving the pulse step clear retry history; no raw camera data is persisted or uploaded.
 A camera permission response that arrives after cancellation cannot restart the capture.
 
 Synthetic tests cover rate boundaries, out-of-band harmonics, constant/noisy signals, frame
 gaps, changing rates and retry recovery. These checks cannot establish accuracy on a physical
 phone or replace comparison with a trusted pulse measurement on that device.
+
+The [B1 verification record](../../../docs/portfolio/PULSE-B1.md) gives acquisition compatibility rules and the physical-phone protocol.

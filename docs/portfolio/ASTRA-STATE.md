@@ -28,3 +28,10 @@ The reproduced client consent regression is resolved for this revision. Recommen
 A merge to main runs CI and can invoke Dokploy if the webhook is configured. Local checks did not inspect production configuration. No remote branch, PR, main merge or deployment was created for this review. The independent pulse patch at `5ca2b58` and the later wellbeing, social, accessibility, animation, 3D and scroll work remain on the original roadmap.
 
 Continuation: inspect the two implementation commits below the handoff commit on `integration/phase-a`. Obtain a specific owner decision before a main merge or a new major phase. Reproduce with `npm run check`, `npm run build`, and the two runners documented in `scripts/browser-checks/README.md`. For an installed system Chromium set CHROMIUM_PATH to its executable. KACHKA_TEST_ORIGIN selects the local test server.
+
+### Phase B1 camera pulse review
+
+The feature branch starts at the PR #56 merge, `5b839ea`. The comparison fixtures,
+recovery rules, browser checks, production access limitation and physical-phone release
+protocol are recorded in [PULSE-B1.md](PULSE-B1.md). Physical validation and owner review
+remain open.
