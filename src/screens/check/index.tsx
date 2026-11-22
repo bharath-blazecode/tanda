@@ -14,7 +14,7 @@ import type { ChoiceMetrics, Mode, PulseRecord, ResultReference, StandMetrics } 
 import { requestVerdictLine } from '../../api/verdict'
 import { cannedLine } from '../../engine/canned'
 import { evaluate } from '../../engine/classify'
-import { plannedComparison, type Comparability } from '../../engine/compare'
+import { plannedComparison, standStatus, type Comparability } from '../../engine/compare'
 import { hasAlcohol } from '../../engine/nudge'
 import { buildRun } from '../../engine/run'
 import { tallyAlcohol, tallyCaffeine } from '../../engine/serving'
@@ -287,7 +287,7 @@ export function Check() {
           }}
         />
       )}
-      {step === 'choice' && stand !== null && (
+      {step === 'choice' && standStatus(reference.run.stand, stand ?? undefined).compared && (
         <Key quiet onClick={() => (withPulse ? (setChoice(null), setStep('pulse')) : void finish(null, null))}>
           Skip this test
         </Key>

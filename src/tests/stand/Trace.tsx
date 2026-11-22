@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { CAPTURE_SECONDS, SETTLE_SECONDS, type StandAnalysis } from "./analyze";
+import { standStatus } from "../../engine/compare";
 import { ChartWindow } from "../../ui";
 export function Trace({
   reading,
@@ -8,6 +9,7 @@ export function Trace({
   reading: StandAnalysis;
   baseline?: StandAnalysis;
 }) {
+  const overlay = baseline && standStatus(baseline.metrics, reading.metrics).compared ? baseline : undefined;
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current!;
@@ -24,7 +26,7 @@ export function Trace({
       const amplitude = Math.max(
         0.001,
         ...reading.trace.map((point) => Math.abs(point.lateral)),
-        ...(baseline?.trace.map((point) => Math.abs(point.lateral)) ?? []),
+        ...(overlay?.trace.map((point) => Math.abs(point.lateral)) ?? []),
       );
       const line = (
         points: StandAnalysis["trace"],
@@ -51,8 +53,8 @@ export function Trace({
         context.stroke();
       };
       const styles = getComputedStyle(canvas);
-      if (baseline && baseline.source === reading.source)
-        line(baseline.trace, 1, styles.getPropertyValue("--pencil"), true);
+      if (overlay)
+        line(overlay.trace, 1, styles.getPropertyValue("--pencil"), true);
       line(reading.trace, progress, styles.getPropertyValue("--ink"));
       if (progress < 1) frame = requestAnimationFrame(draw);
     };
@@ -66,7 +68,7 @@ export function Trace({
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", redraw);
     };
-  }, [reading, baseline]);
+  }, [reading, overlay]);
   return (
     <ChartWindow minHeight={280}>
       <canvas
@@ -76,7 +78,7 @@ export function Trace({
       />
       <span className="legend">
         DEVICE Y-AXIS MOTION
-        {baseline?.source === reading.source && (
+        {overlay && (
           <span className="baseline">Blue · previous run</span>
         )}
       </span>

@@ -74,7 +74,9 @@ export function useStand(
     const oscillators = new Set<OscillatorNode>();
     try {
       audio = new AudioContext();
-      void audio.resume().catch(() => setAudioWarning(true));
+      void audio.resume().catch(() => {
+        if (generation.current === token) setAudioWarning(true);
+      });
     } catch {
       setAudioWarning(true);
     }
