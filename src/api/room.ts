@@ -1,5 +1,10 @@
 // CARD 9 owns this file. The room board client. Failures are silent: no error screens for the network.
-import { RoomState, type RoomPresenceRequest, type RoomResultRequest } from '../../shared/contracts'
+import {
+  RoomState,
+  type RoomPresenceRequest,
+  type RoomResultRequest,
+  type RoomWithdrawRequest,
+} from '../../shared/contracts'
 
 export async function postRoomResult(body: RoomResultRequest): Promise<void> {
   try {
@@ -23,6 +28,25 @@ export async function postRoomPresence(body: RoomPresenceRequest): Promise<void>
     })
   } catch {
     // Dropped.
+  }
+}
+
+/**
+ * Takes this device off the board and out of the live list. Resolves true only when the server
+ * confirmed it; the caller says so honestly when it could not be reached.
+ */
+export async function withdrawFromRoom(deviceId: string, timeoutMs = 4000): Promise<boolean> {
+  const body: RoomWithdrawRequest = { deviceId }
+  try {
+    const res = await fetch('/api/room/withdraw', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    return res.status === 204
+  } catch {
+    return false
   }
 }
 

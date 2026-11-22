@@ -1,9 +1,10 @@
 // CARD 6. Landing (docs/04-screens-spec.md, section 1).
 // Say what this is in five seconds and get the first tap.
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router'
-import { ChartWindow, Housing, Key, Plate, Printed } from '../../ui'
-import { load, reset, update } from '../../store/local'
+import { useLocation, useNavigate } from 'react-router'
+import { ChartWindow, Housing, Key, Plate, Printed, Toggle } from '../../ui'
+import { load, update } from '../../store/local'
+import { eraseEverything } from '../privacy/erase'
 
 const NAME_MAX = 16
 // Stored.nickname has min(3): a shorter value would fail validation on the next load() and wipe the record.
@@ -19,7 +20,13 @@ export function chooseName(typed: string, generated: string): string {
 
 export function Landing() {
   const navigate = useNavigate()
+  const location = useLocation()
+  // Set by Start over on the way back here, so the person hears what was and was not deleted.
+  const erased = (location.state as { erased?: 'all' | 'local' } | null)?.erased
   const stored = load()
+  const [share, setShare] = useState(stored.shareToRoom)
+  const [confirming, setConfirming] = useState(false)
+  const [erasing, setErasing] = useState(false)
   // Anyone with something on this phone, not only someone with a baseline: a quick-demo visitor
   // has a ticket and a log, and should find them again.
   const returning = stored.baseline !== undefined || stored.lastResult !== undefined || stored.drinks.length > 0
@@ -28,15 +35,23 @@ export function Landing() {
   // A form, so Enter (shown as "Go") in the field does exactly what the Start key does.
   const start = (event: FormEvent) => {
     event.preventDefault()
-    update((s) => ({ ...s, nickname: chooseName(name, s.nickname) }))
+    update((s) => ({ ...s, nickname: chooseName(name, s.nickname), shareToRoom: share }))
     navigate('/setup', { state: { next: 'baseline' } })
   }
 
   // The short way through: every test once against example numbers, then a ticket. Nothing is
   // written into the personal baseline, so this can never overwrite one (schema v2).
   const quickDemo = () => {
-    update((s) => ({ ...s, nickname: chooseName(name, s.nickname) }))
+    update((s) => ({ ...s, nickname: chooseName(name, s.nickname), shareToRoom: share }))
     navigate('/setup', { state: { next: 'example' } })
+  }
+
+  const erase = async () => {
+    setErasing(true)
+    const { roomWithdrawn } = await eraseEverything()
+    navigate('/', { replace: true, state: { erased: roomWithdrawn ? 'all' : 'local' } })
+    // A full reload, so every screen starts from the fresh record.
+    navigate(0)
   }
 
   return (
@@ -64,23 +79,46 @@ export function Landing() {
         </Printed>
       </ChartWindow>
 
+      {erased && (
+        <p role="status" style={{ color: 'var(--housing-ink)', fontSize: 13, margin: 0 }}>
+          {erased === 'all'
+            ? 'Deleted from this phone, and taken off the room screen.'
+            : 'Deleted from this phone. The server could not be reached, so a room entry, if you had one, drops off within 12 hours.'}
+        </p>
+      )}
+
       {returning ? (
-        <>
-          <Key onClick={() => navigate('/home')}>Continue</Key>
-          <Key
-            quiet
-            onClick={() => {
-              reset()
-              navigate(0)
-            }}
-          >
-            Start over
-          </Key>
-        </>
+        confirming ? (
+          <>
+            <p style={{ margin: 0 }}>
+              Delete your name, baseline, drink log and last ticket from this phone? The server is asked to take you off
+              the room screen first.
+            </p>
+            <Key onClick={() => void erase()} disabled={erasing}>
+              {erasing ? 'Deleting' : 'Delete everything'}
+            </Key>
+            <Key quiet onClick={() => setConfirming(false)} disabled={erasing}>
+              Keep it
+            </Key>
+          </>
+        ) : (
+          <>
+            <Key onClick={() => navigate('/home')}>Continue</Key>
+            <Key quiet onClick={() => setConfirming(true)}>
+              Start over
+            </Key>
+          </>
+        )
       ) : (
         <>
           <form onSubmit={start} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
             <NameField value={name} onChange={setName} />
+            <Toggle
+              checked={share}
+              onChange={setShare}
+              label="Show me on the room screen"
+              hint="Off unless you turn it on. Your name and each ticket's word and score, never your drinks."
+            />
             <Key type="submit">Start</Key>
           </form>
           <Key quiet onClick={quickDemo}>
@@ -131,7 +169,7 @@ function NameField({ value, onChange }: { value: string; onChange: (value: strin
         }}
       />
       <p id="room-name-note" style={{ color: 'var(--housing-dim)', fontSize: 13, margin: 0 }}>
-        Saved on this phone. It also appears on the room screen.
+        Saved on this phone. It appears on the room screen only if you turn that on.
       </p>
     </div>
   )

@@ -576,3 +576,28 @@
   margin: 0;
   font: 700 15px/1.35 var(--mono);
 }
+
+/* Field choices for an exported receipt, on the housing under the ticket. */
+.result-share-fields {
+  border: 1px solid var(--housing-hi);
+  margin: 0;
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 0;
+}
+.result-share-fields legend { padding: 0 var(--s1); }
+.result-share-fields .result-fine { text-align: left; }
+.result-preview-text { color: var(--housing-ink); font-size: 13px; }
+.result-preview-text summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 700; }
+.result-preview-text ul {
+  margin: var(--s2) 0 0;
+  padding: var(--s3);
+  list-style: none;
+  background: var(--receipt);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

@@ -1,6 +1,7 @@
 # Kachka threat model
 
-Prepared 22 November 2026 against `main` at `b3d93a6`. It is a design review with local reproductions. It is not a penetration test, an
+Prepared 22 November 2026 against `main` at `b3d93a6`, then updated for the controls added on this
+branch (section 7). It is a design review with local reproductions. It is not a penetration test, an
 audit, or a compliance assessment. OWASP material was used as a review aid only.
 
 Three kinds of statement are kept apart:
@@ -45,6 +46,7 @@ GitHub Actions ──webhook──> Dokploy (deploys main after checks)
 |---|---|---|---|
 | Browser to API | `POST /api/verdict` | Numbers and closed enums only, plus device ID for limits | Not stored. Logged as `{msg, source, reason}` |
 | Browser to API | `POST /api/room/result`, `/presence` | Device ID, name, verdict, score, mode, stage | 12 h and 2000 entries for results, 45 s for presence |
+| Browser to API | `POST /api/room/withdraw` (this branch) | Device ID | Removes that device's result, live row and mirror field |
 | API to Anthropic | Messages API | Verdict, tier, mode, drift bands, caffeine mg, alcohol count, local hour, handicap. No device ID, no name | Anthropic's API retention policy applies. Not verified here |
 | API to Redis | HSET, HDEL, HGETALL, DEL | Device ID as field, RoomEntry JSON as value | No native TTL. Pruned on read after 12 h |
 | Projector | `GET /api/room` | Names, verdicts, scores, stages. No device IDs, no drinks | Polled every 1.5 s |
@@ -75,8 +77,8 @@ GitHub Actions ──webhook──> Dokploy (deploys main after checks)
 | W2 | Requests with no forwarding header all share the key `unknown` | Same script: three header-less posts gave `204, 204, 429` | One client can spend everyone's bucket if the origin is reachable directly |
 | W3 | No security headers and no `Cache-Control` on the origin | `curl -sI localhost:3333/` and `/api/room` returned only content type, length, date and keep-alive | Cloudflare may add headers. A read-only header inventory of the live site is needed before choosing where to set them |
 | W4 | Knowing a device ID lets a caller overwrite that device's board entry | Posting with an existing device ID replaced the row | Low. Device IDs never appear on the board or in the prompt. By design, one entry per device |
-| W5 | Opening the result screen posts to the board whenever the stored flag is on, and both landing paths turned the flag on | Seeded record with sharing on: opening `/result` put "Sample Ibis" on the local board | Planned for Stage A: sharing off by default and a visible choice |
-| W6 | Start over cleared the phone but left the board entry for up to 12 h | Read and traced | Planned for Stage A: a withdrawal endpoint, called before local deletion |
+| W5 | Opening the result screen posts to the board whenever the stored flag is on, and both landing paths turned the flag on | Seeded record with sharing on: opening `/result` put "Sample Ibis" on the local board | Fixed on this branch: sharing is off until chosen (section 7) |
+| W6 | Start over cleared the phone but left the board entry for up to 12 h | Read and traced | Fixed on this branch: withdrawal endpoint, called before local deletion (section 7) |
 
 Not reproduced, and not claimed: stored XSS through names (the sanitiser turned
 `<img src=x onerror=alert(1)>` into the text `img srcx onerror`, and React renders text), and any
@@ -98,7 +100,22 @@ bypass of the body limit (5000 bytes gave 413).
    rotated before that history is exposed. No scan proves the absence of every secret. This branch
    does not rewrite history.
 
-## 7. Before any durable social data
+## 7. Controls added on this branch
+
+| Control | Where | Tested by |
+|---|---|---|
+| Room sharing starts off, is a visible choice on Landing and on the Privacy screen, and records migrated from v1 restart with it off | `src/screens/landing`, `src/screens/privacy`, `src/store/local.ts` | `src/store/local.test.ts`; browser run: toggle off by default, no presence or result request while off |
+| `POST /api/room/withdraw` removes the device's result and live row, deletes the mirror field, and refuses a stale mirror read that would bring it back. A newer post after withdrawal is accepted. Answers 204 whether or not an entry existed. Rate limited like a result post | `server/room.ts`, `server/state.ts`, `server/room-presence.ts`, `server/room-mirror.ts` | `server/room.test.ts`, `server/room-mirror.test.ts`, `server/state.test.ts` |
+| Turning sharing off withdraws at once and stops heartbeats | `src/screens/privacy` | Browser run: withdraw request sent, entry gone from `GET /api/room`, no heartbeat over the next 16 s |
+| Start over asks for confirmation, withdraws first, then clears `bc:v2` and the `bc:v1` rollback copy, and says which of the two succeeded | `src/screens/privacy/erase.ts` | Browser run; `src/store/local.test.ts` |
+| Claude commentary can be switched off; no `/api/verdict` request is made when it is | `src/screens/check` | Browser run with a request log |
+| A saved or shared receipt leaves the name and the drink log off unless chosen, shows a text preview of the image, and always keeps provenance tags, the reference and the safety line | `src/screens/result` | `src/screens/result/receipt-image.test.ts`; browser run |
+| The Privacy screen lists what stays on the phone, what goes to the server, and what goes to Anthropic, matching the request fields in `server/prompt.ts` | `src/screens/privacy` | Read against source; no automated check of the wording |
+
+Not done here, and still open: W1 to W4, security headers and CSP (section 8), durable rate and cost
+limits, and an owner-run secret scan of the history before it is exposed.
+
+## 8. Before any durable social data
 
 The device ID cannot authorise access to private records, and nothing on this branch treats it as if
 it could. Before friends, circles or invites exist, all of these must be designed, built and tested:
@@ -109,7 +126,7 @@ revocation, account recovery, block and report, and per-user export and deletion
 Redis, logs and backups. The handoff branch's `SECURITY-AND-PRIVACY.md` has a fuller list. Until
 then, social features stay out.
 
-## 8. CSP notes for a later stage
+## 9. CSP notes for a later stage
 
 A Content Security Policy was reviewed, not shipped, because enforcing an untested policy risks
 breaking the instrument. Constraints found in source:

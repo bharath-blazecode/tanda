@@ -15,6 +15,7 @@ const ROUTE_STAGE: Record<string, RoomStage> = {
   '/demo': 'demo',
   '/home': 'idle',
   '/log': 'idle',
+  '/privacy': 'idle',
   '/band': 'idle',
 }
 

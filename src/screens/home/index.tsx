@@ -144,6 +144,10 @@ export function Home() {
           Try with example numbers
         </Key>
       )}
+
+      <Key quiet onClick={() => navigate('/privacy')}>
+        Privacy · room screen {stored.shareToRoom ? 'on' : 'off'}
+      </Key>
     </Housing>
   )
 }

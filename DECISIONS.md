@@ -265,6 +265,23 @@ be recorded after a drink and is marked as not clean, as before. Caffeine does n
 because a caffeine-first visitor would otherwise be locked out for the day; it marks the baseline as
 not clean instead.
 
+**D54. The room screen is off until a person turns it on, in both entry paths.** Default 22 Nov. Amends D23.
+D23 said real mode is off by default and demo mode is on with a notice; the code turned it on for both.
+Now one visible switch on Landing and on the Privacy screen controls it, off by default for both paths,
+and records migrated from v1 restart with it off because v1 never asked. Turning it off withdraws the
+device's board entry and live row at once (`POST /api/room/withdraw`). Start over withdraws first, then
+clears the phone. A device ID is not an account: it can overwrite or withdraw its own board entry, and
+nothing more.
+
+**D55. A saved or shared receipt carries the name and the drink log only when chosen.** Default 22 Nov.
+The image leaves the phone and cannot be recalled. Provenance tags, the reference and the safety line are
+not choices.
+
+**D56. Claude commentary stays on by default, with a switch.** Default 22 Nov.
+It sends numbers and closed enums only, never a name, device ID or free text (D9), and it is the
+project's honest AI feature. The Privacy screen lists exactly what is sent. Off, no request is made and
+a built-in line is printed.
+
 ---
 
 ## Process

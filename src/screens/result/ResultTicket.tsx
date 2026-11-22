@@ -16,7 +16,9 @@ import {
   Label,
 } from "../../ui";
 import { ResultBird } from "./ResultBird";
+import { receiptText } from "./receipt-image";
 import { canShareReceipt, saveReceipt, shareReceipt } from "./share";
+import { Toggle } from "../../ui";
 
 export type ResultTicketProps = {
   assessment: Assessment;
@@ -80,10 +82,16 @@ export function ResultTicket({
   // offered where it does rather than failing in someone's hand.
   const [busy, setBusy] = useState<"save" | "share" | null>(null);
   const [note, setNote] = useState("");
+  // What goes on an image that leaves the phone is the person's choice, field by field. The name
+  // and the drink log are off until turned on. Provenance tags, the reference and the safety line
+  // are not choices: an exported copy must never be the one that drops them.
+  const [withName, setWithName] = useState(false);
+  const [withLog, setWithLog] = useState(false);
   const receipt = {
     readingId,
     timestamp,
-    name,
+    name: withName ? name : undefined,
+    logged: withLog ? logged : undefined,
     reference,
     tags,
     rows,
@@ -203,6 +211,23 @@ export function ResultTicket({
         </nav>
         {!sample && (
           <>
+            <fieldset className="result-share-fields">
+              <legend className="k-label">On a saved or shared image</legend>
+              {name && <Toggle checked={withName} onChange={setWithName} label="Include my name" />}
+              {logged && <Toggle checked={withLog} onChange={setWithLog} label="Include what I logged" />}
+              <p className="result-fine">
+                Always included: whether it was simulated, what it was compared with, and the safety line when alcohol
+                is logged.
+              </p>
+              <details className="result-preview-text">
+                <summary>What the image will say</summary>
+                <ul>
+                  {receiptText(receipt).map((text, i) => (
+                    <li key={`${i}:${text}`}>{text}</li>
+                  ))}
+                </ul>
+              </details>
+            </fieldset>
             <nav className="k-keys k-keys--2" aria-label="Keep this reading">
               <button
                 type="button"

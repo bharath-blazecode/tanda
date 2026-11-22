@@ -16,6 +16,8 @@ export type PresenceStore = {
   beat(deviceId: string, nickname: string, stage: RoomStage, now: number, force?: boolean): void
   snapshot(now: number): PresenceSnapshot
   reset(): void
+  // Takes one device out of the live list at once, rather than waiting for its heartbeat to expire.
+  remove(deviceId: string): void
 }
 
 export type PresenceOptions = { ttlMs?: number; maxDevices?: number; liveSize?: number; changeGapMs?: number }
@@ -74,6 +76,10 @@ export function createPresenceStore({
 
     reset() {
       byDevice.clear()
+    },
+
+    remove(deviceId) {
+      byDevice.delete(deviceId)
     },
   }
 }

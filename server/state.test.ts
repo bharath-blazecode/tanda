@@ -189,3 +189,17 @@ describe('createRoomStore', () => {
     expect(store.merge([], T0 + 60)).toBe(0)
   })
 })
+
+describe('remove', () => {
+  it('takes one device off and says whether it was there', () => {
+    const store = createRoomStore()
+    store.add({ nickname: 'Calm Quokka', verdict: 'steady', score: 90, mode: 'real', at: 1 }, 'device-a')
+    store.add({ nickname: 'Brisk Emu', verdict: 'wired', score: 70, mode: 'real', at: 2 }, 'device-b')
+    expect(store.remove('device-a', 3)).toBe(true)
+    expect(store.remove('device-a', 3)).toBe(false)
+    const snap = store.snapshot(3)
+    expect(snap.total).toBe(1)
+    expect(snap.feed.map((e) => e.nickname)).toEqual(['Brisk Emu'])
+    expect(snap.updatedAt).toBe(3)
+  })
+})

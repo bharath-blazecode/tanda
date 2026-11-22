@@ -21,6 +21,8 @@ export type ReceiptData = {
   notes?: string[]
   /** One line under the rows: the demo's guess at the handicap. */
   extra?: string
+  /** What was logged today, in words. Only on the image when the person chose to include it. */
+  logged?: string
   /** Where the stamp's word came from. */
   labelNote?: string
   verdict: string
@@ -61,6 +63,7 @@ export function receiptLines(d: ReceiptData): ReceiptLine[] {
   for (const tag of d.tags) out.push({ kind: 'tag', text: tag })
   for (const [label, value] of d.rows) out.push({ kind: 'row', label, value })
   for (const note of d.notes ?? []) out.push({ kind: 'note', text: note })
+  if (d.logged) out.push({ kind: 'extra', text: `Logged today · ${d.logged}` })
   if (d.extra) out.push({ kind: 'extra', text: d.extra })
   out.push({ kind: 'rule' })
   out.push({ kind: 'stamp', text: d.verdict.toUpperCase() })
@@ -72,6 +75,15 @@ export function receiptLines(d: ReceiptData): ReceiptLine[] {
   // Whoever sees the picture should know where to get their own.
   out.push({ kind: 'site', text: SITE })
   return out
+}
+
+/** The image's words as plain text, for the preview shown before saving or sharing. */
+export function receiptText(d: ReceiptData): string[] {
+  return receiptLines(d).flatMap((line) => {
+    if (line.kind === 'rule') return []
+    if (line.kind === 'row') return [`${line.label} · ${line.value}`]
+    return [line.text]
+  })
 }
 
 /** The filename a saved or shared receipt carries. */

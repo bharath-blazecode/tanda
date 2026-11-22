@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SAFETY_TEXT } from '../../ui'
-import { receiptFilename, receiptLines, type ReceiptData } from './receipt-image'
+import { receiptFilename, receiptLines, receiptText, type ReceiptData } from './receipt-image'
 
 const base: ReceiptData = {
   readingId: '36370',
@@ -96,5 +96,39 @@ describe('what the picture adds to the ticket', () => {
     const kinds = receiptLines({ ...data, extra: 'We think you spun.' }).map((l) => l.kind)
     expect(kinds.indexOf('extra')).toBe(kinds.lastIndexOf('row') + 1)
     expect(receiptLines(data).some((l) => l.kind === 'extra')).toBe(false)
+  })
+})
+
+describe('what an exported image may carry', () => {
+  const data: ReceiptData = {
+    readingId: '01234',
+    timestamp: 'SUN 22 NOV 10:00',
+    reference: 'Against · example numbers',
+    tags: ['Simulated', 'Example reference, not your baseline'],
+    rows: [['Tap time', '+8%']],
+    verdict: 'tipsy',
+    line: 'Logged, with a sigh.',
+    safety: true,
+    nudge: 'Get a ride or ping a friend.',
+  }
+
+  it('leaves the name and the drink log off unless they are passed in', () => {
+    const text = receiptText(data).join('\n')
+    expect(text).not.toMatch(/Subject/)
+    expect(text).not.toMatch(/Logged today/)
+  })
+
+  it('prints them when the person chose to include them', () => {
+    const text = receiptText({ ...data, name: 'Calm Quokka', logged: '2 beers' }).join('\n')
+    expect(text).toMatch(/Subject · Calm Quokka/)
+    expect(text).toMatch(/Logged today · 2 beers/)
+  })
+
+  it('always carries provenance, the reference and the safety line, whatever else is left off', () => {
+    const text = receiptText(data).join('\n')
+    expect(text).toMatch(/Simulated/)
+    expect(text).toMatch(/Example reference, not your baseline/)
+    expect(text).toMatch(/Against · example numbers/)
+    expect(text).toContain(SAFETY_TEXT)
   })
 })
