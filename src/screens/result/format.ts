@@ -35,6 +35,8 @@ const NOT_COMPARED_VALUE: Record<NotCompared, string> = {
   'not-in-reference': 'Not compared',
   unusable: 'No reading',
   'reference-unusable': 'Not compared',
+  'unknown-source': 'Not compared',
+  'trial-count-changed': 'Not compared',
   'sensor-changed': 'Not compared',
   'capture-changed': 'Not compared',
 }
@@ -44,6 +46,8 @@ const NOT_COMPARED_NOTE: Partial<Record<NotCompared, string>> = {
   'not-in-reference': 'is not in the reference, so there is nothing to compare it with.',
   unusable: 'did not give a usable reading this time.',
   'reference-unusable': 'in the reference was not usable.',
+  'unknown-source': 'has no recorded sensor to match. Record a new baseline.',
+  'trial-count-changed': 'used a different number of trials. Record a new baseline.',
   'sensor-changed':
     'used a different motion sensor from the reference (rotation one time, acceleration the other). The units differ, so it was not compared. Recalibrating fixes this.',
   'capture-changed': 'ran for a different length from the reference, so it was not compared. Recalibrating fixes this.',
@@ -102,12 +106,6 @@ export function comparisonRows(run: RunResult, reference: RunResult, can: Compar
     rows.push(['Pulse', 'Not taken'])
   }
 
-  if (can.caveats.includes('sensor-not-recorded')) {
-    notes.push('Your baseline predates sensor recording, so the standing comparison could not be checked for a sensor change.')
-  }
-  if (can.caveats.includes('tap-count-differs')) {
-    notes.push('The reference used a different number of taps, so tap time is noisier than usual.')
-  }
   return { rows, notes }
 }
 

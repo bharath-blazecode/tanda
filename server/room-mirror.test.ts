@@ -90,7 +90,7 @@ describe('mirrored room store', () => {
     store.add(entry(), 'device-aaaa-1111')
     store.add(entry({ nickname: 'Brisk Emu' }), 'device-bbbb-2222')
     await flush()
-    expect(store.remove('device-aaaa-1111', T0)).toBe(true)
+    expect(await store.remove('device-aaaa-1111', T0)).toBe(true)
     await flush()
     expect([...hash.keys()]).toEqual(['device-bbbb-2222'])
     expect(store.snapshot(T0).total).toBe(1)
@@ -103,11 +103,16 @@ describe('mirrored room store', () => {
     await room.hydrate()
     expect(room.store.snapshot(T0 + 1000).total).toBe(1)
     state.mode = 'reject' // the HDEL fails
-    room.store.remove('device-aaaa-1111', T0 + 1000)
-    await flush()
+    const app = createApp(loadConfig({}), { store: room.store })
+    const withdraw = () => app.request('/api/room/withdraw', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deviceId: 'device-aaaa-1111' }),
+    })
+    expect((await withdraw()).status).toBe(503)
     state.mode = 'ok'
     await room.sync()
     expect(room.store.snapshot(T0 + 1000).total).toBe(0)
+    expect((await withdraw()).status).toBe(204)
   })
 
   it('accepts a newer entry for a withdrawn device, because the person shared again', async () => {

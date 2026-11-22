@@ -118,8 +118,12 @@ export function roomRoutes(
     }
     const parsed = RoomWithdrawRequest.safeParse(await c.req.json().catch(() => null))
     if (!parsed.success) return c.json({ error: 'bad_request' }, 400)
-    store.remove(parsed.data.deviceId, now())
     presence.remove(parsed.data.deviceId)
+    try {
+      await store.remove(parsed.data.deviceId, now())
+    } catch {
+      return c.json({ error: 'withdrawal_unconfirmed' }, 503)
+    }
     return c.body(null, 204)
   })
 

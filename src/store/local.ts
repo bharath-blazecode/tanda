@@ -27,7 +27,47 @@ const V1_STOCK_AT = 0
 
 type KeyValue = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
-const browserStorage = (): KeyValue => globalThis.localStorage
+const unavailable: KeyValue = {
+  getItem: () => null,
+  setItem: () => { throw new Error('Storage unavailable') },
+  removeItem: () => { throw new Error('Storage unavailable') },
+}
+function browserStorage(): KeyValue {
+  try {
+    if (globalThis.localStorage) return globalThis.localStorage
+  } catch { /* Access to the getter itself may be denied. */ }
+  activeGrant = undefined
+  return unavailable
+}
+
+// A saved preference alone cannot prove consent: the last opt-out may have failed to save.
+// Only the document where the person opted in can report, and only while its grant still matches.
+const ROOM_GRANT = 'bc:room-grant'
+let activeGrant: { storage: KeyValue; token: string } | undefined
+function hasGrant(storage: KeyValue): boolean {
+  if (!activeGrant || activeGrant.storage !== storage) return false
+  try {
+    if (storage.getItem(ROOM_GRANT) === activeGrant.token) return true
+  } catch { /* A failed read revokes this document's grant. */ }
+  activeGrant = undefined
+  return false
+}
+
+export function setRoomSharing(on: boolean, storage = browserStorage()): Stored {
+  const current = load(storage)
+  activeGrant = undefined
+  try {
+    if (on) {
+      const token = newId()
+      storage.setItem(ROOM_GRANT, token)
+      activeGrant = { storage, token }
+    } else {
+      storage.removeItem(ROOM_GRANT)
+    }
+  } catch { /* A missing grant keeps sharing off. */ }
+  save({ ...current, shareToRoom: hasGrant(storage) }, storage)
+  return load(storage)
+}
 
 // When the browser refuses to store anything (private mode, a full disk), the session keeps one
 // record in memory instead of minting a new name and device ID on every read.
@@ -168,13 +208,14 @@ export function migrateV1(raw: unknown): Migrated | null {
 }
 
 function read(storage: KeyValue, key: string): unknown {
+  if (key === KEY && memory.has(storage)) return JSON.parse(memory.get(storage)!)
   let text: string | null = null
   try {
     text = storage.getItem(key)
   } catch {
     text = null
   }
-  if (text === null && key === KEY) text = memory.get(storage) ?? null
+
   if (text === null) return undefined
   try {
     return JSON.parse(text)
@@ -188,7 +229,7 @@ export function load(storage: KeyValue = browserStorage()): Stored {
   const current = parseStored(read(storage, KEY))
   if (current) {
     if (current.dropped.length > 0) save(current.value, storage)
-    return current.value
+    return { ...current.value, shareToRoom: current.value.shareToRoom && hasGrant(storage) }
   }
   const migrated = migrateV1(read(storage, LEGACY_KEY))
   if (migrated) {
@@ -208,27 +249,31 @@ export function save(value: Stored, storage: KeyValue = browserStorage()): void 
     memory.delete(storage)
   } catch {
     // Private mode or a full disk: keep this session's copy in memory.
-    memory.set(storage, text)
+    activeGrant = undefined
+    memory.set(storage, JSON.stringify({ ...value, shareToRoom: false }))
   }
 }
 
 export function update(change: (current: Stored) => Stored, storage: KeyValue = browserStorage()): Stored {
   const next = change(load(storage))
   save(next, storage)
-  return next
+  return load(storage)
 }
 
 /**
  * Deletes everything this app keeps in this browser: the v2 record and the v1 rollback copy.
  * It does not reach the server. Callers withdraw the room entry first (src/api/room.ts).
  */
-export function reset(storage: KeyValue = browserStorage()): void {
+export function reset(storage: KeyValue = browserStorage()): boolean {
+  let cleared = true
+  activeGrant = undefined
   memory.delete(storage)
-  for (const key of [KEY, LEGACY_KEY]) {
+  for (const key of [KEY, LEGACY_KEY, ROOM_GRANT]) {
     try {
       storage.removeItem(key)
     } catch {
-      // Nothing to clear.
+      cleared = false
     }
   }
+  return cleared
 }

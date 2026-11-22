@@ -71,11 +71,10 @@ describe('F2: gyroscope and acceleration are never compared', () => {
     expect(compareRuns({ stand: gyro(0.6), at: 1 }, { stand: gyro(0.9), at: 2 }).stand.compared).toBe(true)
   })
 
-  it('compares a pre-v2 reading with no recorded source, and says so', () => {
+  it('excludes a pre-v2 reading with no recorded source, and says so', () => {
     const legacy = { swayRms: 0.6, swayLateralRms: 0.3, hz: 60, valid: true }
     const can = compareRuns({ stand: legacy, at: 1 }, { stand: gyro(0.7), at: 2 })
-    expect(can.stand.compared).toBe(true)
-    expect(can.caveats).toContain('sensor-not-recorded')
+    expect(can.stand).toEqual({ compared: false, reason: 'unknown-source' })
   })
 
   it('lowers the recording-conditions tier for that unverified comparison', () => {
@@ -127,10 +126,9 @@ describe('F3: the no-clean-taps placeholder is not a reaction time', () => {
     expect(drift.choiceWrong).toBe(1)
   })
 
-  it('flags a different tap count as a caveat rather than refusing', () => {
+  it('rejects a different trial count before comparing raw errors', () => {
     const can = compareRuns({ choice: taps(480, { trials: 12 }), at: 1 }, { choice: taps(), at: 2 })
-    expect(can.choice.compared).toBe(true)
-    expect(can.caveats).toContain('tap-count-differs')
+    expect(can.choice).toEqual({ compared: false, reason: 'trial-count-changed' })
   })
 })
 

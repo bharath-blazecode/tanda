@@ -74,7 +74,7 @@ The quick demo skips recording a personal baseline. It compares against fixed ex
 
 Claude writes the short line on the ticket; **it does not decide the verdict or the safety advice**. Without an API key, or when the service fails, the app uses a built-in line instead. The instrument still works.
 
-Baseline readings and drink history are stored in the browser's `localStorage`. The verdict request sends numeric summaries and fixed categories to the server; when Claude is enabled, selected summaries are passed to it for the commentary. Joining the room sends your display name, activity and result to the shared board. The room screen is off until you turn it on, and turning it off takes you off the board. The Privacy screen lists what stays on the phone and what leaves it. There are no user accounts.
+Baseline readings and drink history are stored in the browser's `localStorage`. The verdict request sends numeric summaries and fixed categories to the server; when Claude is enabled, selected summaries are passed to it for the commentary. Joining the room sends your display name, activity and result to the shared board. Sharing starts off on every page load. Turning it on applies to the current tab until reload. Turning it off stops new reports immediately and asks the server to remove the existing entry. The Privacy screen lists what stays on the phone and what leaves it. There are no user accounts.
 
 ## Run locally
 

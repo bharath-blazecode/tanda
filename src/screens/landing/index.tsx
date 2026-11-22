@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { ChartWindow, Housing, Key, Plate, Printed, Toggle } from '../../ui'
-import { load, update } from '../../store/local'
+import { load, setRoomSharing, update } from '../../store/local'
+import { withdrawFromRoom } from '../../api/room'
 import { eraseEverything } from '../privacy/erase'
 
 const NAME_MAX = 16
@@ -26,6 +27,7 @@ export function Landing() {
   const stored = load()
   const [share, setShare] = useState(stored.shareToRoom)
   const [confirming, setConfirming] = useState(false)
+  const [eraseError, setEraseError] = useState('')
   const [erasing, setErasing] = useState(false)
   // Anyone with something on this phone, not only someone with a baseline: a quick-demo visitor
   // has a ticket and a log, and should find them again.
@@ -35,20 +37,25 @@ export function Landing() {
   // A form, so Enter (shown as "Go") in the field does exactly what the Start key does.
   const start = (event: FormEvent) => {
     event.preventDefault()
-    update((s) => ({ ...s, nickname: chooseName(name, s.nickname), shareToRoom: share }))
+    update((s) => ({ ...s, nickname: chooseName(name, s.nickname) }))
     navigate('/setup', { state: { next: 'baseline' } })
   }
 
   // The short way through: every test once against example numbers, then a ticket. Nothing is
   // written into the personal baseline, so this can never overwrite one (schema v2).
   const quickDemo = () => {
-    update((s) => ({ ...s, nickname: chooseName(name, s.nickname), shareToRoom: share }))
+    update((s) => ({ ...s, nickname: chooseName(name, s.nickname) }))
     navigate('/setup', { state: { next: 'example' } })
   }
 
   const erase = async () => {
     setErasing(true)
-    const { roomWithdrawn } = await eraseEverything()
+    const { roomWithdrawn, cleared } = await eraseEverything(stored.deviceId)
+    if (!cleared) {
+      setErasing(false)
+      setEraseError('Browser storage could not be cleared. Use your browser’s site data settings.')
+      return
+    }
     navigate('/', { replace: true, state: { erased: roomWithdrawn ? 'all' : 'local' } })
     // A full reload, so every screen starts from the fresh record.
     navigate(0)
@@ -79,11 +86,12 @@ export function Landing() {
         </Printed>
       </ChartWindow>
 
+      {eraseError && <p role="status">{eraseError}</p>}
       {erased && (
         <p role="status" style={{ color: 'var(--housing-ink)', fontSize: 13, margin: 0 }}>
           {erased === 'all'
             ? 'Deleted from this phone, and taken off the room screen.'
-            : 'Deleted from this phone. The server could not be reached, so a room entry, if you had one, drops off within 12 hours.'}
+            : 'Deleted from this phone. Room removal was not confirmed. A previous result may remain visible for up to 12 hours.'}
         </p>
       )}
 
@@ -115,9 +123,12 @@ export function Landing() {
             <NameField value={name} onChange={setName} />
             <Toggle
               checked={share}
-              onChange={setShare}
+              onChange={(on) => {
+                setShare(setRoomSharing(on).shareToRoom)
+                if (!on) void withdrawFromRoom(stored.deviceId)
+              }}
               label="Show me on the room screen"
-              hint="Off unless you turn it on. Your name and each ticket's word and score, never your drinks."
+              hint="Off until chosen. Reloading turns it off. Your name and each ticket's word and score, never your drinks."
             />
             <Key type="submit">Start</Key>
           </form>

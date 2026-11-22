@@ -12,6 +12,8 @@ export type NotCompared =
   | 'not-in-reference' // the reference has no such test
   | 'unusable' // this run's reading failed its own checks
   | 'reference-unusable' // the reference's reading failed its own checks
+  | 'unknown-source'
+  | 'trial-count-changed'
   | 'sensor-changed' // gyroscope one time, acceleration the other: different units
   | 'capture-changed' // a different capture length
 
@@ -22,7 +24,7 @@ export type PulseComparison =
   | { compared: false; reason: 'not-offered' | 'not-in-reference' | Exclude<PulseStatus, 'measured'> }
 
 /** Things that allow a comparison but make it looser. Each lowers the recording-conditions tier. */
-export type Caveat = 'sensor-not-recorded' | 'tap-count-differs' | 'no-reaction-time'
+export type Caveat = 'no-reaction-time'
 
 export type Comparability = {
   stand: TestStatus
@@ -43,12 +45,13 @@ export function hasCleanTaps(metrics: ChoiceMetrics): boolean {
   return metrics.wrong + metrics.lapses < metrics.trials
 }
 
-function standStatus(ref: StandMetrics | undefined, run: StandMetrics | undefined, caveats: Caveat[]): TestStatus {
+function standStatus(ref: StandMetrics | undefined, run: StandMetrics | undefined): TestStatus {
   if (!run) return { compared: false, reason: 'not-taken' }
   if (!ref) return { compared: false, reason: 'not-in-reference' }
   if (!run.valid) return { compared: false, reason: 'unusable' }
   if (!ref.valid) return { compared: false, reason: 'reference-unusable' }
-  if (ref.source && run.source && ref.source !== run.source) return { compared: false, reason: 'sensor-changed' }
+  if (!ref.source || !run.source) return { compared: false, reason: 'unknown-source' }
+  if (ref.source !== run.source) return { compared: false, reason: 'sensor-changed' }
   if (
     ref.captureSeconds !== undefined &&
     run.captureSeconds !== undefined &&
@@ -56,9 +59,6 @@ function standStatus(ref: StandMetrics | undefined, run: StandMetrics | undefine
   ) {
     return { compared: false, reason: 'capture-changed' }
   }
-  // A reading from before v2 never said which sensor it used. Same phone, same browser is the
-  // likely case, so it is still compared, but the ticket says it could not be checked.
-  if (!ref.source || !run.source) caveats.push('sensor-not-recorded')
   return { compared: true }
 }
 
@@ -76,9 +76,8 @@ export function tapErrors(metrics: ChoiceMetrics): number {
 function choiceStatus(ref: ChoiceMetrics | undefined, run: ChoiceMetrics | undefined, caveats: Caveat[]): TestStatus {
   if (!run) return { compared: false, reason: 'not-taken' }
   if (!ref) return { compared: false, reason: 'not-in-reference' }
+  if (ref.trials !== run.trials) return { compared: false, reason: 'trial-count-changed' }
   if (!hasCleanTaps(run) || !hasCleanTaps(ref)) caveats.push('no-reaction-time')
-  // A 12-tap baseline from build day against an 8-tap check: same task, noisier median.
-  if (ref.trials !== run.trials) caveats.push('tap-count-differs')
   return { compared: true }
 }
 
@@ -97,7 +96,7 @@ function pulseComparison(ref: RunResult, run: RunResult): PulseComparison {
 
 export function compareRuns(reference: RunResult, run: RunResult): Comparability {
   const caveats: Caveat[] = []
-  const stand = standStatus(reference.stand, run.stand, caveats)
+  const stand = standStatus(reference.stand, run.stand)
   const choice = choiceStatus(reference.choice, run.choice, caveats)
   const reactionTime =
     choice.compared && !!reference.choice && !!run.choice && hasCleanTaps(reference.choice) && hasCleanTaps(run.choice)
@@ -114,7 +113,7 @@ export function compareRuns(reference: RunResult, run: RunResult): Comparability
 /** What the reference can be compared on, before a check starts. Used to warn up front. */
 export function plannedComparison(reference: RunResult, motionAvailable: boolean): { stand: boolean; choice: boolean } {
   return {
-    stand: motionAvailable && reference.stand?.valid === true,
+    stand: motionAvailable && reference.stand?.valid === true && !!reference.stand.source,
     choice: reference.choice !== undefined,
   }
 }

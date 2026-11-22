@@ -1,8 +1,8 @@
 const { chromium } = require('playwright');
-const BASE = 'http://localhost:3333';
+const BASE = process.env.KACHKA_TEST_ORIGIN || 'http://localhost:3333';
 const results = []; const check = (n, ok, d = '') => { results.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'} ${n}${d ? ' :: ' + d : ''}`); };
 (async () => {
-  const b = await chromium.launch();
+  const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
   // 1. Routes load without page errors.
   {
     const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage();
@@ -33,7 +33,12 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
     await p.goto(BASE + '/result'); await p.waitForTimeout(1800);
     const t = await p.locator('body').innerText();
     check('tipsy example ticket at 320 px keeps the safety line, provenance and the approximate pulse', /Not a driving test/.test(t) && /Simulated/.test(t) && /about 91 bpm/.test(t) && /No clean taps/i.test(t));
-    await p.screenshot({ path: `${process.argv[2]}/after-narrow-ticket.png`, fullPage: true });
+    if (process.argv[2]) await p.screenshot({ path: `${process.argv[2]}/after-narrow-ticket.png`, fullPage: true });
+    const downloadPromise = p.waitForEvent('download');
+    await p.getByRole('button', { name: 'Save receipt' }).click();
+    const download = await downloadPromise;
+    const bytes = require('node:fs').readFileSync(await download.path());
+    check('saved receipt is a PNG image', bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a');
     await ctx.close();
   }
   // 3. Keyboard only: log a coffee with details.
@@ -55,6 +60,47 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
     check('entries are buttons (focusable, keyboard operable)', focusVisible && (await p.locator('button.k-entry').count()) > 0);
     await ctx.close();
   }
+  // At 05:00, a drink from two hours ago belongs to the collapsed previous-day group.
+  {
+    const ctx = await b.newContext({ timezoneId: 'Australia/Brisbane' });
+    const p = await ctx.newPage();
+    const now = new Date('2026-11-22T05:00:00+10:00');
+    await p.clock.setFixedTime(now);
+    await p.goto(BASE);
+    await p.evaluate(() => {
+      const record = JSON.parse(localStorage.getItem('bc:v2'));
+      record.drinks = [{ id: 'early-energy', kind: 'energy', at: Date.now() - 7200000,
+        caffeine: { basis: 'serving', mg: 80, source: 'label' } }];
+      localStorage.setItem('bc:v2', JSON.stringify(record));
+    });
+    await p.goto(BASE + '/home');
+    const edit = p.getByRole('button', { name: /^Edit Energy drink/ });
+    check('previous-day entry starts collapsed at 05:00', await edit.count() === 0);
+    await p.locator('summary').filter({ hasText: 'Before 4am' }).click();
+    await edit.click();
+    check('previous-day entry can be edited after expanding', await p.getByRole('button', { name: 'Remove this drink' }).isVisible());
+    await ctx.close();
+  }
+  // Some browsers deny access to the localStorage getter itself.
+  {
+    const ctx = await b.newContext();
+    await ctx.addInitScript(() => Object.defineProperty(window, 'localStorage', {
+      get() { throw new DOMException('Blocked', 'SecurityError'); },
+    }));
+    const p = await ctx.newPage();
+    const posts = [];
+    p.on('request', req => {
+      if (/\/api\/room\/(presence|result)$/.test(req.url())) posts.push(req.url());
+    });
+    await p.goto(BASE + '/privacy');
+    await p.getByRole('checkbox', { name: 'Show me on the room screen' }).click();
+    await p.getByText('Sharing is off. Browser storage is unavailable.').waitFor();
+    await p.reload();
+    const toggle = p.getByRole('checkbox', { name: 'Show me on the room screen' });
+    await toggle.waitFor();
+    check('blocked storage getter leaves sharing off across reload', !(await toggle.isChecked()) && posts.length === 0);
+    await ctx.close();
+  }
   // 4. Reduced motion: the ticket does not animate.
   {
     const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' }); const p = await ctx.newPage();
@@ -64,5 +110,6 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
     await ctx.close();
   }
   await b.close();
+  if (!results.every(Boolean)) process.exitCode = 1;
   console.log(`${results.filter(Boolean).length}/${results.length} extra checks passed`);
 })().catch((e) => { console.error('SCRIPT ERROR', e.message); process.exit(2); });

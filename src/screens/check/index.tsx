@@ -37,6 +37,8 @@ const WHY: Record<string, string> = {
   'not-in-reference': 'not in your baseline',
   unusable: 'no usable reading this time',
   'reference-unusable': 'not usable in your baseline',
+  'unknown-source': 'motion sensor was not recorded',
+  'trial-count-changed': 'different tap trial counts',
   'sensor-changed': 'a different motion sensor from your baseline',
   'capture-changed': 'a different capture length from your baseline',
 }

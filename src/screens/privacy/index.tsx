@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { withdrawFromRoom } from '../../api/room'
-import { load, update } from '../../store/local'
+import { load, setRoomSharing, update } from '../../store/local'
 import { Housing, Key, Label, Plate, Rows, Sheet, Toggle } from '../../ui'
 import { printedAt } from '../result/format'
 import { eraseEverything } from './erase'
@@ -14,26 +14,34 @@ export function Privacy() {
   const [stored, setStored] = useState(load)
   const [roomNote, setRoomNote] = useState('')
   const [confirming, setConfirming] = useState(false)
+  const [eraseError, setEraseError] = useState('')
   const [erasing, setErasing] = useState(false)
 
   const setSharing = async (on: boolean) => {
-    setStored(update((s) => ({ ...s, shareToRoom: on })))
+    const next = setRoomSharing(on)
+    setStored(next)
     if (on) {
-      setRoomNote('Your name appears on the room screen from your next step.')
+      setRoomNote(next.shareToRoom ? 'Sharing in this tab until reload.' : 'Sharing is off. Browser storage is unavailable.')
       return
     }
     setRoomNote('Taking you off the room screen.')
     const ok = await withdrawFromRoom(stored.deviceId)
+    if (load().shareToRoom) return
     setRoomNote(
       ok
         ? 'Removed from the room screen.'
-        : 'Could not reach the server. Nothing more is sent, and your entry drops off the board within 12 hours.',
+        : 'Sharing is off. Removal was not confirmed. A previous result may remain visible for up to 12 hours.',
     )
   }
 
   const erase = async () => {
     setErasing(true)
-    const { roomWithdrawn } = await eraseEverything()
+    const { roomWithdrawn, cleared } = await eraseEverything(stored.deviceId)
+    if (!cleared) {
+      setErasing(false)
+      setEraseError('Browser storage could not be cleared. Use your browser’s site data settings.')
+      return
+    }
     navigate('/', { replace: true, state: { erased: roomWithdrawn ? 'all' : 'local' } })
   }
 
@@ -53,8 +61,7 @@ export function Privacy() {
         />
         <p className="k-small">
           Kept in this browser&rsquo;s storage, with no expiry. Anyone using this browser can see it. A random device
-          ID is kept with it: it lets the server keep one room entry per phone and limit requests. It is not an
-          account and it unlocks nothing.
+          ID lets the server limit requests and update or withdraw this browser&rsquo;s room entry.
         </p>
         <p className="k-small">
           Motion and camera readings are worked out here and never uploaded. Drink names and notes never leave the
@@ -69,7 +76,7 @@ export function Privacy() {
           checked={stored.shareToRoom}
           onChange={(on) => void setSharing(on)}
           label="Show me on the room screen"
-          hint="Sends your name, what you are doing (standing, tapping), and each ticket's word and score. Never your drinks, measurements or baseline. A result stays on the board for up to 12 hours, your live row for 45 seconds. Turning this off asks the server to remove both straight away."
+          hint="Sharing lasts until this page reloads. Sends your name, what you are doing (standing, tapping), and each ticket's word and score. Never your drinks, measurements or baseline. A result stays on the board for up to 12 hours, your live row for 45 seconds. Turning this off asks the server to remove both straight away."
         />
         {roomNote && (
           <p className="k-small" role="status">
@@ -91,7 +98,8 @@ export function Privacy() {
 
       <Sheet>
         <Label paper>Start over</Label>
-        {confirming ? (
+        {eraseError && <p role="status">{eraseError}</p>}
+      {confirming ? (
           <>
             <h2>Delete everything?</h2>
             <p>

@@ -1,7 +1,7 @@
 // Drives Kachka flows in headless Chromium. Motion is synthetic (dispatched DeviceMotionEvents),
 // the camera is Chromium's fake device. Nothing here is evidence about a physical phone.
 const { chromium } = require('playwright');
-const BASE = 'http://localhost:3333';
+const BASE = process.env.KACHKA_TEST_ORIGIN || 'http://localhost:3333';
 const OUT = process.argv[2];
 const only = process.argv[3];
 const results = [];
@@ -46,7 +46,7 @@ async function playChoice(page) {
 async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true }); }
 
 (async () => {
-  const browser = await chromium.launch({ args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
+  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
 
   if (!only || only === 'example') {
     // Example route, no motion: quick demo from Landing, one test, pulse, ticket.
@@ -230,8 +230,14 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     check('receipt preview adds the name when chosen', /Privacy Pelican/i.test(await page.locator('.result-preview-text').innerText()));
     await shot(page, 'flow-receipt-fields');
     // 2. Turn sharing off in Privacy: withdraw request, entry gone.
-    await page.goto(BASE + '/privacy');
+    await page.getByRole('link', { name: 'Home', exact: true }).click();
+    await page.getByRole('button', { name: /Privacy · room screen/ }).click();
     await shot(page, 'flow-privacy');
+    // Keep the old opted-in record readable while writes and removals fail.
+    await page.evaluate(() => {
+      Storage.prototype.setItem = () => { throw new DOMException('Full', 'QuotaExceededError'); };
+      Storage.prototype.removeItem = () => { throw new DOMException('Denied', 'SecurityError'); };
+    });
     await page.getByRole('checkbox', { name: 'Show me on the room screen' }).uncheck();
     await page.getByText('Removed from the room screen.').waitFor({ timeout: 5000 });
     check('turning sharing off sends a withdrawal', requests.some((r) => r.url === '/api/room/withdraw'));
@@ -240,6 +246,13 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     const presenceBefore = requests.filter((r) => r.url === '/api/room/presence').length;
     await page.waitForTimeout(16000);
     check('no heartbeat after sharing is off', requests.filter((r) => r.url === '/api/room/presence').length === presenceBefore);
+    const reports = () => requests.filter(r => ['/api/room/presence', '/api/room/result'].includes(r.url)).length;
+    const beforeReload = reports();
+    check('failure fixture retains a stale disk opt-in', await page.evaluate(() => JSON.parse(localStorage.getItem('bc:v2')).shareToRoom === true));
+    await page.goto(BASE + '/result');
+    await page.getByText('What the image will say').waitFor();
+    await page.goto(BASE + '/privacy');
+    check('reload with stale consent suppresses presence and result', reports() === beforeReload && !(await toggle.isChecked()));
     // 3. Share again, then Start over from Landing: withdraw first, then local data gone.
     await page.getByRole('checkbox', { name: 'Show me on the room screen' }).check();
     await page.goto(BASE + '/');
@@ -257,6 +270,8 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
   if (!only || only === 'caffeine') {
     const { page, ctx } = await newPage(browser);
     await page.goto(BASE + '/');
+    const fixtureNow = await page.evaluate(() => new Date(2026, 10, 22, 12).getTime());
+    await page.clock.setFixedTime(fixtureNow);
     // A record with a coffee from last night (before 4am) and a migrated v1 beer.
     await page.evaluate(() => {
       const now = new Date();
@@ -292,7 +307,7 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     check('home lists the energy drink at its real time with 80 mg', /Energy drink[\s\S]*80 mg/.test(home));
     let stored = await page.evaluate(() => JSON.parse(localStorage.getItem('bc:v2')));
     const energy = stored.drinks.find((d) => d.kind === 'energy');
-    check('stored with consumption time two hours back and logging time now', energy && Date.now() - energy.at > 110 * 60000 && Date.now() - energy.loggedAt < 120000);
+    check('stored with consumption time two hours back and logging time now', energy && fixtureNow - energy.at === 120 * 60000 && energy.loggedAt === fixtureNow);
 
     // Edit it: half drunk, then undo the edit.
     await page.getByRole('button', { name: /^Edit Energy drink/ }).click();

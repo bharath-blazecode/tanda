@@ -2,15 +2,14 @@
 // first, while the device ID still exists, then clear this browser. Once the ID is gone the board
 // entry could no longer be addressed by anyone, including its owner.
 import { withdrawFromRoom } from '../../api/room'
-import { load, reset } from '../../store/local'
+import { setRoomSharing, reset } from '../../store/local'
 
-export type EraseOutcome = { roomWithdrawn: boolean }
+export type EraseOutcome = { roomWithdrawn: boolean; cleared: boolean }
 
-export async function eraseEverything(): Promise<EraseOutcome> {
-  const { deviceId } = load()
+export async function eraseEverything(deviceId: string): Promise<EraseOutcome> {
+  setRoomSharing(false)
   // Always asked, even with sharing off now: it may have been on earlier. The answer is the same
   // whether or not there was an entry.
   const roomWithdrawn = await withdrawFromRoom(deviceId)
-  reset()
-  return { roomWithdrawn }
+  return { roomWithdrawn, cleared: reset() }
 }

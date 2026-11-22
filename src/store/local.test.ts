@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Stored, StoredV1 } from '../../shared/contracts'
 import { isValidNickname } from '../../shared/nicknames'
-import { KEY, LEGACY_KEY, load, migrateV1, parseStored, reset, update } from './local'
+import { KEY, LEGACY_KEY, load, migrateV1, parseStored, reset, setRoomSharing, update } from './local'
 
 function fakeStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial))
@@ -176,6 +176,24 @@ describe('reading a v2 record', () => {
 })
 
 describe('storage failures', () => {
+  it('honours withdrawal when the old enabled preference and grant stay readable', () => {
+    const storage = fakeStorage()
+    expect(setRoomSharing(true, storage).shareToRoom).toBe(true)
+    storage.setItem = storage.removeItem = () => { throw new Error('Storage denied') }
+    expect(setRoomSharing(false, storage).shareToRoom).toBe(false)
+    expect(JSON.parse(storage.data.get(KEY)!).shareToRoom).toBe(true)
+    expect(load(storage).shareToRoom).toBe(false)
+    expect(load(fakeStorage(Object.fromEntries(storage.data))).shareToRoom).toBe(false)
+    expect(setRoomSharing(true, storage).shareToRoom).toBe(false)
+    expect(reset(storage)).toBe(false)
+  })
+
+  it('an old disk record cannot grant sharing to another document', () => {
+    const storage = fakeStorage()
+    setRoomSharing(true, storage)
+    expect(load({ ...storage }).shareToRoom).toBe(false)
+  })
+
   it('keeps one identity for the session when the browser refuses to store anything', () => {
     const refusing = {
       getItem: () => null,

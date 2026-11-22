@@ -195,7 +195,7 @@ export function createMirroredRoom(
       withdrawn.clear()
       fire(() => mirror.clear())
     },
-    remove(deviceId, at) {
+    async remove(deviceId, at) {
       const had = inner.remove(deviceId, at)
       withdrawn.delete(deviceId)
       withdrawn.set(deviceId, at)
@@ -203,7 +203,12 @@ export function createMirroredRoom(
         if (withdrawn.size <= MAX_WITHDRAWN && at - when <= maxAgeMs) break
         withdrawn.delete(id)
       }
-      fire(() => mirror.remove([deviceId]))
+      try {
+        await withTimeout(() => mirror.remove([deviceId]), callTimeoutMs)
+      } catch (error) {
+        report(error)
+        throw error
+      }
       return had
     },
     merge: (pairs, at) => inner.merge(pairs, at),
