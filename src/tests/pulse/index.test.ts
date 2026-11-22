@@ -65,6 +65,7 @@ beforeEach(() => {
     return id
   })
   vi.stubGlobal('cancelAnimationFrame', (id: number) => { frames.delete(id) })
+  vi.spyOn(HTMLMediaElement.prototype, 'currentTime', 'get').mockImplementation(() => now / 1000)
   camera.open.mockReset().mockImplementation(async () => {
     const next = cameraStream()
     opened.push(next)
@@ -201,7 +202,7 @@ it('keeps an unreadable capture for a retry and explains a combined approximate 
   expect(screen.getByRole('heading', { name: 'No reading' })).toBeTruthy()
   expect(onDone).not.toHaveBeenCalled()
 
-  await click('Try again')
+  await click('Try again · same finger')
   finishCapture()
   expect(history(1)).toHaveLength(2)
   expect(history(1)[0]).toBe(history(0)[0])
@@ -218,9 +219,9 @@ it('bounds Again history to two captures and clears it when Next completes the s
   render(createElement(PulseTest, { onDone }))
   await click('Start')
   finishCapture()
-  await click('Again')
+  await click('Again · same finger')
   finishCapture()
-  await click('Again')
+  await click('Again · same finger')
   finishCapture()
 
   expect(history(0)).toHaveLength(1)
@@ -230,7 +231,7 @@ it('bounds Again history to two captures and clears it when Next completes the s
   expect(history(2)).not.toContain(history(0)[0])
 
   await click('Next')
-  await click('Again')
+  await click('Again · same finger')
   finishCapture()
   expect(history(3)).toHaveLength(1)
   expect(onDone).toHaveBeenCalledExactlyOnceWith(76, { status: 'measured', bpm: 76 })
@@ -242,7 +243,7 @@ it('clears earlier retry context and discards the current capture on Skip', asyn
   render(createElement(PulseTest, { onDone }))
   await click('Start')
   finishCapture()
-  await click('Try again')
+  await click('Try again · same finger')
   act(() => { for (let i = 0; i < 12; i++) advanceFrame() })
   await click('Skip')
   expect(onDone).toHaveBeenCalledExactlyOnceWith(null, { status: 'skipped' })
@@ -260,7 +261,7 @@ it('stops a capture on unmount and never shares attempt history with a new pulse
   const first = render(createElement(PulseTest, { onDone: vi.fn() }))
   await click('Start')
   finishCapture()
-  await click('Again')
+  await click('Again · same finger')
   act(() => advanceFrame())
   first.unmount()
   expect(opened[1].stop).toHaveBeenCalledOnce()
@@ -346,4 +347,13 @@ it('does not revive capture when torch setup resolves after unmount', async () =
   expect(opened[0].stop).toHaveBeenCalled()
   expect(frames.size).toBe(0)
   expect(analyze).not.toHaveBeenCalled()
+})
+
+it('drops the capture and stops all callbacks when the page leaves the foreground', async () => {
+  render(createElement(PulseTest, { onDone: vi.fn() }))
+  await click('Start')
+  act(() => { window.dispatchEvent(new Event('pagehide')) })
+  expect(opened[0].stop).toHaveBeenCalled()
+  expect(frames.size).toBe(0)
+  expect(screen.getByRole('button', { name: 'Start' })).toBeTruthy()
 })

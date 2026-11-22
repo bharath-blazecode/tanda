@@ -41,7 +41,7 @@ const BLOCKED_REASON: Record<CameraPermission, string> = {
 }
 
 const FAILURE_TEXT: Record<Exclude<PulseAnalysis['reason'], 'ok'>, string> = {
-  'too-short': 'That was too short to read. Try again, or skip.',
+  'too-short': 'That was too short to read. Try again with the same finger, or skip.',
   'not-covered': 'The lens was not covered for long enough. Cover it completely, then try again.',
   'no-rhythm': 'No steady rhythm in that one. Hold still, press gently, then try again.',
 }
@@ -62,6 +62,8 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
   const samples = useRef<PulseSample[]>([])
   // Retry context belongs to this pulse step only, never to the person's stored reading.
   const attempts = useRef<PulseAttempt[]>([])
+  const acquisition = useRef<string | undefined>(undefined)
+  const settlingSince = useRef(0)
   const generation = useRef(0)
   const coveredSince = useRef<number | null>(null)
   const startedAt = useRef<number | null>(null)
@@ -89,10 +91,28 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
     samples.current = []
   }, [teardown])
 
+  useEffect(() => {
+    const interrupt = () => {
+      attempts.current = []
+      samples.current = []
+      if (!['asking', 'settling', 'reading'].includes(phaseRef.current)) return
+      teardown()
+      setResult(null)
+      setPhaseBoth('intro')
+    }
+    const visibilityChanged = () => { if (document.hidden) interrupt() }
+    document.addEventListener('visibilitychange', visibilityChanged)
+    window.addEventListener('pagehide', interrupt)
+    return () => {
+      document.removeEventListener('visibilitychange', visibilityChanged)
+      window.removeEventListener('pagehide', interrupt)
+    }
+  }, [setPhaseBoth, teardown])
+
   const finish = useCallback(() => {
     const now = performance.now()
     teardown()
-    attempts.current = [...attempts.current, { samples: samples.current, endedAt: now }].slice(-2)
+    attempts.current = [...attempts.current, { samples: samples.current, endedAt: now, acquisition: acquisition.current }].slice(-2)
     const analysis = analyzePulseAttempts(attempts.current, now)
     setResult(analysis)
     setPhaseBoth('result')
@@ -117,7 +137,11 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
       }
     }
 
-    const presented = element.getVideoPlaybackQuality?.().totalVideoFrames
+    if (phaseRef.current === 'settling' && now - settlingSince.current >= TOTAL_MS) {
+      finish()
+      return
+    }
+    const presented = element.getVideoPlaybackQuality?.().totalVideoFrames ?? element.currentTime
     if (presented !== undefined) {
       if (presented === presentedFrame.current) {
         frame.current = requestAnimationFrame(() => tick(run))
@@ -203,6 +227,11 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
       stopCamera(opened.stream)
       return
     }
+    const settings = opened.stream.getVideoTracks?.()[0]?.getSettings?.()
+    acquisition.current = settings?.deviceId
+      ? JSON.stringify([settings.deviceId, settings.width, settings.height, settings.facingMode, torch])
+      : undefined
+    settlingSince.current = performance.now()
     setLitTorch(torch)
     setPhaseBoth('settling')
     frame.current = requestAnimationFrame(() => tick(run))
@@ -341,7 +370,7 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
             Next
           </Key>
           <Key quiet onClick={begin}>
-            Again
+            Again · same finger
           </Key>
         </>
       )}
@@ -364,7 +393,7 @@ export function PulseTest({ onDone, label = 'Optional · Pulse' }: Props) {
               ]}
             />
           </Sheet>
-          <Key onClick={begin}>Try again</Key>
+          <Key onClick={begin}>Try again · same finger</Key>
           <Key quiet onClick={() => leave({ status: 'unreadable' })}>
             Skip
           </Key>

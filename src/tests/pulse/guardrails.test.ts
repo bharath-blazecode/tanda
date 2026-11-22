@@ -44,7 +44,8 @@ function interrupted(bpm: number, clean: 'first' | 'last', seed = 19): PulseSamp
 }
 
 function attempt(capture: PulseSample[], endedAt = NOW): PulseAttempt {
-  return { samples: capture, endedAt }
+  const end = capture.at(-1)?.t ?? 0
+  return { samples: capture.map(s => ({ ...s, t: endedAt - end + s.t })), endedAt, acquisition: 'fixture-camera' }
 }
 
 describe('pulse frequency guardrails', () => {
@@ -206,4 +207,29 @@ describe('pulse retry evidence', () => {
       ], NOW).bpm).toBeNull()
     }
   })
+})
+
+it('rejects strong conflicting channel rates', () => {
+  const red = samples({ bpm: 70 }), green = samples({ bpm: 130 })
+  expect(analyzePulse(red.map((s, i) => ({ ...s, green: green[i].green }))).bpm).toBeNull()
+})
+
+it('does not combine reads across camera or torch changes', () => {
+  const a = attempt(interrupted(72, 'first'), NOW - 25000)
+  const b = attempt(interrupted(72, 'last'))
+  expect(analyzePulseAttempts([a, { ...b, acquisition: 'other' }], NOW).bpm).toBeNull()
+})
+
+it('rejects a full capture that stopped delivering frames before the deadline', () => {
+  const a = attempt(samples())
+  expect(analyzePulseAttempts([{ ...a, endedAt: NOW + 2500 }], NOW + 2500).bpm).toBeNull()
+})
+
+it('requires known acquisition, similarly spaced frames and fresh previous evidence', () => {
+  const prior = attempt(interrupted(72, 'first'), NOW - 25000)
+  const current = attempt(interrupted(72, 'last'))
+  expect(analyzePulseAttempts([{ ...prior, acquisition: undefined }, current], NOW).combined).toBeFalsy()
+  const slower = { ...prior, samples: prior.samples.filter((_, i) => i % 2 === 0) }
+  expect(analyzePulseAttempts([slower, current], NOW).combined).toBeFalsy()
+  expect(analyzePulseAttempts([{ ...prior, endedAt: prior.endedAt + 3000 }, current], NOW).combined).toBeFalsy()
 })
