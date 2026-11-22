@@ -282,6 +282,14 @@ It sends numbers and closed enums only, never a name, device ID or free text (D9
 project's honest AI feature. The Privacy screen lists exactly what is sent. Off, no request is made and
 a built-in line is printed.
 
+**D57. 400 mg is the app's prompt to pause, not anyone's guidance.** Default 22 Nov. Amends the dose note in D41 without rewriting it.
+D41 attributes 400 mg a day and 200 mg a serving to FSANZ as recommended maximums. FSANZ's caffeine page,
+read once on 22 Nov through a third-party fetch tool, says there is no recognised health-based guidance
+value for caffeine, and cites an expert group finding of anxiety in children at about 3 mg/kg a day.
+EFSA's 2015 opinion is the likely origin of 400 mg, for healthy non-pregnant adults, but it could not be
+retrieved here. Until both are read directly, the product names no authority for 400 mg and says it is
+not a safe limit. Evidence row L23 and L24.
+
 ---
 
 ## Process
