@@ -290,6 +290,18 @@ EFSA's 2015 opinion is the likely origin of 400 mg, for healthy non-pregnant adu
 retrieved here. Until both are read directly, the product names no authority for 400 mg and says it is
 not a safe limit. Evidence row L23 and L24.
 
+**D58. A drink records when it was drunk, what was in it and where each number came from.** Default 22 Nov.
+One tap still logs a drink now. "Add with details" and editing record the time it was actually drunk
+(separate from when it was typed, and markable as a rough guess), the serving in mL, the share drunk,
+caffeine as mg per serving or mg per 100 mL from a label or the person's estimate, and for alcohol the
+label's standard-drink number or its ABV. The arithmetic is shown in words as it is typed. Nothing is
+invented: an empty volume stays unknown, tea has no default dose, and an alcohol entry without detail
+stays a count, never one standard drink. Migrated v1 entries keep their default doses written down as
+assumptions and are never turned into standard drinks. Each add, edit or removal can be undone on Home.
+Caffeine detail applies to caffeinated kinds and alcohol detail to alcoholic kinds; a mixed drink is two
+entries for now. The day still ends at 4am for counting; the on-board estimate carries caffeine across
+it. Bedtime is a setting that places a marker and predicts nothing.
+
 ---
 
 ## Process

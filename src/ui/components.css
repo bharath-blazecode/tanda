@@ -374,3 +374,41 @@
 /* Notes printed under the rows of a ticket or sheet: what was not compared, and why. */
 .k-notes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .k-notes li { font: 400 13px/1.4 var(--mono); color: var(--ink-soft); }
+
+/* ---------------- Entries ----------------
+   A list of tappable rows on paper: the drink log. Each row is a native button. */
+.k-entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.k-entries li + li { border-top: 1px dotted var(--ink-soft); }
+.k-entry {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 2px var(--s3);
+  padding: var(--s2) 0;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  font: 400 15px/1.35 var(--mono);
+  text-align: left;
+  cursor: pointer;
+}
+.k-entry b { font-weight: 700; }
+.k-entry__time { font-weight: 700; font-variant-numeric: tabular-nums; }
+.k-entry__detail { grid-column: 1 / -1; font-size: 13px; color: var(--ink-soft); }
+
+/* A text button inside a sheet's sentence. Ink on paper, underlined, with a 44px tall target. */
+.k-inline-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--s1);
+  background: none;
+  border: 0;
+  color: var(--ink);
+  font: 700 13px/1.2 var(--mono);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

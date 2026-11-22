@@ -56,7 +56,10 @@ export function DrinkPicker({
           ))}
         </div>
         {total > 0 && (
-          <Segmented legend="About when? One time for all of them" value={when} options={ROUGH_TIMES} onChange={setWhen} />
+          <>
+            <Segmented legend="About when? One time for all of them" value={when} options={ROUGH_TIMES} onChange={setWhen} />
+            <p className="k-small">You can correct each one, and add label detail, from Home later.</p>
+          </>
         )}
       </Sheet>
       <Key style={{ fontSize: 22 }} onClick={done} disabled={!ready}>

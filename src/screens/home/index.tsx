@@ -1,39 +1,64 @@
 // CARD 6. Home (docs/04-screens-spec.md, section 4).
-// Two actions and today's log, with card 14's caffeine strip and aftercare underneath.
+// Today's log, each entry editable; the caffeine estimate with its assumptions; the baseline; and
+// the two actions. Every change to the log can be undone here for a few seconds.
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import type { Drink, Stored } from '../../../shared/contracts'
-import { careFor } from '../../engine/aftercare'
-import { caffeineCurve } from '../../engine/caffeine'
-import { hasAlcohol } from '../../engine/nudge'
-import { CAFFEINE_KINDS, tallyAlcohol, tallyCaffeine } from '../../engine/serving'
+import { careFor, nextBedtimeAt, DEFAULT_BEDTIME_HOUR } from '../../engine/aftercare'
+import { recentDrinks } from '../../engine/caffeine'
+import { hasAlcohol, hasCaffeine } from '../../engine/nudge'
+import { tallyAlcohol, tallyCaffeine } from '../../engine/serving'
 import { dayStart, drinksToday } from '../../store/day'
 import { load, update } from '../../store/local'
-import { CaffeineChart, CareCard, Housing, Key, Keys, Label, Plate, Rows, SafetyLine, Sheet } from '../../ui'
+import { CareCard, Housing, Key, Keys, Label, Plate, Rows, SafetyLine, Sheet } from '../../ui'
+import { amountShort } from '../log/form'
 import { DRINK_LABELS as LABELS } from '../log/presets'
+import { applyUndo, readUndo, undoLabel, type UndoOp } from '../log/undo'
 import { printedAt } from '../result/format'
+import { CaffeineCard } from './CaffeineCard'
 
-const UNDO_MS = 5000
+const UNDO_MS = 8000
 
-const clock = (at: number) =>
-  new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+const clock = (at: number) => new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 
-/** One line of totals. Known caffeine is added up; unknown amounts are counted, never guessed. */
-function totalsLine(today: Drink[]): string {
-  const counts = new Map<Drink['kind'], number>()
-  for (const d of today) counts.set(d.kind, (counts.get(d.kind) ?? 0) + 1)
+/** Totals for the day. Known amounts are added up; anything unknown is counted, never guessed. */
+function totals(today: Drink[]): string[] {
   const caffeine = tallyCaffeine(today)
-  const alcohol = tallyAlcohol(today).entries
-
-  const parts: string[] = []
-  for (const [kind, n] of counts) {
-    if (!CAFFEINE_KINDS.has(kind)) continue
-    parts.push(`${n} ${LABELS[kind].toLowerCase()}${n > 1 ? 's' : ''}`)
+  const alcohol = tallyAlcohol(today)
+  const lines: string[] = []
+  if (caffeine.known + caffeine.unknown > 0) {
+    lines.push(
+      `Caffeine today: about ${Math.round(caffeine.mg)} mg` +
+        (caffeine.unknown > 0 ? `, plus ${caffeine.unknown} with no amount.` : '.'),
+    )
   }
-  const unknown = caffeine.unknown > 0 ? ` (${caffeine.unknown} with no amount, not counted)` : ''
-  const caffeineText = parts.length ? `${parts.join(', ')}: about ${Math.round(caffeine.mg)} mg caffeine${unknown}.` : ''
-  const booze = alcohol ? `${alcohol} alcoholic drink${alcohol > 1 ? 's' : ''}.` : ''
-  return [caffeineText, booze].filter(Boolean).join(' ')
+  if (alcohol.entries > 0) {
+    const detail =
+      alcohol.detailed > 0
+        ? ` About ${(Math.round(alcohol.standardDrinks * 10) / 10).toFixed(1)} Australian standard drinks from the ${alcohol.detailed} with label detail${alcohol.detailed < alcohol.entries ? `; ${alcohol.entries - alcohol.detailed} without` : ''}.`
+        : ' No label detail, so no standard-drink count.'
+    lines.push(`Alcohol today: ${alcohol.entries} ${alcohol.entries === 1 ? 'entry' : 'entries'}.${detail}`)
+  }
+  return lines
+}
+
+function Entries({ drinks, onEdit }: { drinks: Drink[]; onEdit: (d: Drink) => void }) {
+  return (
+    <ul className="k-entries">
+      {drinks.map((d) => (
+        <li key={d.id}>
+          <button type="button" className="k-entry" onClick={() => onEdit(d)} aria-label={`Edit ${LABELS[d.kind]} at ${clock(d.at)}`}>
+            <b>{d.name ? `${LABELS[d.kind]} · ${d.name}` : LABELS[d.kind]}</b>
+            <span className="k-entry__time">
+              {d.approxTime ? 'about ' : ''}
+              {clock(d.at)}
+            </span>
+            <span className="k-entry__detail">{amountShort(d)}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 export function Home() {
@@ -41,32 +66,42 @@ export function Home() {
   const location = useLocation()
   const [stored, setStored] = useState<Stored>(load)
 
-  // Log a drink hands the time over so this screen can offer to take it back.
-  const justLogged = (location.state as { undo?: number } | null)?.undo
-  const [undoable, setUndoable] = useState<number | undefined>(justLogged)
+  // Log hands over what it just did, so this screen can offer to take it back.
+  const [undo, setUndo] = useState<UndoOp | null>(() => readUndo(location.state))
+  const [said, setSaid] = useState('')
 
   useEffect(() => {
-    if (undoable === undefined) return
-    const t = window.setTimeout(() => setUndoable(undefined), UNDO_MS)
+    if (!undo) return
+    const t = window.setTimeout(() => setUndo(null), UNDO_MS)
     return () => window.clearTimeout(t)
-  }, [undoable])
+  }, [undo])
 
-  const removeDrink = (at: number) => {
-    setStored(update((current) => ({ ...current, drinks: current.drinks.filter((d) => d.at !== at) })))
-    setUndoable(undefined)
+  const takeBack = () => {
+    if (!undo) return
+    setStored(update((current) => ({ ...current, drinks: applyUndo(current.drinks, undo) })))
+    setSaid(undo.kind === 'added' ? 'Drink removed.' : undo.kind === 'edited' ? 'Edit undone.' : 'Drink put back.')
+    setUndo(null)
+    // Do not offer the same undo again after a reload.
+    navigate('.', { replace: true, state: null })
   }
+
+  const edit = (d: Drink) => navigate('/log', { state: { edit: d.id } })
 
   // One reading of the clock for the whole render, so the log, the curve and the bedtime agree.
   const now = Date.now()
+  const startOfDay = dayStart(now)
   const today = drinksToday(stored.drinks, now)
+  // Earlier entries that still matter to the caffeine estimate, shown so the carry-over is visible.
+  const earlier = recentDrinks(stored.drinks, now)
+    .filter((d) => d.at < startOfDay)
+    .sort((a, b) => b.at - a.at)
   // Any alcohol logged today keeps the fixed line up here as well as on every result (D19).
   const showSafety = hasAlcohol(today)
   const baseline = stored.baseline
 
-  const care = careFor(today, now)
-  // An hour past bedtime, so the marker is not jammed against the right edge.
-  const curve = caffeineCurve(today, dayStart(now), care.bedtime + 3600000, 10)
-  const showCurve = care.caffeineAtBedtimeMg !== null
+  const bedtime = nextBedtimeAt(now, stored.bedtimeMinutes ?? DEFAULT_BEDTIME_HOUR * 60)
+  const care = careFor(today, now, bedtime, recentDrinks(stored.drinks, now))
+  const showCaffeine = hasCaffeine(recentDrinks(stored.drinks, now))
 
   return (
     <Housing>
@@ -74,17 +109,49 @@ export function Home() {
 
       <Sheet grow>
         <Label paper>Today</Label>
-        {today.length === 0 ? (
-          <p>Nothing logged yet.</p>
-        ) : (
-          <>
-            <Rows items={today.map((d) => [LABELS[d.kind], clock(d.at)])} />
-            <p className="k-small">{totalsLine(today)}</p>
-          </>
+        {today.length === 0 ? <p>Nothing logged yet.</p> : <Entries drinks={today} onEdit={edit} />}
+        {today.length > 0 && <p className="k-small">Tap an entry to fix its time, amount or label detail, or to remove it.</p>}
+        {totals(today).map((line) => (
+          <p key={line} className="k-small">
+            {line}
+          </p>
+        ))}
+        {earlier.length > 0 && (
+          <details>
+            <summary className="k-small">Before 4am, still in the caffeine estimate ({earlier.length})</summary>
+            <Entries drinks={earlier} onEdit={edit} />
+          </details>
         )}
-
         {showSafety && <SafetyLine />}
       </Sheet>
+
+      {undo && (
+        <Key quiet onClick={takeBack}>
+          {undoLabel(undo)}
+        </Key>
+      )}
+      <p role="status" aria-live="polite" style={{ margin: 0, color: 'var(--housing-dim)', fontSize: 13 }}>
+        {said}
+      </p>
+
+      {showCaffeine && (
+        <CaffeineCard
+          drinks={stored.drinks}
+          now={now}
+          dayStartAt={startOfDay}
+          bedtimeMinutes={stored.bedtimeMinutes}
+          onBedtime={(minutes) =>
+            setStored(
+              update((current) => {
+                const { bedtimeMinutes: _old, ...rest } = current
+                return minutes === undefined ? rest : { ...rest, bedtimeMinutes: minutes }
+              }),
+            )
+          }
+        />
+      )}
+
+      <CareCard tags={care.tags} />
 
       <Sheet>
         <Label paper>Your baseline</Label>
@@ -108,18 +175,6 @@ export function Home() {
           <p className="k-small">Your last ticket used example numbers. Record a baseline for a comparison with yourself.</p>
         )}
       </Sheet>
-
-      {showCurve && (
-        <CaffeineChart points={curve} bedtime={care.bedtime} atBedtimeMg={care.caffeineAtBedtimeMg} />
-      )}
-
-      <CareCard tags={care.tags} />
-
-      {undoable !== undefined && (
-        <Key quiet onClick={() => removeDrink(undoable)}>
-          Undo that drink
-        </Key>
-      )}
 
       <Keys>
         <Key style={{ fontSize: 22 }} onClick={() => navigate('/log')}>
