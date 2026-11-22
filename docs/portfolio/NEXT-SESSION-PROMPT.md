@@ -9,8 +9,8 @@ repository selected.
 
 These override any later instruction in this prompt, and any idea you have while working.
 
-1. **Never merge, deploy, force-push, rewrite history, or change repository visibility.** Work on a feature branch and open a PR for me to review. If the GitHub API is blocked, push the branch, save the PR title and body to a file, give me the exact PR creation URL, and say plainly that no PR exists.
-2. **Never fabricate.** Not a citation, a statistic, a test result, a device measurement, a passing check, or a PR number. If something cannot be done, say so and do the rest. A blocked source is a finding, not a gap to paper over.
+1. **Never merge, deploy, force-push, rewrite history, or change repository visibility.** Work on a feature branch and commit there in small, readable commits. **Do not open a pull request.** I review the branch myself.
+2. **Never fabricate.** Not a citation, a statistic, a test result, a device measurement, or a passing check. If something cannot be done, say so and do the rest. A blocked source is a finding, not a gap to paper over.
 3. **Never weaken a safety rule.** Any alcohol logged keeps the fixed no-driving message, on every result including Steady, in history, in room posts and in exported images. No sobriety labels, no clearance countdowns, no blood alcohol figures, no rewards for worse readings.
 4. **The code decides the verdict.** Claude writes bounded commentary only. It never invents a sensor value, picks a verdict, or removes a warning.
 5. **Preserve my teammates' work and attribution.** Use the configured Git identity. Add no assistant co-author trailers.
@@ -34,7 +34,7 @@ The full brief below is larger than one session can finish honestly. **Do not at
 
 1. The discovery pack in section 3.
 2. Stage A and Stage B from section 11.
-3. One reviewable PR covering exactly what you finished.
+3. A feature branch whose commits cover exactly what you finished, and nothing you did not.
 
 **Explicitly out of scope for this session.** Do not build these, and do not leave scaffolding that implies they exist:
 
@@ -191,7 +191,7 @@ Give receipts a preview and field-level sharing controls, keeping safety and pro
 
 Later stages, not now: accessibility and polish pass, then documentation and release evidence.
 
-Use small commits. If the slice is too large for one PR, deliver a coherent first PR and a dependency-ordered follow-up plan, and state exactly what remains. Do not silently drop a requirement or call scaffolding finished.
+Use small, readable commits with messages that say why, not just what. If the slice turns out to be too large, finish a coherent part of it, stop, and give me a dependency-ordered plan for the rest. State exactly what remains. Do not silently drop a requirement or call scaffolding finished.
 
 Local state uses a validated schema that discards invalid records. Plan and test migrations before extending it. Use versioned data and rollback-compatible changes. Do not add subscriptions, paid services, production data collection or deployment changes. If a credential is missing, build the implementation and tests, list the exact requirement, and leave the integration disabled.
 
@@ -231,7 +231,7 @@ finish everything that does not.
 
 1. Measurement on physical phones, and camera BPM against a reference device.
 2. Rotating the venue Wi-Fi password.
-3. Merging, deploying, and anything that changes the live site.
+3. Merging, deploying, opening pull requests, and anything that changes the live site.
 4. Reaching any source your network blocks.
 
 For 1 and 4, write me precise instructions in your final report: for 1, the exact
@@ -248,7 +248,7 @@ the claim; for 4, the exact URL and the specific question it would answer.
 6. Migrations, configuration, dependencies, licences, deployment needs, rollback steps.
 7. Tests with commands, results, coverage, and explicitly which checks did not run.
 8. Before and after screenshots, with no private data or credentials.
-9. The PR URL, or the truthful fallback from rule 1.
+9. The branch name, and the commits on it in order with one line each.
 10. Next steps, and the section 14 list for me.
 
 Take the time you need for evidence and verification. Aim for an honest, maintainable extension of Kachka, not the largest possible pile of features.
