@@ -61,7 +61,7 @@ export function Privacy() {
         />
         <p className="k-small">
           Kept in this browser&rsquo;s storage, with no expiry. Anyone using this browser can see it. A random device
-          ID lets the server limit requests and update or withdraw this browser&rsquo;s room entry.
+          ID lets the server limit requests. Anyone with this ID can update or withdraw this browser&rsquo;s room entry. Keep this ID private.
         </p>
         <p className="k-small">
           Motion and camera readings are worked out here and never uploaded. Drink names and notes never leave the
@@ -76,7 +76,7 @@ export function Privacy() {
           checked={stored.shareToRoom}
           onChange={(on) => void setSharing(on)}
           label="Show me on the room screen"
-          hint="Sharing lasts until this page reloads. Sends your name, what you are doing (standing, tapping), and each ticket's word and score. Never your drinks, measurements or baseline. A result stays on the board for up to 12 hours, your live row for 45 seconds. Turning this off asks the server to remove both straight away."
+          hint="Sharing stops on reload. Sends your name, your current activity, and each ticket's word and score. Never your drinks, measurements or baseline. A result stays on the board for up to 12 hours, your live row for 45 seconds. Turning this off requests removal of both."
         />
         {roomNote && (
           <p className="k-small" role="status">
