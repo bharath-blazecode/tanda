@@ -71,15 +71,14 @@ export async function ensurePermission(): Promise<MotionPermission> {
 export function subscribe(
   onSample: (sample: MotionReading) => void,
 ): () => void {
-  let lastTime = -Infinity;
   const listener = (event: DeviceMotionEvent) => {
-    const time = performance.now() / 1000;
-    if (time <= lastTime) return;
-    const sample = readMotion(event, time);
-    if (sample) {
-      lastTime = time;
-      onSample(sample);
-    }
+    // DOM event creation time is a proxy for acquisition. Callback receipt time
+    // would make a batch of queued readings look like simultaneous samples.
+    const stamp = event.timeStamp > 1e12 ? event.timeStamp - performance.timeOrigin : event.timeStamp;
+    const ageMs = performance.now() - stamp;
+    if (!Number.isFinite(stamp) || stamp < 0 || ageMs < -2 || ageMs > 250) return;
+    const sample = readMotion(event, stamp / 1000);
+    if (sample) onSample(sample);
   };
   window.addEventListener("devicemotion", listener);
   return () => window.removeEventListener("devicemotion", listener);
@@ -88,6 +87,8 @@ export function subscribe(
 // Public scaffold contract. Times are milliseconds since this subscription began.
 export type MotionSample = {
   t: number;
+  /** Explicit linear acceleration, distinct from the legacy gravity-inclusive axes below. */
+  linearAcceleration?: Vector | null;
   ax: number;
   ay: number;
   az: number;
@@ -105,6 +106,7 @@ export function startMotion(
       reading.acceleration ?? { x: 0, y: 0, z: 0 };
     onSample({
       t: (reading.t - origin) * 1000,
+      linearAcceleration: reading.acceleration,
       ax: gravity.x,
       ay: gravity.y,
       az: gravity.z,
@@ -125,7 +127,7 @@ export const FIRST_SAMPLE_MS = 1000;
 export function isUsable(
   reading: MotionReading | null,
 ): reading is MotionReading {
-  if (!reading) return false;
+  if (!reading || (!reading.rotation && !reading.acceleration)) return false;
   return [reading.rotation, reading.acceleration, reading.gravity].some(
     (v) => v !== null && (v.x !== 0 || v.y !== 0 || v.z !== 0),
   );
@@ -146,19 +148,19 @@ export function motionSupport():
 }
 
 /** Resolves true on the first usable sample, false if none arrives within the window. */
-export function waitForUsableSample(windowMs: number): Promise<boolean> {
+export function waitForUsableSample(windowMs: number, signal?: AbortSignal): Promise<boolean> {
+  if (signal?.aborted) return Promise.resolve(false);
   return new Promise((resolve) => {
-    let stop = () => {};
-    const timer = setTimeout(() => {
-      stop();
-      resolve(false);
-    }, windowMs);
-    stop = subscribe((sample) => {
-      if (!isUsable(sample)) return;
+    const finish = (usable: boolean) => {
       clearTimeout(timer);
       stop();
-      resolve(true);
-    });
+      signal?.removeEventListener("abort", abort);
+      resolve(usable);
+    };
+    const abort = () => finish(false);
+    const timer = setTimeout(abort, windowMs);
+    const stop = subscribe((sample) => { if (isUsable(sample)) finish(true); });
+    signal?.addEventListener("abort", abort, { once: true });
   });
 }
 
@@ -177,14 +179,15 @@ export function setMotionAvailability(next: MotionAvailability): void {
  *  the session. Call it from a tap: the iOS prompt is requested before the first await. */
 export async function detectMotion(
   windowMs = FIRST_SAMPLE_MS,
+  signal?: AbortSignal,
 ): Promise<MotionPermission | "no-data"> {
   const permission = await ensurePermission();
   const outcome =
     permission !== "granted"
       ? permission
-      : (await waitForUsableSample(windowMs))
+      : (await waitForUsableSample(windowMs, signal))
         ? "granted"
         : "no-data";
-  setMotionAvailability(outcome === "granted" ? "available" : "unavailable");
+  if (!signal?.aborted) setMotionAvailability(outcome === "granted" ? "available" : "unavailable");
   return outcome;
 }

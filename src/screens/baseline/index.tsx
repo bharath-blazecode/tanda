@@ -201,7 +201,7 @@ export function Baseline() {
       {step === 'pulse' ? (
         <PulseTest label="Optional · Pulse" onDone={(_bpm, pulse) => finish(choice, pulse)} />
       ) : step === 'stand' ? (
-        <StandTest
+        <StandTest forBaseline
           onDone={(metrics) => {
             setStand(metrics)
             setStep('choice')

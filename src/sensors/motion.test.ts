@@ -48,3 +48,20 @@ describe("motion adapter", () => {
     expect(onSample).toHaveBeenCalledOnce();
   });
 });
+
+it("uses event times for bunched deliveries and excludes stale samples", () => {
+  const host = new EventTarget();
+  vi.stubGlobal("window", host);
+  const now = vi.spyOn(performance, "now").mockReturnValue(1200);
+  const samples: number[] = [];
+  const stop = subscribe(sample => samples.push(sample.t));
+  for (const stamp of [1100, 1120, 500]) {
+    const event = new Event("devicemotion");
+    Object.defineProperty(event, "timeStamp", {value: stamp});
+    Object.assign(event, { rotationRate: { alpha: 1, beta: 2, gamma: 3 } });
+    host.dispatchEvent(event);
+  }
+  stop();
+  now.mockRestore();
+  expect(samples).toEqual([1.1, 1.12]);
+});

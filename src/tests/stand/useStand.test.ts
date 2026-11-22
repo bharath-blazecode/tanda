@@ -241,3 +241,11 @@ it("stops the music on cancel and starts it fresh on retry", async () => {
   expect(music.start).toHaveBeenCalledTimes(2);
   clearInterval(feed);
 });
+
+it("leaves a retryable state on pagehide, including a cached page restored without remount", async () => {
+  const { result } = renderHook(() => useStand());
+  await act(async () => result.current.start());
+  act(() => window.dispatchEvent(new Event("pagehide")));
+  expect(result.current.phase).toBe("error");
+  expect(sensor.stop).toHaveBeenCalledOnce();
+});

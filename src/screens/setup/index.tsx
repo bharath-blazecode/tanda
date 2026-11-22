@@ -38,10 +38,12 @@ export function Setup() {
   )
   const [phase, setPhase] = useState<Phase>('checking')
   const [copied, setCopied] = useState(false)
+  const probe = useRef<AbortController | null>(null)
   const timers = useRef<number[]>([])
 
   useEffect(
     () => () => {
+      probe.current?.abort()
       for (const t of timers.current) window.clearTimeout(t)
     },
     [],
@@ -60,28 +62,28 @@ export function Setup() {
     [handOver],
   )
 
-  // Android and desktop ask nothing. Listen for one usable sample and move on if it arrives.
-  useEffect(() => {
-    let cancelled = false
-    if (motionSupport() === 'needs-tap') {
-      setPhase('idle')
-      return
-    }
-    void detectMotion().then((result) => {
-      if (!cancelled) settle(result)
+  const checkSensor = useCallback(() => {
+    probe.current?.abort()
+    const controller = new AbortController()
+    probe.current = controller
+    void detectMotion(undefined, controller.signal).then(result => {
+      if (!controller.signal.aborted) settle(result)
     })
-    return () => {
-      cancelled = true
-    }
   }, [settle])
 
-  // Runs inside the tap, so iOS can show its prompt. Granted is not the same as working.
+  useEffect(() => {
+    if (motionSupport() === 'needs-tap') setPhase('idle')
+    else checkSensor()
+    return () => probe.current?.abort()
+  }, [checkSensor])
+
   const ask = () => {
     setPhase(motionSupport() === 'needs-tap' ? 'requesting' : 'checking')
-    void detectMotion().then(settle)
+    checkSensor()
   }
 
   const oneTest = () => {
+    probe.current?.abort()
     setMotionAvailability('unavailable')
     goNext()
   }

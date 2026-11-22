@@ -128,6 +128,9 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     await shot(page, 'flow-personal-ticket');
     stored = await page.evaluate(() => JSON.parse(localStorage.getItem('bc:v2')));
     check('a real check is counted against the baseline', stored.baseline.checks === 1);
+    check('standing comparison carries measurement protocol and placement through storage',
+      stored.lastResult.run.stand.protocolVersion === 2 && stored.lastResult.run.stand.placement === 'portrait-up' &&
+      typeof stored.lastResult.assessment.drift.sway === 'number');
     const firstBaselineAt = stored.baseline.run.at;
     // Recalibrate with alcohol logged: blocked.
     await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('bc:v2')); s.drinks.push({ id: 'b1', kind: 'beer', at: Date.now() - 60000 }); localStorage.setItem('bc:v2', JSON.stringify(s)); });
@@ -143,6 +146,16 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     check('old ticket still prints its original reference', /Against · your baseline/i.test(await page.locator('body').innerText()));
     stored = await page.evaluate(() => JSON.parse(localStorage.getItem('bc:v2')));
     check('stored ticket reference unchanged by recalibration', stored.lastResult.reference.run.at === firstBaselineAt);
+    await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem('bc:v2'));
+      delete data.baseline.run.stand.protocolVersion;
+      localStorage.setItem('bc:v2', JSON.stringify(data));
+    });
+    await page.goto(BASE + '/check');
+    await page.getByText(/Record a new baseline to compare standing/).waitFor();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.getByText(/Test 2 of 2 · Choice tap/).first().waitFor();
+    check('a historical standing baseline proceeds directly to comparable taps', true);
     await ctx.close();
   }
 

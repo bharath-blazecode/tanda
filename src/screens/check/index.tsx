@@ -14,7 +14,7 @@ import type { ChoiceMetrics, Mode, PulseRecord, ResultReference, StandMetrics } 
 import { requestVerdictLine } from '../../api/verdict'
 import { cannedLine } from '../../engine/canned'
 import { evaluate } from '../../engine/classify'
-import { plannedComparison, type Comparability } from '../../engine/compare'
+import { plannedComparison, standStatus, type Comparability } from '../../engine/compare'
 import { hasAlcohol } from '../../engine/nudge'
 import { buildRun } from '../../engine/run'
 import { tallyAlcohol, tallyCaffeine } from '../../engine/serving'
@@ -37,6 +37,9 @@ const WHY: Record<string, string> = {
   'not-in-reference': 'not in your baseline',
   unusable: 'no usable reading this time',
   'reference-unusable': 'not usable in your baseline',
+  'protocol-changed': 'the standing protocol changed',
+  'placement-changed': 'different or changing phone placement',
+  'cadence-changed': 'different motion sampling rates',
   'unknown-source': 'motion sensor was not recorded',
   'trial-count-changed': 'different tap trial counts',
   'sensor-changed': 'a different motion sensor from your baseline',
@@ -151,7 +154,7 @@ export function Check() {
   const skipStand = () => afterStand(null)
   const begin = (pulse: boolean) => {
     setWithPulse(pulse)
-    if (noMotion) skipStand()
+    if (!planned.stand) skipStand()
     else setStep('stand')
   }
 
@@ -194,6 +197,9 @@ export function Check() {
           />
           {!planned.stand && reference.run.stand && noMotion && (
             <p className="k-small">This phone is not sending motion now, so the standing test cannot run.</p>
+          )}
+          {!planned.stand && !noMotion && reference.run.stand && (
+            <p className="k-small">Record a new baseline to compare standing under the current protocol.</p>
           )}
           {!reference.run.stand && <p className="k-small">Your baseline has no standing test in it.</p>}
           {!reference.run.choice && <p className="k-small">Your baseline has no tapping test in it.</p>}
@@ -270,7 +276,7 @@ export function Check() {
           onDone={(_bpm, pulse) => void finish(choice, pulse)}
         />
       ) : step === 'stand' ? (
-        <StandTest onDone={afterStand} />
+        <StandTest reference={reference.run.stand} onDone={afterStand} />
       ) : (
         <ChoiceTest
           label={noMotion ? 'No motion sensor here · Choice tap only' : `Test 2 of ${total} · Choice tap`}
@@ -281,7 +287,7 @@ export function Check() {
           }}
         />
       )}
-      {step === 'choice' && stand !== null && (
+      {step === 'choice' && standStatus(reference.run.stand, stand ?? undefined).compared && (
         <Key quiet onClick={() => (withPulse ? (setChoice(null), setStep('pulse')) : void finish(null, null))}>
           Skip this test
         </Key>

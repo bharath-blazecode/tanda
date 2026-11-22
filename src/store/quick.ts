@@ -8,14 +8,14 @@
 //
 // Since schema v2 this is never written into the personal baseline: a quick demo cannot overwrite a
 // baseline someone recorded, and a reading's reference travels with the reading (LastResult.reference).
-import type { Handicap, ResultReference } from '../../shared/contracts'
+import { STAND_CAPTURE_SECONDS, STAND_PROTOCOL_VERSION, type Handicap, type ResultReference } from '../../shared/contracts'
 
 export const EXAMPLE_REFERENCE: ResultReference = {
   kind: 'example',
   run: {
     // Gyroscope RMS in degrees a second, standing with the phone on the chest. A phone that only
     // reports acceleration (m/s²) is not compared with this at all: the units differ.
-    stand: { swayRms: 0.6, swayLateralRms: 0.4, hz: 60, valid: true, source: 'gyroscope' },
+    stand: { swayRms: 0.6, swayLateralRms: 0.4, hz: 60, valid: true, source: 'gyroscope', protocolVersion: STAND_PROTOCOL_VERSION, captureSeconds: STAND_CAPTURE_SECONDS },
     choice: { medianMs: 480, wrong: 0, lapses: 0, trials: 8 },
     at: 0,
   },
