@@ -2,8 +2,9 @@
 
 Prepared 22 November 2026 for the post-hackathon portfolio work. It covers the current state, three
 design directions, a ranked backlog, and the plan for this session. The threat model is in
-[THREAT-MODEL.md](THREAT-MODEL.md). The claim-by-claim evidence ledger lands with Stage A at
-`research/EVIDENCE-LEDGER.md`.
+[THREAT-MODEL.md](THREAT-MODEL.md), the claim-by-claim evidence is in
+[research/EVIDENCE-LEDGER.md](research/EVIDENCE-LEDGER.md), and what was tested is in
+[VERIFICATION.md](VERIFICATION.md). Screenshots are in [screenshots/](screenshots/).
 
 ## 1. Revision boundary
 
