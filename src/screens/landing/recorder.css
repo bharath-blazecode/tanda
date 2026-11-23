@@ -16,6 +16,7 @@
 }
 .recorder { width: 100%; max-width: 28rem; justify-self: start; padding: 0 var(--s3) var(--s3); }
 .recorder-stage {
+  pointer-events: none;
   position: relative;
   font-size: 11px;
   font-size: clamp(9px, 2.15cqi, 19px);
@@ -111,7 +112,7 @@
 .recorder-controls {
   display: flex; align-items: center; justify-content: center; gap: var(--s2); flex-wrap: wrap;
 }
-.recorder-caption { font: 700 13px/1.2 var(--mono); background: var(--chart); }
+.recorder-caption { min-width: 15ch; font: 700 13px/1.2 var(--mono); background: var(--chart); }
 .recorder-key {
   font: 700 13px/1.2 var(--mono); color: var(--housing-ink); background: var(--housing);
   min-height: 44px; padding: 0 var(--s3); border: 1px solid var(--bench);
@@ -132,7 +133,7 @@
   }
   .recorder { grid-area: 1 / 2; padding: 0 var(--s2) var(--s3) 0; }
   .recorder-controls { flex-direction: column; gap: var(--s1); }
-  .recorder-caption { text-align: center; }
+  .recorder-caption { min-width: 0; text-align: center; }
 }
 @media (max-width: 310px) {
   .landing-chart { display: flex; flex-direction: column; }

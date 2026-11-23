@@ -1,15 +1,15 @@
 // CARD 14. The caffeine curve, drawn on chart paper. The band is the honest part: half-life
 // varies a lot between people, so a single line would claim more than we know.
 import { useId, useState } from 'react'
-import type { CaffeinePoint } from '../engine/caffeine'
+import { HALF_LIFE_FAST_HOURS, HALF_LIFE_HOURS, HALF_LIFE_SLOW_HOURS, type CaffeinePoint } from '../engine/caffeine'
 import { Axis, ChartWindow, Printed } from './ChartWindow'
 import { Label } from './Label'
 import './caffeine-selector.css'
 
 const scenarios = [
-  { field: 'low', hours: 2, label: 'Two-hour model' },
-  { field: 'mg', hours: 5, label: 'Five-hour model' },
-  { field: 'high', hours: 8, label: 'Eight-hour model' },
+  { field: 'low', hours: HALF_LIFE_FAST_HOURS, label: 'Two-hour model' },
+  { field: 'mg', hours: HALF_LIFE_HOURS, label: 'Five-hour model' },
+  { field: 'high', hours: HALF_LIFE_SLOW_HOURS, label: 'Eight-hour model' },
 ] as const
 
 const W = 100
