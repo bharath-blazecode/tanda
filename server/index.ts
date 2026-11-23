@@ -25,17 +25,25 @@ async function main() {
     )
   })
 
+  let shuttingDown = false
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     process.on(signal, () => {
-      // Best effort: room.close() is capped and never rejects.
-      void room.close()
-      server.close(() => process.exit(0))
+      if (shuttingDown) return
+      shuttingDown = true
+      // Let accepted withdrawals finish before closing their Redis connection.
+      const deadline = setTimeout(() => process.exit(1), 10_000)
+      deadline.unref()
+      server.close(async () => {
+        await room.close()
+        clearTimeout(deadline)
+        process.exit(0)
+      })
     })
   }
 }
 
-main().catch((err) => {
+main().catch(() => {
   // Only a bad config reaches here, as before; fail loudly so the deploy is noticed.
-  console.error(err)
+  console.error(JSON.stringify({ msg: 'server startup failed; check configuration and port' }))
   process.exit(1)
 })

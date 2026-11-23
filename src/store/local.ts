@@ -44,6 +44,25 @@ function browserStorage(): KeyValue {
 // Only the document where the person opted in can report, and only while its grant still matches.
 const ROOM_GRANT = 'bc:room-grant'
 let activeGrant: { storage: KeyValue; token: string } | undefined
+// Also signal open tabs when the storage backend refuses an opt-out write.
+export const ROOM_REVOKED = 'kachka-room-revoked'
+let roomChannel: BroadcastChannel | undefined
+function consentChannel() {
+  if (typeof window === 'undefined') return
+  if (!roomChannel && typeof window.BroadcastChannel === 'function') {
+    try {
+      roomChannel = new window.BroadcastChannel(ROOM_REVOKED)
+      roomChannel.onmessage = event => {
+        if (event.data !== 'revoke') return
+        activeGrant = undefined
+        window.dispatchEvent(new Event(ROOM_REVOKED))
+      }
+    } catch { /* Storage-token checks still apply. */ }
+  }
+  return roomChannel
+}
+if (typeof window !== 'undefined') window.addEventListener('pagehide', () => { activeGrant = undefined })
+
 function hasGrant(storage: KeyValue): boolean {
   if (!activeGrant || activeGrant.storage !== storage) return false
   try {
@@ -56,6 +75,10 @@ function hasGrant(storage: KeyValue): boolean {
 export function setRoomSharing(on: boolean, storage = browserStorage()): Stored {
   const current = load(storage)
   activeGrant = undefined
+  const channel = consentChannel()
+  if (!on) {
+    try { channel?.postMessage('revoke') } catch { /* The local grant has already ended. */ }
+  }
   try {
     if (on) {
       const token = newId()
@@ -90,7 +113,7 @@ export function fresh(): Stored {
     // Off until the person turns it on. A stored false here is only honest because no screen
     // turns it on without asking (D23).
     shareToRoom: false,
-    aiCommentary: true,
+    aiCommentary: false,
     drinks: [],
   }
 }
@@ -132,7 +155,7 @@ export function parseStored(raw: unknown): Parsed | null {
     deviceId: field(shape.deviceId, r.deviceId, 'deviceId', dropped) ?? base.deviceId,
     nickname: field(shape.nickname, r.nickname, 'nickname', dropped) ?? base.nickname,
     shareToRoom: field(shape.shareToRoom, r.shareToRoom, 'shareToRoom', dropped) ?? false,
-    aiCommentary: field(shape.aiCommentary, r.aiCommentary, 'aiCommentary', dropped) ?? true,
+    aiCommentary: field(shape.aiCommentary, r.aiCommentary, 'aiCommentary', dropped) ?? false,
     drinks: list(Drink, r.drinks, 'drinks', dropped),
   }
   const bedtime = field(shape.bedtimeMinutes, r.bedtimeMinutes, 'bedtimeMinutes', dropped)
@@ -185,7 +208,7 @@ export function migrateV1(raw: unknown): Migrated | null {
     deviceId: field(shape.deviceId, r.deviceId, 'deviceId', dropped) ?? base.deviceId,
     nickname: field(shape.nickname, r.nickname, 'nickname', dropped) ?? base.nickname,
     shareToRoom: false,
-    aiCommentary: true,
+    aiCommentary: false,
     drinks,
   }
   if (v1Baseline && !wasStock) value.baseline = { run: v1Baseline.run, clean: v1Baseline.clean }

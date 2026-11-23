@@ -17,8 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -40,18 +42,15 @@ jobs:
           DOKPLOY_DEPLOY_URL: ${{ secrets.DOKPLOY_DEPLOY_URL }}
         run: |
           if [ -z "$DOKPLOY_DEPLOY_URL" ]; then
-            echo "DOKPLOY_DEPLOY_URL is not set; skipping the deploy."
-            exit 0
+            echo "DOKPLOY_DEPLOY_URL is not set; deployment cannot be requested."
+            exit 1
           fi
           # Dokploy expects the shape of a GitHub push event and checks the branch in it.
           # Note: Cloudflare's Bot Fight Mode on the panel's zone must stay off, or it answers
           # this runner with a 403 challenge page and the request never arrives.
-          code=$(curl -sS -o /tmp/deploy.out -w '%{http_code}' -X POST "$DOKPLOY_DEPLOY_URL" \
+          code=$(curl --silent --proto '=https' --connect-timeout 5 --max-time 30 -o /dev/null -w '%{http_code}' -X POST "$DOKPLOY_DEPLOY_URL" \
             -H 'content-type: application/json' \
             -H 'x-github-event: push' \
             -d "{\"ref\":\"refs/heads/main\",\"head_commit\":{\"id\":\"$GITHUB_SHA\",\"message\":\"deploy $GITHUB_SHA\"}}")
           echo "Dokploy answered $code"
-          # Print a short, safe summary only: a challenge page is long and useless in a log.
-          head -c 200 /tmp/deploy.out || true
-          echo
           test "$code" -ge 200 && test "$code" -lt 300

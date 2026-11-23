@@ -5,7 +5,7 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import { Hono } from 'hono'
 import { RoomPresenceRequest, RoomResultRequest, RoomWithdrawRequest, type RoomState } from '../shared/contracts'
 import { deviceNickname } from '../shared/nicknames'
-import { clientIp } from './client-ip'
+import { requestClientIp } from './client-ip'
 import type { Config } from './config'
 import { namePolicy } from './room-names'
 import { createPresenceStore, type PresenceStore } from './room-presence'
@@ -24,8 +24,8 @@ const WINDOW_MS = 60_000
 export const DEFAULT_POSTS_PER_MINUTE = 600
 // 200 phones on one venue IP beating every 15 s is 800 a minute; this leaves room for stage changes.
 export const DEFAULT_HEARTBEATS_PER_MINUTE = 3_000
-// Past this many tracked clients, expired windows are swept so the limiter cannot grow without bound.
-const SWEEP_AT = 5_000
+// Existing clients keep their buckets at capacity; new ones wait for the next expiry.
+const MAX_CLIENT_WINDOWS = 5_000
 
 // Hashing first gives equal-length buffers, which timingSafeEqual requires, without leaking the length.
 function sameToken(given: string, expected: string): boolean {
@@ -33,7 +33,7 @@ function sameToken(given: string, expected: string): boolean {
   return timingSafeEqual(digest(given), digest(expected))
 }
 
-export { clientIp }
+export { clientIp } from './client-ip'
 
 // Fixed one-minute window per IP. Crude, but enough to stop one script from flooding the board.
 // The default is wide because a whole auditorium may share one venue IP; the store keeps one entry
@@ -41,11 +41,15 @@ export { clientIp }
 function createLimiter(limit: number) {
   const windows = new Map<string, { start: number; count: number }>()
   return (key: string, now: number): boolean => {
-    if (windows.size > SWEEP_AT) {
-      for (const [k, w] of windows) if (now - w.start >= WINDOW_MS) windows.delete(k)
+    // Buckets are ordered by window start. Release only expired entries; avoid
+    // scanning the entire map for every request at capacity.
+    for (const [oldest, window] of windows) {
+      if (now - window.start < WINDOW_MS) break
+      windows.delete(oldest)
     }
     const current = windows.get(key)
     if (!current || now - current.start >= WINDOW_MS) {
+      if (windows.size >= MAX_CLIENT_WINDOWS) return false
       windows.set(key, { start: now, count: 1 })
       return true
     }
@@ -76,7 +80,7 @@ export function roomRoutes(
   // The IP bucket is counted once per request before the device gates, so a throttled request costs
   // the venue exactly what an accepted one does. Throttled requests get the same 204, on purpose.
   routes.post('/room/result', async (c) => {
-    const ip = clientIp((name) => c.req.header(name))
+    const ip = requestClientIp(c, config.trustedProxyIps)
     if (!allow(ip, now())) {
       return c.json({ error: 'rate_limited' }, 429)
     }
@@ -93,7 +97,7 @@ export function roomRoutes(
   })
 
   routes.post('/room/presence', async (c) => {
-    const ip = clientIp((name) => c.req.header(name))
+    const ip = requestClientIp(c, config.trustedProxyIps)
     if (!allowBeat(ip, now())) {
       return c.json({ error: 'rate_limited' }, 429)
     }
@@ -112,7 +116,7 @@ export function roomRoutes(
   // are on the board. A device ID is not an account: anyone holding it could already overwrite that
   // entry, so letting them remove it adds no new power.
   routes.post('/room/withdraw', async (c) => {
-    const ip = clientIp((name) => c.req.header(name))
+    const ip = requestClientIp(c, config.trustedProxyIps)
     if (!allow(ip, now())) {
       return c.json({ error: 'rate_limited' }, 429)
     }
@@ -133,13 +137,17 @@ export function roomRoutes(
     return c.json(body)
   })
 
-  routes.post('/room/reset', (c) => {
+  routes.post('/room/reset', async (c) => {
     const token = c.req.header('x-admin-token')
     if (!config.roomAdminToken || !token || !sameToken(token, config.roomAdminToken)) {
       return c.json({ error: 'forbidden' }, 403)
     }
-    store.reset()
     presence.reset()
+    try {
+      await store.reset()
+    } catch {
+      return c.json({ error: 'reset_unconfirmed' }, 503)
+    }
     return c.body(null, 204)
   })
 

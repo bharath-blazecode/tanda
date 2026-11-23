@@ -3,11 +3,21 @@ const BASE = process.env.KACHKA_TEST_ORIGIN || 'http://localhost:3333';
 const results = []; const check = (n, ok, d = '') => { results.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'} ${n}${d ? ' :: ' + d : ''}`); };
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+  const violations = [];
+  async function newContext(options) {
+    const ctx = await b.newContext(options);
+    await ctx.exposeBinding('recordCspViolation', (_source, directive) => violations.push(directive));
+    await ctx.addInitScript(() => {
+      document.addEventListener('securitypolicyviolation', event => window.recordCspViolation([location.pathname, event.effectiveDirective, event.blockedURI, event.sourceFile, event.lineNumber, event.columnNumber].join(' ')));
+    });
+    return ctx;
+  }
   // 1. Routes load without page errors.
   {
-    const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage();
+    const ctx = await newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage();
     const errors = []; p.on('pageerror', (e) => errors.push(e.message));
-    await p.goto(BASE + '/');
+    const response = await p.goto(BASE + '/');
+    check('production document enforces script policy', response.headers()['content-security-policy']?.includes("script-src 'self'"));
     await p.evaluate(() => localStorage.setItem('bc:v2', JSON.stringify({ v: 2, deviceId: 'aaaaaaaa-0000-4000-8000-0000000000aa', nickname: 'Calm Galah', shareToRoom: false, aiCommentary: true, drinks: [],
       baseline: { run: { stand: { swayRms: 0.6, swayLateralRms: 0.3, hz: 60, valid: true, source: 'gyroscope', captureSeconds: 10 }, choice: { medianMs: 480, wrong: 0, lapses: 0, trials: 8 }, at: Date.now() - 3600000 }, clean: true, checks: 0 } })));
     for (const path of ['/lab', '/lab/care', '/lab/kit', '/result?preview', '/room', '/demo', '/privacy', '/log', '/home', '/baseline', '/check', '/nope']) {
@@ -18,7 +28,15 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
   }
   // 2. No horizontal overflow at 320 px on the busiest screens.
   {
-    const ctx = await b.newContext({ viewport: { width: 320, height: 640 } }); const p = await ctx.newPage();
+    const ctx = await newContext({ viewport: { width: 320, height: 640 } }); const p = await ctx.newPage();
+    // Desktop headless Chromium has no system share sheet. Verify the application's file handoff.
+    await p.addInitScript(() => {
+      navigator.canShare = data => data.files?.length === 1 && data.files[0] instanceof File;
+      navigator.share = async data => {
+        const file = data.files[0];
+        window.sharedPng = file.type === 'image/png' && file.name.endsWith('.png') && file.size > 0;
+      };
+    });
     await p.goto(BASE + '/');
     await p.evaluate(() => { const now = Date.now(); localStorage.setItem('bc:v2', JSON.stringify({ v: 2, deviceId: 'aaaaaaaa-0000-4000-8000-0000000000ab', nickname: 'Wobbly Cassowary', shareToRoom: false, aiCommentary: true,
       drinks: [ { id: 'e', kind: 'energy', at: now - 3600000, servingMl: 500, fraction: 0.5, name: 'Sugar free can, large', caffeine: { basis: 'per100ml', mgPer100ml: 32, source: 'label' } }, { id: 'w', kind: 'wine', at: now - 600000, servingMl: 150, alcohol: { abv: 13.5, source: 'label' } } ],
@@ -34,16 +52,27 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
     const t = await p.locator('body').innerText();
     check('tipsy example ticket at 320 px keeps the safety line, provenance and the approximate pulse', /Not a driving test/.test(t) && /Simulated/.test(t) && /about 91 bpm/.test(t) && /No clean taps/i.test(t));
     if (process.argv[2]) await p.screenshot({ path: `${process.argv[2]}/after-narrow-ticket.png`, fullPage: true });
+    const appearance = await p.evaluate(async () => {
+      await document.fonts.ready;
+      const stamp = document.querySelector('.k-stamp');
+      const fontLoaded = family => [...document.fonts].some(font => font.family.includes(family) && font.status === 'loaded');
+      return !!stamp && getComputedStyle(stamp).filter.includes('#k-ink') && !!document.querySelector('filter#k-ink') &&
+        fontLoaded('Big Shoulders Display') && fontLoaded('Courier Prime');
+    });
+    check('receipt stamp resolves its SVG filter and both local font families load', appearance);
     const downloadPromise = p.waitForEvent('download');
     await p.getByRole('button', { name: 'Save receipt' }).click();
     const download = await downloadPromise;
     const bytes = require('node:fs').readFileSync(await download.path());
+    await p.getByRole('button', { name: 'Share', exact: true }).click();
+    await p.waitForFunction(() => window.sharedPng);
+    check('share hands a PNG file to the simulated system share sheet', true);
     check('saved receipt is a PNG image', bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a');
     await ctx.close();
   }
   // 3. Keyboard only: log a coffee with details.
   {
-    const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage();
+    const ctx = await newContext({ viewport: { width: 390, height: 844 } }); const p = await ctx.newPage();
     await p.goto(BASE + '/log');
     await p.getByRole('button', { name: 'Add with details' }).focus(); await p.keyboard.press('Enter');
     await p.getByRole('radio', { name: 'Coffee' }).focus();
@@ -62,7 +91,7 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
   }
   // At 05:00, a drink from two hours ago belongs to the collapsed previous-day group.
   {
-    const ctx = await b.newContext({ timezoneId: 'Australia/Brisbane' });
+    const ctx = await newContext({ timezoneId: 'Australia/Brisbane' });
     const p = await ctx.newPage();
     const now = new Date('2026-11-22T05:00:00+10:00');
     await p.clock.setFixedTime(now);
@@ -83,7 +112,7 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
   }
   // Some browsers deny access to the localStorage getter itself.
   {
-    const ctx = await b.newContext();
+    const ctx = await newContext();
     await ctx.addInitScript(() => Object.defineProperty(window, 'localStorage', {
       get() { throw new DOMException('Blocked', 'SecurityError'); },
     }));
@@ -103,12 +132,13 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
   }
   // 4. Reduced motion: the ticket does not animate.
   {
-    const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' }); const p = await ctx.newPage();
+    const ctx = await newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' }); const p = await ctx.newPage();
     await p.goto(BASE + '/result?preview'); await p.waitForTimeout(300);
     const anim = await p.evaluate(() => { const el = document.querySelector('.k-ticket--print'); return el ? getComputedStyle(el).animationName : 'missing'; });
     check('reduced motion: ticket print animation is off', anim === 'none', anim);
     await ctx.close();
   }
+  check('normal browser flows have no CSP violations', violations.length === 0, [...new Set(violations)].join(', '));
   await b.close();
   if (!results.every(Boolean)) process.exitCode = 1;
   console.log(`${results.filter(Boolean).length}/${results.length} extra checks passed`);

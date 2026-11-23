@@ -69,3 +69,14 @@ Use the phone pilot before release. [Scientific review, browser procedure and ph
 Next decision is owner review and physical validation. Later privacy, connected wellbeing,
 caffeine, accessibility, performance, 3D, animation, scroll, social and commercial readiness
 work remains on the roadmap.
+
+### Phase C · Security, privacy and operations
+
+Branch `feat/phase-c-security`, from `85ed2b700de91f7f4f862f1272e27fd571d5ee1f`.
+Commits `f5be734` (proxy trust and AI allowance), `5928768` (headers and JSON writes),
+`4dd9d79` (Redis acknowledgement and retention), `bdb02e7` (browser privacy),
+`dd7958a` (CI, container and shutdown), and `c2a9fd7` (share verification and limiter naming).
+The [Phase C review and owner runbook](PHASE-C.md) records independent evidence, remaining
+production checks, rollback and commercial privacy questions. Next decision is owner review.
+Phase D wellbeing/caffeine, Phase E creative animation/3D/scroll, Phase F social and Phase G
+commercial readiness remain separate.

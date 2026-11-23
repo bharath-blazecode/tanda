@@ -4,6 +4,7 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { bodyLimit } from 'hono/body-limit'
 import type { Health } from '../shared/contracts'
 import type { Config } from './config'
+import { browserHeaders } from './headers'
 import { roomRoutes } from './room'
 import type { RoomStore } from './state'
 import { verdictRoutes } from './verdict'
@@ -17,6 +18,22 @@ export type AppDeps = {
 
 export function createApp(config: Config, deps: AppDeps = {}) {
   const app = new Hono()
+  app.use('*', browserHeaders)
+  app.onError((_error, c) => {
+    // Request contents, provider exceptions and connection URLs do not belong in logs.
+    console.error(JSON.stringify({ msg: 'unexpected request failure' }))
+    return c.json({ error: 'internal_error' }, 500)
+  })
+
+  // The browser client sends JSON for these writes. Requiring its media type keeps
+  // cross-origin HTML forms from entering these routes without a CORS preflight.
+  for (const path of ['/api/verdict', '/api/room/result', '/api/room/presence', '/api/room/withdraw']) {
+    app.use(path, async (c, next) => {
+      if (c.req.method === 'POST' && c.req.header('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json')
+        return c.json({ error: 'json_required' }, 415)
+      await next()
+    })
+  }
 
   // Every API body is a few numbers and enums; anything larger is junk we should not even parse.
   app.use(

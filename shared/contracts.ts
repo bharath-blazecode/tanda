@@ -3,6 +3,9 @@
 // Change this file only after saying so out loud: every card depends on it.
 import { z } from 'zod'
 
+// Use Zod's interpreter in browsers. Its JIT capability probe conflicts with the page CSP.
+if (typeof window !== 'undefined') z.config({ jitless: true })
+
 // ---------- what each test returns ----------
 
 /** Which sensor the standing reading came from. They have different units: deg/s and m/s². */
