@@ -62,6 +62,7 @@ const stored = (over: Partial<Stored> = {}): Stored => ({
 describe('resultToPost', () => {
   it('builds the board post from the stored result', () => {
     expect(resultToPost(stored(), null, NOW)).toEqual({
+      intent: 'share-ticket',
       deviceId: '00000000-0000-4000-8000-000000000001',
       nickname: 'Calm Quokka',
       verdict: 'wired',
@@ -83,14 +84,15 @@ describe('resultToPost', () => {
   it('does not post an old ticket reopened later', () => {
     expect(resultToPost(stored(), null, NOW - 1000 + RESULT_FRESH_MS)).not.toBeNull()
     expect(resultToPost(stored(), null, NOW + RESULT_FRESH_MS)).toBeNull()
+    expect(resultToPost(stored(), null, NOW - 1001)).toBeNull()
   })
 
-  it('carries the guessed handicap in demo mode only', () => {
+  it('omits guessed handicaps from both demo and personal ticket requests', () => {
     const base = stored().lastResult!
     const demo = stored({
       lastResult: { ...base, mode: 'demo', assessment: { ...base.assessment, guessedHandicap: 'spin' } },
     })
-    expect(resultToPost(demo, null, NOW)).toMatchObject({ mode: 'demo', handicap: 'spin' })
+    expect(resultToPost(demo, null, NOW)).not.toHaveProperty('handicap')
     const real = stored({ lastResult: { ...base, assessment: { ...base.assessment, guessedHandicap: 'spin' } } })
     expect(resultToPost(real, null, NOW)).not.toHaveProperty('handicap')
   })

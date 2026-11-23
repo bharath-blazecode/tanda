@@ -1,9 +1,9 @@
 // CARD 6. Landing (docs/04-screens-spec.md, section 1).
 // Say what this is in five seconds and get the first tap.
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { ChartWindow, Housing, Key, Plate, Printed, Toggle } from '../../ui'
-import { load, setRoomSharing, update } from '../../store/local'
+import { load, ROOM_REVOKED, setRoomSharing, update } from '../../store/local'
 import { withdrawFromRoom } from '../../api/room'
 import { eraseEverything } from '../privacy/erase'
 
@@ -26,6 +26,7 @@ export function Landing() {
   const erased = (location.state as { erased?: 'all' | 'local' } | null)?.erased
   const stored = load()
   const [share, setShare] = useState(stored.shareToRoom)
+  const [removalUnconfirmed, setRemovalUnconfirmed] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [eraseError, setEraseError] = useState('')
   const [erasing, setErasing] = useState(false)
@@ -33,6 +34,18 @@ export function Landing() {
   // has a ticket and a log, and should find them again.
   const returning = stored.baseline !== undefined || stored.lastResult !== undefined || stored.drinks.length > 0
   const [name, setName] = useState(stored.nickname)
+
+  useEffect(() => {
+    const refresh = () => setShare(load().shareToRoom)
+    window.addEventListener('storage', refresh)
+    window.addEventListener('pageshow', refresh)
+    window.addEventListener(ROOM_REVOKED, refresh)
+    return () => {
+      window.removeEventListener('storage', refresh)
+      window.removeEventListener('pageshow', refresh)
+      window.removeEventListener(ROOM_REVOKED, refresh)
+    }
+  }, [])
 
   // A form, so Enter (shown as "Go") in the field does exactly what the Start key does.
   const start = (event: FormEvent) => {
@@ -50,10 +63,10 @@ export function Landing() {
 
   const erase = async () => {
     setErasing(true)
-    const { roomWithdrawn, cleared } = await eraseEverything(stored.deviceId)
+    const { roomWithdrawn, cleared, error } = await eraseEverything(stored.deviceId)
     if (!cleared) {
       setErasing(false)
-      setEraseError('Browser storage could not be cleared. Use your browser’s site data settings.')
+      setEraseError(error ?? 'Browser storage could not be cleared. Use your browser’s site data settings.')
       return
     }
     navigate('/', { replace: true, state: { erased: roomWithdrawn ? 'all' : 'local' } })
@@ -91,7 +104,7 @@ export function Landing() {
         <p role="status" style={{ color: 'var(--housing-ink)', fontSize: 13, margin: 0 }}>
           {erased === 'all'
             ? 'Deleted from this phone, and taken off the room screen.'
-            : 'Deleted from this phone. Room removal was not confirmed. A previous result may remain visible for up to 12 hours.'}
+            : <>Personal data cleared. Room removal was not confirmed. Your random ID was kept so you can <Link to="/privacy">retry room removal</Link>.</>}
         </p>
       )}
 
@@ -123,13 +136,17 @@ export function Landing() {
             <NameField value={name} onChange={setName} />
             <Toggle
               checked={share}
-              onChange={(on) => {
+              onChange={async (on) => {
+                if (on && load().roomRemovalPending) { navigate('/privacy'); return }
+                if (on && !window.confirm('Share your nickname and live activity with anyone who opens the public room? This lasts until reload. Choose individual tickets separately in Privacy.')) return
+                setRemovalUnconfirmed(false)
                 setShare(setRoomSharing(on).shareToRoom)
-                if (!on) void withdrawFromRoom(stored.deviceId)
+                if (!on) setRemovalUnconfirmed(!await withdrawFromRoom(stored.deviceId))
               }}
               label="Show me on the room screen"
               hint="Off until chosen. Reloading turns it off. Your name and each ticket's word and score, never your drinks."
             />
+            {removalUnconfirmed && !share && <p role="status">Removal unconfirmed. <Link to="/privacy">Retry room removal</Link>.</p>}
             <Key type="submit">Start</Key>
           </form>
           <Key quiet onClick={quickDemo}>

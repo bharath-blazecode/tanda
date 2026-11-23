@@ -1,25 +1,33 @@
 // Privacy and data. What this app keeps on the phone, what leaves it and when, and the switches for
 // each. Every sentence here was checked against the code paths named in
 // docs/portfolio/THREAT-MODEL.md; change them together.
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
-import { withdrawFromRoom } from '../../api/room'
-import { load, ROOM_REVOKED, setRoomSharing, update } from '../../store/local'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router'
+import { postRoomResult, withdrawFromRoom } from '../../api/room'
+import { finishRoomRemoval, load, ROOM_REVOKED, setRoomSharing, update } from '../../store/local'
 import { Housing, Key, Label, Plate, Rows, Sheet, Toggle } from '../../ui'
 import { printedAt } from '../result/format'
+import { resultToPost } from '../../room-reporter-logic'
 import { eraseEverything } from './erase'
 
 export function Privacy() {
   const navigate = useNavigate()
   const [stored, setStored] = useState(load)
-  const [retryRemoval, setRetryRemoval] = useState(false)
+  const [busy, setBusy] = useState<'send' | 'remove' | null>(null)
+  const [sentAt, setSentAt] = useState<number | null>(null)
+  const operation = useRef(0)
+  const preview = resultToPost(stored, sentAt, Date.now())
   const [roomNote, setRoomNote] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [eraseError, setEraseError] = useState('')
   const [erasing, setErasing] = useState(false)
 
   useEffect(() => {
-    const refresh = () => setStored(load())
+    const refresh = () => {
+      setStored(load())
+      setRoomNote('')
+      setSentAt(null)
+    }
     window.addEventListener(ROOM_REVOKED, refresh)
     window.addEventListener('pageshow', refresh)
     window.addEventListener('storage', refresh)
@@ -31,7 +39,9 @@ export function Privacy() {
   }, [])
 
   const setSharing = async (on: boolean) => {
-    setRetryRemoval(false)
+    const id = ++operation.current
+    setSentAt(null)
+    setBusy(on ? null : 'remove')
     const next = setRoomSharing(on)
     setStored(next)
     if (on) {
@@ -40,8 +50,10 @@ export function Privacy() {
     }
     setRoomNote('Taking you off the room screen.')
     const ok = await withdrawFromRoom(stored.deviceId)
+    if (id !== operation.current) return
+    setBusy(null)
     if (load().shareToRoom) return
-    setRetryRemoval(!ok)
+    if (ok) setStored(finishRoomRemoval(stored.deviceId))
     setRoomNote(
       ok
         ? 'Removed from the room screen.'
@@ -49,12 +61,33 @@ export function Privacy() {
     )
   }
 
+  const shareTicket = async () => {
+    const current = load()
+    const body = resultToPost(current, sentAt, Date.now())
+    // The person agreed to the displayed fields. A change in another tab requires a fresh preview.
+    if (!body || !preview || current.lastResult?.run.at !== stored.lastResult?.run.at ||
+        body.deviceId !== preview.deviceId || body.nickname !== preview.nickname || body.score !== preview.score ||
+        body.verdict !== preview.verdict || body.mode !== preview.mode) {
+      setStored(current)
+      setRoomNote('The ticket or sharing permission changed. Review the current details.')
+      return
+    }
+    const id = ++operation.current
+    setBusy('send')
+    const ok = await postRoomResult(body)
+    if (id !== operation.current) return
+    setBusy(null)
+    if (!load().shareToRoom) return
+    if (ok) setSentAt(current.lastResult!.run.at)
+    setRoomNote(ok ? 'Ticket request sent. The board may skip repeat requests.' : 'Ticket sharing was not confirmed. You can try again.')
+  }
+
   const erase = async () => {
     setErasing(true)
-    const { roomWithdrawn, cleared } = await eraseEverything(stored.deviceId)
+    const { roomWithdrawn, cleared, error } = await eraseEverything(stored.deviceId)
     if (!cleared) {
       setErasing(false)
-      setEraseError('Browser storage could not be cleared. Use your browser’s site data settings.')
+      setEraseError(error ?? 'Browser storage could not be cleared. Use your browser’s site data settings.')
       return
     }
     navigate('/', { replace: true, state: { erased: roomWithdrawn ? 'all' : 'local' } })
@@ -79,8 +112,8 @@ export function Privacy() {
           ID lets the server limit requests. Anyone with this ID can update or withdraw this browser&rsquo;s room entry. Keep this ID private.
         </p>
         <p className="k-small">
-          Motion and camera readings are worked out here and never uploaded. Drink names and notes never leave the
-          phone.
+          Motion and camera readings are worked out here. The room receives no raw samples or drink log. A receipt
+          you save or share includes the details you select.
         </p>
       </Sheet>
 
@@ -89,11 +122,18 @@ export function Privacy() {
         <Toggle
           paper
           checked={stored.shareToRoom}
+          disabled={stored.roomRemovalPending || busy === 'remove'}
           onChange={(on) => void setSharing(on)}
           label="Show me on the room screen"
-          hint="Sharing stops on reload. Sends your name, your current activity, and each ticket's word and score. Never your drinks, measurements or baseline. A result stays on the board for up to 12 hours, your live row for 45 seconds. Turning this off requests removal of both."
+          hint="Anyone can watch the public room. Turning this on shares your nickname and live activity until reload. The event can substitute a generated name. Choose each ticket separately. Activity expires after 45 seconds and tickets after 12 hours. Turning this off requests removal of both."
         />
-        {retryRemoval && <Key quiet onClick={() => void setSharing(false)}>Retry room removal</Key>}
+        {preview && <>
+          <p className="k-small">Share this ticket as {preview.nickname}: {preview.verdict}, score {preview.score}, {preview.mode === 'demo' ? 'simulated' : 'personal reading'}. Your drink log and measurements stay private.</p>
+          <Key quiet style={{ color: 'var(--ink)' }} disabled={busy !== null} onClick={() => void shareTicket()}>Share this ticket to the room</Key>
+        </>}
+        {stored.roomRemovalPending && <p className="k-small">Your personal data was cleared. Retry the previous room removal to retire its random ID.</p>}
+        {!stored.shareToRoom && <Key quiet style={{ color: 'var(--ink)' }} disabled={busy === 'remove'} onClick={() => void setSharing(false)}>Remove any previous room entry</Key>}
+        <Link to="/room" className="k-small">View public room</Link>
         {roomNote && (
           <p className="k-small" role="status">
             {roomNote}

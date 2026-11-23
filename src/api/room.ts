@@ -6,39 +6,13 @@ import {
   type RoomWithdrawRequest,
 } from '../../shared/contracts'
 
-export async function postRoomResult(body: RoomResultRequest): Promise<void> {
-  try {
-    await fetch('/api/room/result', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  } catch {
-    // A failed post is dropped.
-  }
-}
+// A withdrawal from this document follows reports it already sent. Each write has a
+// deadline so an unavailable network cannot leave the removal button waiting indefinitely.
+const pendingReports = new Set<Promise<boolean>>()
 
-// The "I am here, doing this" heartbeat. A missed one only means the board catches up 15 s later.
-export async function postRoomPresence(body: RoomPresenceRequest): Promise<void> {
+async function postJson(path: string, body: RoomResultRequest | RoomPresenceRequest | RoomWithdrawRequest, timeoutMs: number) {
   try {
-    await fetch('/api/room/presence', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  } catch {
-    // Dropped.
-  }
-}
-
-/**
- * Takes this device off the board and out of the live list. Resolves true only when the server
- * confirmed it; the caller says so honestly when it could not be reached.
- */
-export async function withdrawFromRoom(deviceId: string, timeoutMs = 4000): Promise<boolean> {
-  const body: RoomWithdrawRequest = { deviceId }
-  try {
-    const res = await fetch('/api/room/withdraw', {
+    const res = await fetch(path, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -50,9 +24,32 @@ export async function withdrawFromRoom(deviceId: string, timeoutMs = 4000): Prom
   }
 }
 
+async function report(path: string, body: RoomResultRequest | RoomPresenceRequest) {
+  const pending = postJson(path, body, 4000)
+  pendingReports.add(pending)
+  try { return await pending } finally { pendingReports.delete(pending) }
+}
+
+export function postRoomResult(body: RoomResultRequest) {
+  return report('/api/room/result', body)
+}
+
+export function postRoomPresence(body: RoomPresenceRequest) {
+  return report('/api/room/presence', body)
+}
+
+/**
+ * Takes this device off the board and out of the live list. Resolves true only when the server
+ * confirmed it; the caller says so honestly when it could not be reached.
+ */
+export async function withdrawFromRoom(deviceId: string, timeoutMs = 4000): Promise<boolean> {
+  await Promise.all([...pendingReports])
+  return postJson('/api/room/withdraw', { deviceId }, timeoutMs)
+}
+
 export async function fetchRoom(): Promise<RoomState | null> {
   try {
-    const res = await fetch('/api/room')
+    const res = await fetch('/api/room', { cache: 'no-store', signal: AbortSignal.timeout(5000) })
     if (!res.ok) return null
     const parsed = RoomState.safeParse(await res.json())
     return parsed.success ? parsed.data : null
