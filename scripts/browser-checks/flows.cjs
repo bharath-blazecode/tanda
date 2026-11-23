@@ -165,7 +165,7 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     await page.goto(BASE + '/');
     await page.evaluate(() => {
       const s = { v: 2, deviceId: 'aaaaaaaa-0000-4000-8000-000000000009', nickname: 'Calm Emu', shareToRoom: false, aiCommentary: true, drinks: [],
-        baseline: { run: { stand: { swayRms: 0.6, swayLateralRms: 0.3, hz: 60, valid: true, source: 'gyroscope', captureSeconds: 10 }, at: Date.now() - 3600000 }, clean: true, checks: 2 } };
+        baseline: { run: { stand: { swayRms: 0.6, swayLateralRms: 0.3, hz: 60, valid: true, source: 'gyroscope', protocolVersion: 2, captureSeconds: 10 }, at: Date.now() - 3600000 }, clean: true, checks: 2 } };
       localStorage.setItem('bc:v2', JSON.stringify(s));
     });
     await page.goto(BASE + '/setup');
