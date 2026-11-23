@@ -107,23 +107,22 @@ describe('createLimiter', () => {
 describe('clientIp', () => {
   const headers = (h: Record<string, string>) => (name: string) => h[name]
 
-  it('prefers CF-Connecting-IP', () => {
-    expect(clientIp(headers({ 'CF-Connecting-IP': '1.1.1.1', 'X-Forwarded-For': '2.2.2.2' }))).toBe('1.1.1.1')
+  const trusted = ['192.0.2.1', '192.0.2.2']
+  it('uses the socket peer unless its address is explicitly trusted', () => {
+    const h = headers({ 'CF-Connecting-IP': '198.51.100.1', 'X-Forwarded-For': '198.51.100.2' })
+    expect(clientIp(h)).toBe('unknown')
+    expect(clientIp(h, '203.0.113.1', trusted)).toBe('203.0.113.1')
   })
-  it('falls back to the first X-Forwarded-For entry', () => {
-    expect(clientIp(headers({ 'X-Forwarded-For': ' 2.2.2.2, 3.3.3.3' }))).toBe('2.2.2.2')
+  it('selects the closest untrusted hop after configured proxies', () => {
+    const h = headers({ 'X-Forwarded-For': '203.0.113.3, 198.51.100.8, 192.0.2.2' })
+    expect(clientIp(h, '::ffff:192.0.2.1', trusted)).toBe('198.51.100.8')
   })
-  it('falls back to unknown', () => {
-    expect(clientIp(headers({}))).toBe('unknown')
+  it('uses a single peer bucket for missing or malformed forwarded identities', () => {
+    for (const chain of ['', '999.1.1.1', '0:0:0:0:::', '198.51.100.1, invalid']) {
+      expect(clientIp(headers({ 'X-Forwarded-For': chain }), '192.0.2.1', trusted)).toBe('192.0.2.1')
+    }
   })
-  it('accepts IPv6 addresses', () => {
-    expect(clientIp(headers({ 'CF-Connecting-IP': '2001:db8::1' }))).toBe('2001:db8::1')
-    expect(clientIp(headers({ 'X-Forwarded-For': '::ffff:192.0.2.1, 10.0.0.1' }))).toBe('::ffff:192.0.2.1')
-  })
-  it('treats a spoofed value that is not an IP as unknown', () => {
-    expect(clientIp(headers({ 'CF-Connecting-IP': 'random-key-1234' }))).toBe('unknown')
-    expect(clientIp(headers({ 'X-Forwarded-For': 'evil<script>, 1.1.1.1' }))).toBe('unknown')
-    expect(clientIp(headers({ 'X-Forwarded-For': '1'.repeat(46) }))).toBe('unknown')
-    expect(clientIp(headers({ 'CF-Connecting-IP': 'not an ip', 'X-Forwarded-For': '2.2.2.2' }))).toBe('unknown')
+  it('canonicalizes equivalent IPv6 addresses', () => {
+    expect(clientIp(headers({}), '2001:0DB8:0:0::1')).toBe('2001:db8::1')
   })
 })

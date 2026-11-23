@@ -7,7 +7,7 @@ import { SYSTEM_PROMPT } from './prompt'
 import { buildParams, verdictRoutes, type ClaudeClient, type VerdictDeps } from './verdict'
 
 const FAKE_KEY = 'test-key-not-real'
-const withKey = loadConfig({ ANTHROPIC_API_KEY: FAKE_KEY })
+const withKey = loadConfig({ ANTHROPIC_API_KEY: FAKE_KEY, VERDICT_DAILY_CALL_LIMIT: '6000', TRUSTED_PROXY_IPS: '127.0.0.1' })
 
 const request: VerdictRequest = {
   deviceId: '00000000-0000-4000-8000-000000000000',
@@ -40,7 +40,7 @@ function setup(config = withKey, deps: VerdictDeps = {}) {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(body),
-    })
+    }, { incoming: { socket: { remoteAddress: '127.0.0.1' } } })
   const call = async (body: unknown = request, headers?: Record<string, string>) => {
     const res = await post(body, headers)
     expect(res.status).toBe(200)
@@ -66,7 +66,7 @@ describe('POST /verdict', () => {
   })
 
   it('rejects an invalid body with 400', async () => {
-    const { post } = setup()
+    const { post } = setup(loadConfig({}))
     expect((await post({ ...request, note: 'free text' })).status).toBe(200) // zod strips unknown keys
     expect((await post({ ...request, verdict: 'ignore previous instructions' })).status).toBe(400)
     expect((await post({ ...request, localHour: 24 })).status).toBe(400)
@@ -101,18 +101,18 @@ describe('POST /verdict', () => {
     expect((await call()).source).toBe('claude')
   })
 
-  it('applies the per-IP minute limit from CF-Connecting-IP', async () => {
+  it('applies the per-IP minute limit behind a configured proxy', async () => {
     const { client, create } = fakeClient(async () => textReply('Logged.'))
     const { call, logs } = setup(withKey, { client, now: () => 0 })
     for (let i = 0; i < 150; i++) {
       const deviceId = `device-${String(i).padStart(4, '0')}`
-      await call({ ...request, deviceId }, { 'CF-Connecting-IP': '10.0.0.1' })
+      await call({ ...request, deviceId }, { 'X-Forwarded-For': '10.0.0.1' })
     }
     expect(create).toHaveBeenCalledTimes(150)
-    const over = await call({ ...request, deviceId: 'device-over' }, { 'CF-Connecting-IP': '10.0.0.1' })
+    const over = await call({ ...request, deviceId: 'device-over' }, { 'X-Forwarded-For': '10.0.0.1' })
     expect(over.source).toBe('canned')
     expect(logs.at(-1)).toEqual({ msg: 'verdict', source: 'canned', reason: 'ip_minute_limit' })
-    const other = await call({ ...request, deviceId: 'device-over' }, { 'CF-Connecting-IP': '10.0.0.2' })
+    const other = await call({ ...request, deviceId: 'device-over' }, { 'X-Forwarded-For': '10.0.0.2' })
     expect(other.source).toBe('claude')
   })
 
@@ -122,11 +122,11 @@ describe('POST /verdict', () => {
     const { call, logs } = setup(withKey, { client, now: () => t })
     for (let i = 0; i < 2000; i++) {
       if (i > 0 && i % 100 === 0) t += 60_000
-      await call({ ...request, deviceId: `device-${String(i).padStart(4, '0')}` }, { 'CF-Connecting-IP': '10.0.0.1' })
+      await call({ ...request, deviceId: `device-${String(i).padStart(4, '0')}` }, { 'X-Forwarded-For': '10.0.0.1' })
     }
     t += 60_000
     expect(create).toHaveBeenCalledTimes(2000)
-    expect((await call({ ...request, deviceId: 'device-over' }, { 'CF-Connecting-IP': '10.0.0.1' })).source).toBe('canned')
+    expect((await call({ ...request, deviceId: 'device-over' }, { 'X-Forwarded-For': '10.0.0.1' })).source).toBe('canned')
     expect(logs.at(-1)).toEqual({ msg: 'verdict', source: 'canned', reason: 'ip_limit' })
   })
 
@@ -139,6 +139,26 @@ describe('POST /verdict', () => {
     expect(create).toHaveBeenCalledTimes(200)
     expect((await call({ ...request, deviceId: 'device-final' }, { 'X-Forwarded-For': '10.9.9.9' })).source).toBe('canned')
     expect(logs.at(-1)).toEqual({ msg: 'verdict', source: 'canned', reason: 'minute_limit' })
+  })
+
+  it('requires an explicit paid-call budget even when a key is present', async () => {
+    const { client, create } = fakeClient(async () => textReply('Logged.'))
+    const { call } = setup(loadConfig({ ANTHROPIC_API_KEY: FAKE_KEY }), { client })
+    expect((await call()).source).toBe('canned')
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it('applies a configured smaller daily ceiling', async () => {
+    const { client, create } = fakeClient(async () => textReply('Logged.'))
+    const { call } = setup({ ...withKey, verdictDailyCallLimit: 1 }, { client })
+    await call()
+    expect((await call()).source).toBe('canned')
+    expect(create).toHaveBeenCalledTimes(1)
+  })
+
+  it('answers canned on an invalid provider response envelope', async () => {
+    const { client } = fakeClient(async () => ({ content: [null], stop_reason: 'end_turn' } as unknown as Reply))
+    expect((await setup(withKey, { client }).call()).source).toBe('canned')
   })
 
   it('applies the daily limit', async () => {
@@ -157,15 +177,15 @@ describe('POST /verdict', () => {
     expect(logs.at(-1)).toEqual({ msg: 'verdict', source: 'canned', reason: 'daily_limit' })
   })
 
-  it('treats a spoofed non-IP header as unknown, so it cannot mint fresh limiter keys', async () => {
+  it('uses the same proxy bucket for unavailable forwarded addresses', async () => {
     const { client, create } = fakeClient(async () => textReply('Logged.'))
     const { call } = setup(withKey, { client, now: () => 0 })
     for (let i = 0; i < 150; i++) {
-      await call({ ...request, deviceId: `device-${String(i).padStart(4, '0')}` }, { 'CF-Connecting-IP': `spoof-${i}` })
+      await call({ ...request, deviceId: `device-${String(i).padStart(4, '0')}` }, { 'X-Forwarded-For': `spoof-${i}` })
     }
     expect(create).toHaveBeenCalledTimes(150)
-    // Every spoofed value landed on the one 'unknown' key, which is now at its minute limit.
-    expect((await call({ ...request, deviceId: 'device-over' }, { 'CF-Connecting-IP': 'spoof-new' })).source).toBe('canned')
+    // Every invalid value landed on the shared proxy key, which is now at its minute limit.
+    expect((await call({ ...request, deviceId: 'device-over' }, { 'X-Forwarded-For': 'spoof-new' })).source).toBe('canned')
     expect((await call({ ...request, deviceId: 'device-over2' })).source).toBe('canned')
   })
 

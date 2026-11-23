@@ -27,3 +27,19 @@ describe('loadConfig ROOM_NAMES', () => {
     }
   })
 })
+
+describe('proxy and paid-call policies', () => {
+  it('defaults to zero paid calls and no trusted peers', () => {
+    expect(loadConfig({})).toMatchObject({ verdictDailyCallLimit: 0, trustedProxyIps: [] })
+  })
+  it('canonicalizes configured peers and rejects ambiguous network rules', () => {
+    expect(loadConfig({ TRUSTED_PROXY_IPS: '192.0.2.2, 2001:0DB8::1' }).trustedProxyIps)
+      .toEqual(['192.0.2.2', '2001:db8::1'])
+    expect(() => loadConfig({ TRUSTED_PROXY_IPS: '0.0.0.0/0' })).toThrow()
+  })
+  it('rejects quotas outside the original global ceiling', () => {
+    for (const invalid of ['-1', '6001', '1.5']) {
+      expect(() => loadConfig({ VERDICT_DAILY_CALL_LIMIT: invalid })).toThrow()
+    }
+  })
+})

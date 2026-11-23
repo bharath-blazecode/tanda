@@ -10,7 +10,8 @@ import { Hono } from 'hono'
 import { VerdictRequest, type VerdictResponse } from '../shared/contracts'
 import { STEADY_WITH_ALCOHOL_LINES, cannedLine } from '../src/engine/canned'
 import type { Config } from './config'
-import { clientIp, createLimiter, type Limiter } from './limits'
+import { requestClientIp } from './client-ip'
+import { LIMITS, createLimiter, type Limiter } from './limits'
 import { SYSTEM_PROMPT, buildUserMessage, filterLine } from './prompt'
 
 // Well under the client's 4 s so the phone gets our answer, even a canned one, on slow venue wifi.
@@ -92,9 +93,12 @@ async function askClaude(client: ClaudeClient, model: string, req: VerdictReques
   }
 
   // A refusal or a reply cut off at max_tokens is not a line we want on a ticket.
+  if (!reply || !Array.isArray(reply.content)) return { reason: 'invalid_reply' }
   if (reply.stop_reason !== 'end_turn' && reply.stop_reason !== 'stop_sequence') {
-    return { reason: `stop_${reply.stop_reason ?? 'none'}` }
+    return { reason: 'incomplete_reply' }
   }
+  if (reply.content.some(block => !block || block.type !== 'text' || typeof block.text !== 'string'))
+    return { reason: 'invalid_reply' }
   const text = reply.content
     .map((block) => (block.type === 'text' ? block.text : ''))
     .join(' ')
@@ -104,7 +108,7 @@ async function askClaude(client: ClaudeClient, model: string, req: VerdictReques
 
 export function verdictRoutes(config: Config, deps: VerdictDeps = {}) {
   const routes = new Hono()
-  const limiter: Limiter = createLimiter(deps.now ?? Date.now)
+  const limiter: Limiter = createLimiter(deps.now ?? Date.now, { ...LIMITS, perDay: config.verdictDailyCallLimit })
   const timeoutMs = deps.timeoutMs ?? CLAUDE_TIMEOUT_MS
   const random = deps.random ?? Math.random
   const log = deps.log ?? ((entry) => console.log(JSON.stringify(entry)))
@@ -138,7 +142,7 @@ export function verdictRoutes(config: Config, deps: VerdictDeps = {}) {
     if (!config.verdictEnabled) return canned('disabled')
     if (!apiKey || !client) return canned('no_key')
 
-    const allowed = limiter.take(req.deviceId, clientIp((name) => c.req.header(name)))
+    const allowed = limiter.take(req.deviceId, requestClientIp(c, config.trustedProxyIps))
     if (!allowed.ok) return canned(allowed.reason)
 
     const outcome = await askClaude(client, config.verdictModel, req, timeoutMs)
