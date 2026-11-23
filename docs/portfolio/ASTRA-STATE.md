@@ -96,3 +96,8 @@ Branch `feat/phase-e-creative` starts at the PR #60 merge `01ee82ddf8a1552a8432e
 Independent comparison found identical rendered receipt text, screenshots and downloaded PNGs for the protected fixture on two viewports and matching normal-motion frames for all four preview verdicts. TypeScript, 686 unit tests, production build, creative checks, PNG/share and synthetic pulse checks passed. The aggregate browser run encountered the known synthetic motion timeout, which also occurred on the clean base. The isolated candidate personal flow passed 15/15. See the [Phase E design and engineering report](PHASE-E.md) for the exact checks, measured sizes, evidence and remaining release gates.
 
 Next action is owner draft review and CI verification. Keep the physical-phone pulse/motion, accessibility and native sharing gates. Owner approval is required before merging or deploying. Phase F social features and Phase G commercial readiness remain separate.
+
+
+### Phase E owner-requested visual correction · 24 November 2026
+
+The initial Phase E feed-paper illustration was not accepted. Removed `PaperRecorder.tsx` and `recorder.css`, restored `src/screens/landing/index.tsx` byte-for-byte to merged Phase D, and replaced the recorder browser test with original Landing screenshot parity against main. The animated receipt regression comparator remains. The 2/5/8-hour caffeine scenario selector is unchanged. Earlier feed screenshots are archival only and do not represent the proposed product. No PR or merge is approved. Recheck CI on the refined branch and ask the owner whether this visual direction is accepted before opening the draft PR.
