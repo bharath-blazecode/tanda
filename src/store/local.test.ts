@@ -50,7 +50,7 @@ describe('a fresh record', () => {
     expect(value.drinks).toEqual([])
     expect(value.baseline).toBeUndefined()
     expect(value.shareToRoom).toBe(false)
-    expect(value.aiCommentary).toBe(true)
+    expect(value.aiCommentary).toBe(false)
     expect(isValidNickname(value.nickname)).toBe(true)
   })
 

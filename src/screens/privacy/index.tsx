@@ -1,10 +1,10 @@
 // Privacy and data. What this app keeps on the phone, what leaves it and when, and the switches for
 // each. Every sentence here was checked against the code paths named in
 // docs/portfolio/THREAT-MODEL.md; change them together.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { withdrawFromRoom } from '../../api/room'
-import { load, setRoomSharing, update } from '../../store/local'
+import { load, ROOM_REVOKED, setRoomSharing, update } from '../../store/local'
 import { Housing, Key, Label, Plate, Rows, Sheet, Toggle } from '../../ui'
 import { printedAt } from '../result/format'
 import { eraseEverything } from './erase'
@@ -12,12 +12,26 @@ import { eraseEverything } from './erase'
 export function Privacy() {
   const navigate = useNavigate()
   const [stored, setStored] = useState(load)
+  const [retryRemoval, setRetryRemoval] = useState(false)
   const [roomNote, setRoomNote] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [eraseError, setEraseError] = useState('')
   const [erasing, setErasing] = useState(false)
 
+  useEffect(() => {
+    const refresh = () => setStored(load())
+    window.addEventListener(ROOM_REVOKED, refresh)
+    window.addEventListener('pageshow', refresh)
+    window.addEventListener('storage', refresh)
+    return () => {
+      window.removeEventListener(ROOM_REVOKED, refresh)
+      window.removeEventListener('pageshow', refresh)
+      window.removeEventListener('storage', refresh)
+    }
+  }, [])
+
   const setSharing = async (on: boolean) => {
+    setRetryRemoval(false)
     const next = setRoomSharing(on)
     setStored(next)
     if (on) {
@@ -27,6 +41,7 @@ export function Privacy() {
     setRoomNote('Taking you off the room screen.')
     const ok = await withdrawFromRoom(stored.deviceId)
     if (load().shareToRoom) return
+    setRetryRemoval(!ok)
     setRoomNote(
       ok
         ? 'Removed from the room screen.'
@@ -78,6 +93,7 @@ export function Privacy() {
           label="Show me on the room screen"
           hint="Sharing stops on reload. Sends your name, your current activity, and each ticket's word and score. Never your drinks, measurements or baseline. A result stays on the board for up to 12 hours, your live row for 45 seconds. Turning this off requests removal of both."
         />
+        {retryRemoval && <Key quiet onClick={() => void setSharing(false)}>Retry room removal</Key>}
         {roomNote && (
           <p className="k-small" role="status">
             {roomNote}

@@ -251,7 +251,10 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
       Storage.prototype.setItem = () => { throw new DOMException('Full', 'QuotaExceededError'); };
       Storage.prototype.removeItem = () => { throw new DOMException('Denied', 'SecurityError'); };
     });
+    await page.route('**/api/room/withdraw', route => route.fulfill({ status: 503 }), { times: 1 });
     await page.getByRole('checkbox', { name: 'Show me on the room screen' }).uncheck();
+    await page.getByRole('button', { name: 'Retry room removal' }).click();
+    check('an unconfirmed withdrawal can be retried with sharing off', !(await toggle.isChecked()));
     await page.getByText('Removed from the room screen.').waitFor({ timeout: 5000 });
     check('turning sharing off sends a withdrawal', requests.some((r) => r.url === '/api/room/withdraw'));
     state = await board(page);
@@ -268,6 +271,18 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     check('reload with stale consent suppresses presence and result', reports() === beforeReload && !(await toggle.isChecked()));
     // 3. Share again, then Start over from Landing: withdraw first, then local data gone.
     await page.getByRole('checkbox', { name: 'Show me on the room screen' }).check();
+    const other = await ctx.newPage();
+    await other.goto(BASE + '/privacy');
+    await other.evaluate(() => {
+      Storage.prototype.removeItem = () => { throw new DOMException('Denied', 'SecurityError'); };
+      Storage.prototype.setItem = () => { throw new DOMException('Denied', 'SecurityError'); };
+    });
+    await other.getByRole('button', { name: 'Delete everything on this phone' }).click();
+    await other.getByRole('button', { name: 'Delete everything' }).click();
+    await other.getByText(/Browser storage could not be cleared/).waitFor();
+    await page.waitForFunction(() => !document.querySelector('input[type=checkbox]').checked);
+    check('open tab honors withdrawal even when the other tab cannot update storage', !(await toggle.isChecked()));
+    await other.close();
     await page.goto(BASE + '/');
     await page.getByRole('button', { name: 'Start over' }).click();
     await page.getByRole('button', { name: 'Delete everything' }).click();
