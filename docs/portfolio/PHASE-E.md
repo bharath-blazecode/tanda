@@ -1,3 +1,11 @@
+# Phase E · Refined creative experience
+
+> **Owner-requested visual revision (24 November 2026).** The initial hand-fed BC-2 recorder was rejected because its human-like instruction mark looked wrong and the original clean Landing was preferred. The entire **Feed paper** experience (illustration, 3D deck, animation and button) has been removed, with Landing restored byte-for-byte from merged Phase D. The caffeine selector remains; existing thermal receipt wording, layout, animations, save/share and alcohol safety are untouched. The original prototype screenshots below are *historical design review evidence*, not the current shipping landing UI. No PR has been created or deployment authorised.
+
+The remaining Phase E enhancement is the optional **2 h / 5 h / 8 h caffeine scenario selector**, which changes the illustrative curve and bedtime readout together using existing modelling scenarios, not new measurements. The five-hour model remains the default. The rest of the report below describes the initial candidate for context; references to the paper feeder and its test results are **historical and not part of this revised implementation**. Verify the updated branch and exact landing-parity tests before any PR or merge.
+
+---
+
 # Phase E · The hand-fed BC-2
 
 The earliest place a visitor meets Kachka is a sheet of graph paper. On the PR #60 build that sheet explained the tests in words. The result screen already had a much richer physical vocabulary: a printing ticket, ink stamp, animated bird and tear-off stub. Phase E brings a working part of that instrument to the first visit and gives the existing caffeine plotter a physical selector.
