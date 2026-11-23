@@ -53,9 +53,9 @@ export function CaffeineCard({
   const curve = s.known ? caffeineCurve(recent, dayStartAt, bedtime + 3_600_000, 10) : []
 
   const rows: [string, string][] = [
-    ['Now', approximateMg(s.now.mg)],
+    ['Now, five-hour model', approximateMg(s.now.mg)],
     ['Now, scenarios', range(s.now.low, s.now.high)],
-    [`At ${clock(bedtime)}`, approximateMg(s.bedtime.mg)],
+    [`At ${clock(bedtime)}, five-hour model`, approximateMg(s.bedtime.mg)],
     [`At ${clock(bedtime)}, scenarios`, range(s.bedtime.low, s.bedtime.high)],
   ]
   if (s.carriedOverMg >= 1) rows.push(['From before 4am', approximateMg(s.carriedOverMg)])
@@ -76,7 +76,7 @@ export function CaffeineCard({
 
   return (
     <>
-      {s.known > 0 && <CaffeineChart points={curve} bedtime={bedtime} atBedtimeMg={s.bedtime.mg} />}
+      {s.known > 0 && <CaffeineChart points={curve} bedtime={bedtime} bedtimeScenarios={s.bedtime} />}
       <Sheet>
         <Label paper>{s.unknown && s.known ? 'Partial caffeine estimate' : 'Caffeine estimate'}</Label>
         {s.known > 0 ? <Rows items={rows} /> : <p>Amount unknown. Add a caffeine amount to a drink in your log to see an estimate.</p>}
