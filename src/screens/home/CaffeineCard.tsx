@@ -18,6 +18,7 @@ import { CaffeineChart, Field, Label, Rows, Sheet } from '../../ui'
 
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 const mg = (n: number) => n > 0 && n < 1 ? 'under 1 mg' : `${Math.round(n)} mg`
+const approximateMg = (n: number) => n > 0 && n < 1 ? 'under 1 mg' : `about ${mg(n)}`
 const sourceName: Record<AmountOrigin, string> = { label: 'Label', estimate: 'Your estimate', default: 'App default' }
 const range = (low: number, high: number) => `${mg(low)} to ${mg(high)}`
 
@@ -52,12 +53,12 @@ export function CaffeineCard({
   const curve = s.known ? caffeineCurve(recent, dayStartAt, bedtime + 3_600_000, 10) : []
 
   const rows: [string, string][] = [
-    ['Now', `about ${mg(s.now.mg)}`],
+    ['Now', approximateMg(s.now.mg)],
     ['Now, scenarios', range(s.now.low, s.now.high)],
-    [`At ${clock(bedtime)}`, `about ${mg(s.bedtime.mg)}`],
+    [`At ${clock(bedtime)}`, approximateMg(s.bedtime.mg)],
     [`At ${clock(bedtime)}, scenarios`, range(s.bedtime.low, s.bedtime.high)],
   ]
-  if (s.carriedOverMg >= 1) rows.push(['From before 4am', `about ${mg(s.carriedOverMg)}`])
+  if (s.carriedOverMg >= 1) rows.push(['From before 4am', approximateMg(s.carriedOverMg)])
 
   const example = s.bedtimeExample
   const sourceRows: [string, string][] = []

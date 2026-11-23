@@ -129,7 +129,7 @@ export function Home() {
         ))}
         {earlier.length > 0 && (
           <details>
-            <summary className="k-small">Before 4am, still in the caffeine estimate ({earlier.length})</summary>
+            <summary className="k-small">Before 4am, caffeine entries ({earlier.length})</summary>
             <Entries drinks={earlier} onEdit={edit} />
           </details>
         )}

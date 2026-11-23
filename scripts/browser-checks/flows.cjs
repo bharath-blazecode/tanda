@@ -311,7 +311,7 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     });
     await page.goto(BASE + '/home');
     let home = await page.locator('body').innerText();
-    check('carry-over: last night\'s coffee is in the estimate', /From before 4am/i.test(home) && /Before 4am, still in the caffeine estimate/i.test(home));
+    check('carry-over: last night\'s coffee is in the estimate', /From before 4am/i.test(home) && /Before 4am, caffeine entries/i.test(home));
     check('legacy beer shows as a count, not standard drinks', /count only/i.test(home) && /No label detail, so no standard-drink count/i.test(home));
     check('safety line shown with a beer logged', /Not a driving test/.test(home));
     await shot(page, 'flow-home-carryover');
