@@ -21,7 +21,6 @@ export type RoomStoreOptions = {
 }
 
 export const FEED_SIZE = 12
-export const TOP_SIZE = 5
 export const DEFAULT_MAX_ENTRIES = 2000
 export const DEFAULT_MAX_AGE_MS = 12 * 60 * 60 * 1000
 // Clock skew between containers is seconds; an entry further ahead was planted, and would sit on top
@@ -88,22 +87,15 @@ export function createRoomStore({
       const mix = { steady: 0, wired: 0, tipsy: 0, wobbly: 0 }
       for (const { entry } of all) mix[entry.verdict]++
 
-      // Real readings rank steadiest first; never by drift, which would reward drinking (D22).
-      // Only Steady verdicts qualify: a Tipsy reading under "steadiest" would read as an all-clear.
-      const real = all
-        .filter((s) => s.entry.mode === 'real' && s.entry.verdict === 'steady')
-        .sort((a, b) => b.entry.score - a.entry.score || newestFirst(a, b))
-      // The demo list is for people the handicap actually moved, so Steady readings stay off it.
-      const demo = all
-        .filter((s) => s.entry.mode === 'demo' && s.entry.verdict !== 'steady')
-        .sort((a, b) => a.entry.score - b.entry.score || newestFirst(a, b))
-      const pick = (list: Stored[], size: number) => list.slice(0, size).map((s) => ({ ...s.entry }))
-
       return {
         total: all.length,
         mix,
-        feed: pick(all.sort(newestFirst), FEED_SIZE),
-        top: { real: pick(real, TOP_SIZE), demo: pick(demo, TOP_SIZE) },
+        feed: all.sort(newestFirst).slice(0, FEED_SIZE).map(({ entry }) => {
+          const { nickname, verdict, mode, score, at } = entry
+          return { nickname, verdict, mode, score, at }
+        }),
+        // Keep the response readable by older clients without publishing a ranking.
+        top: { real: [], demo: [] },
         updatedAt: all.length === 0 || lastChange === null ? now : lastChange,
       }
     },

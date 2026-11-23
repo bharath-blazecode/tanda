@@ -175,8 +175,7 @@ describe('mirrored room store', () => {
     const state = RoomState.parse(room.store.snapshot(T0 + 10))
     expect(state.total).toBe(2)
     expect(state.feed.map((e) => e.nickname)).toEqual(['Brisk Emu', 'Calm Ibis'])
-    expect(state.top.real.map((e) => e.score)).toEqual([90])
-    expect(state.top.demo.map((e) => e.score)).toEqual([70])
+    expect(state.top).toEqual({ real: [], demo: [] })
   })
 
   it('drops junk values from the mirror and keeps the good ones', async () => {
@@ -380,7 +379,7 @@ describe('GET /api/room with a mirrored store', () => {
     await room.hydrate()
     const app = createApp(loadConfig({}), { store: room.store })
     const deviceId = 'secret-device-id-123456'
-    const body: RoomResultRequest = { deviceId, nickname: 'Calm Quokka', verdict: 'steady', score: 88, mode: 'real' }
+    const body: RoomResultRequest = { intent: 'share-ticket', deviceId, nickname: 'Calm Quokka', verdict: 'steady', score: 88, mode: 'real' }
     const res = await app.request('/api/room/result', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

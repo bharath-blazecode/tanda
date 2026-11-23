@@ -27,6 +27,7 @@ function setup({ withToken = true, postsPerMinute = 30, env = {} as Record<strin
 }
 
 const result = (over: Partial<RoomResultRequest> = {}): RoomResultRequest => ({
+  intent: 'share-ticket',
   deviceId: '00000000-0000-4000-8000-000000000001',
   nickname: 'Calm Quokka',
   verdict: 'steady',
@@ -36,6 +37,15 @@ const result = (over: Partial<RoomResultRequest> = {}): RoomResultRequest => ({
 })
 
 describe('POST /api/room/result', () => {
+  it('acknowledges an older automatic post without registering presence or publishing the ticket', async () => {
+    const { post, board } = setup()
+    const legacy = result({ intent: undefined })
+    expect((await post('/api/room/result', legacy)).status).toBe(204)
+    expect(await board()).toMatchObject({ total: 0, liveCount: 0, feed: [] })
+    expect((await post('/api/room/result', result())).status).toBe(204)
+    expect((await board()).total).toBe(1)
+  })
+
   it('stores a valid result and answers 204', async () => {
     const { post, board } = setup()
     const res = await post('/api/room/result', result())
@@ -161,7 +171,7 @@ describe('POST /api/room/result', () => {
 })
 
 describe('GET /api/room', () => {
-  it('ranks steadiest real and dizziest demo, each without the other mode', async () => {
+  it('returns recent opted-in readings in time order with mode and empty legacy rankings', async () => {
     const { post, board, clock } = setup()
     const rows: Array<Partial<RoomResultRequest>> = [
       { score: 90, mode: 'real' },
@@ -174,10 +184,10 @@ describe('GET /api/room', () => {
       clock.t += 1000
       await post('/api/room/result', result({ ...row, deviceId: `device-${i}-0000000` }))
     }
-    const { top } = await board()
-    // The tipsy real reading (score 5) is left out: only Steady verdicts may sit under "steadiest".
-    expect(top.real.map((e) => e.score)).toEqual([90, 70])
-    expect(top.demo.map((e) => e.score)).toEqual([10, 99])
+    const { feed, top } = await board()
+    expect(feed.every(e => Object.keys(e).sort().join() === 'at,mode,nickname,score,verdict')).toBe(true)
+    expect(feed.map(e => [e.score, e.mode])).toEqual(rows.reverse().map(r => [r.score, r.mode]))
+    expect(top).toEqual({ real: [], demo: [] })
   })
 
   it('expires entries older than 12 hours', async () => {
