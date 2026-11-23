@@ -16,7 +16,6 @@ import {
   Label,
 } from "../../ui";
 import { ResultBird } from "./ResultBird";
-import { nudgeWords } from "./format";
 import { receiptText } from "./receipt-image";
 import { canShareReceipt, saveReceipt, shareReceipt } from "./share";
 import { Toggle } from "../../ui";
@@ -52,6 +51,14 @@ export type ResultTicketProps = {
   againTo?: string;
   againState?: unknown;
 };
+const nudges: Record<Assessment["nudge"], string> = {
+  "carry-on": "Carry on.",
+  water: "Water, and a slow breath.",
+  "no-more-caffeine": "No more coffee today. Water.",
+  "ride-or-friend": "Get a ride or ping a friend.",
+  "steady-not-a-driving-test": "Get a ride or a friend.",
+};
+
 export function ResultTicket({
   assessment,
   rows,
@@ -76,7 +83,7 @@ export function ResultTicket({
   // The data producer owns the verdict. The screen renders the supplied assessment.
   // Keep the fixed safety line visible for every Tipsy presentation as well.
   const safety = assessment.showSafetyLine || assessment.verdict === "tipsy" || alcoholLogged;
-  const nudge = nudgeWords(safety && assessment.nudge === "carry-on" ? "ride-or-friend" : assessment.nudge);
+  const nudge = nudges[safety && assessment.nudge === "carry-on" ? "ride-or-friend" : assessment.nudge];
   // Saving always works. Sharing an image does not exist in every browser, so it is only
   // offered where it does rather than failing in someone's hand.
   const [busy, setBusy] = useState<"save" | "share" | null>(null);
