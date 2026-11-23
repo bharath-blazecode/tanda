@@ -39,17 +39,11 @@ const fixture = {
       const file = name => path.join(dir, stage + '-' + device + '-' + name);
       await page.screenshot({ path: file('landing.png'), fullPage: true });
       if (stage === 'after') {
-        const feed = page.getByRole('button', { name: 'Feed paper' });
-        const status = page.getByRole('status').filter({ hasText: 'Stand still' });
-        await status.waitFor({ state: 'attached' });
-        if (device === 'mobile') await feed.tap(); else { await feed.focus(); await feed.press('Space'); }
-        await page.getByRole('status').filter({ hasText: 'Tap the squares' }).waitFor();
-        await page.screenshot({ path: file('feed.png'), fullPage: true });
-        await feed.press('Enter');
-        await page.getByRole('status').filter({ hasText: 'Read your ticket' }).waitFor();
-        await feed.click();
-        await status.waitFor();
-        assert.equal(await page.locator('.recorder').evaluate(el => el.getAnimations({ subtree: true }).length), 0);
+        // Owner prefers the clean original landing over the illustrated paper feeder.
+        assert.equal(await page.getByRole('button', { name: 'Feed paper' }).count(), 0);
+        assert((await fs.readFile(file('landing.png'))).equals(
+          await fs.readFile(path.join(dir, 'before-' + device + '-landing.png'))),
+          device + ' landing appearance differs from original Phase D');
       }
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await page.evaluate(record => localStorage.setItem('bc:v2', JSON.stringify(record)), fixture);
