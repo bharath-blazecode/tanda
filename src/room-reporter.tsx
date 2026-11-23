@@ -4,12 +4,10 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useLocation } from 'react-router'
 import type { RoomStage } from '../shared/contracts'
-import { postRoomPresence, postRoomResult } from './api/room'
+import { postRoomPresence } from './api/room'
 import {
   createHeartbeat,
   effectiveStage,
-  resultToPost,
-  routeStage,
   type Heartbeat,
   type StageOverride,
 } from './room-reporter-logic'
@@ -32,9 +30,6 @@ const subscribe = (listener: () => void) => {
   return () => void listeners.delete(listener)
 }
 const getOverride = () => override
-
-// In memory on purpose: a reload may post the same ticket again, which the server folds into one row.
-let lastPostedAt: number | null = null
 
 export function RoomReporter() {
   const { pathname } = useLocation()
@@ -64,16 +59,6 @@ export function RoomReporter() {
   useEffect(() => {
     heartbeat.current?.setStage(stage)
   }, [stage])
-
-  // The check screen saves lastResult before it navigates here, so the store already has it.
-  useEffect(() => {
-    if (routeStage(pathname) !== 'result') return
-    const stored = load()
-    const body = resultToPost(stored, lastPostedAt, Date.now())
-    if (!body || !stored.lastResult) return
-    lastPostedAt = stored.lastResult.run.at
-    void postRoomResult(body)
-  }, [pathname])
 
   return null
 }

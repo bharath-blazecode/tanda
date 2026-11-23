@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Stored, StoredV1 } from '../../shared/contracts'
 import { isValidNickname } from '../../shared/nicknames'
-import { KEY, LEGACY_KEY, load, migrateV1, parseStored, reset, setRoomSharing, update } from './local'
+import { KEY, LEGACY_KEY, finishRoomRemoval, load, migrateV1, parseStored, reset, setRoomSharing, update } from './local'
 
 function fakeStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial))
@@ -221,6 +221,23 @@ describe('storage failures', () => {
 })
 
 describe('reset', () => {
+  it('clears personal data and keeps only a usable previous identity when withdrawal is uncertain', () => {
+    const storage = fakeStorage({ [LEGACY_KEY]: JSON.stringify(v1Record()) })
+    const original = setRoomSharing(true, storage)
+    expect(reset(storage, original.deviceId)).toBe(true)
+    const current = load(storage)
+    expect(current.deviceId).toBe(original.deviceId)
+    expect(current.drinks).toEqual([])
+    expect(current.baseline).toBeUndefined()
+    expect(current.lastResult).toBeUndefined()
+    expect(current.shareToRoom).toBe(false)
+    expect(storage.data.has(LEGACY_KEY)).toBe(false)
+    expect(storage.data.has('bc:room-grant')).toBe(false)
+    expect(setRoomSharing(true, storage).shareToRoom).toBe(false)
+    expect(finishRoomRemoval('different-handle', storage).roomRemovalPending).toBe(true)
+    expect(finishRoomRemoval(original.deviceId, storage).deviceId).not.toBe(original.deviceId)
+    expect(load(storage).roomRemovalPending).toBeUndefined()
+  })
   it('removes the v2 record and the v1 rollback copy', () => {
     const storage = fakeStorage({ [LEGACY_KEY]: JSON.stringify(v1Record()) })
     const before = load(storage).deviceId

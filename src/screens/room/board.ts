@@ -5,8 +5,6 @@ import type { RoomLive, RoomStage, RoomState, Verdict } from '../../../shared/co
 
 // Faster than the 2 s of D13: the live list is what moves during the demo, and a heartbeat is cheap.
 export const POLL_MS = 1500
-// One dropped poll is normal on venue wifi; flag it only when it keeps happening (spec, screen 10).
-export const STALE_AFTER_FAILURES = 2
 
 export type Board = {
   room: RoomState | null // last good state; null until the first poll succeeds
@@ -15,14 +13,14 @@ export type Board = {
 
 export const initialBoard: Board = { room: null, failures: 0 }
 
-// A failed poll (null) never clears the board: the projector keeps showing the last good data.
+// A disconnected projector cannot verify ongoing participation. Clear its last snapshot.
 export function reduceBoard(prev: Board, result: RoomState | null): Board {
-  if (result === null) return { room: prev.room, failures: prev.failures + 1 }
+  if (result === null) return { room: null, failures: prev.failures + 1 }
   return { room: result, failures: 0 }
 }
 
 export function isStale(board: Board): boolean {
-  return board.failures >= STALE_AFTER_FAILURES
+  return board.failures > 0
 }
 
 export const emptyRoom: RoomState = {
@@ -52,7 +50,7 @@ export const STAGE_LABEL: Record<RoomStage, string> = {
   check: 'running a check',
   pulse: 'taking a pulse',
   result: 'reading the ticket',
-  demo: 'faking it',
+  demo: 'trying the demo',
   idle: 'hanging about',
 }
 
@@ -90,9 +88,9 @@ export function commentaryLine(room: RoomState): string | null {
   return line ? line : null
 }
 
-// The phone app lives at "/", on the same origin as the board.
+// A scan opens the disclosure and controls without granting consent.
 export function joinUrl(origin: string): string {
-  return `${origin.replace(/\/+$/, '')}/`
+  return `${origin.replace(/\/+$/, '')}/privacy`
 }
 
 // What people read off the screen: no scheme, no trailing slash.
@@ -149,6 +147,7 @@ export function createPoller(deps: PollerDeps): Poller {
   let timer: ReturnType<typeof setTimeout> | undefined
   let running = false
   let inFlight = false
+  let generation = 0
 
   const clear = () => {
     if (timer !== undefined) clearTimeout(timer)
@@ -160,9 +159,14 @@ export function createPoller(deps: PollerDeps): Poller {
     clear()
     if (!running || inFlight || deps.isHidden()) return
     inFlight = true
+    const started = generation
     const result = await deps.fetchRoom()
     inFlight = false
     if (!running) return
+    if (started !== generation || deps.isHidden()) {
+      if (!deps.isHidden()) void tick()
+      return
+    }
     deps.onResult(result)
     if (!deps.isHidden()) timer = setTimeout(tick, intervalMs)
   }
@@ -174,13 +178,17 @@ export function createPoller(deps: PollerDeps): Poller {
     },
     stop() {
       running = false
+      generation++
       clear()
     },
     visibilityChanged() {
       if (!running) return
       // Hidden: stop asking. Visible again: refresh now instead of waiting out the interval.
-      if (deps.isHidden()) clear()
-      else void tick()
+      if (deps.isHidden()) {
+        generation++
+        clear()
+        deps.onResult(null)
+      } else void tick()
     },
   }
 }

@@ -45,17 +45,15 @@ export function resultToPost(
 ): RoomResultRequest | null {
   const last = stored.lastResult
   if (!stored.shareToRoom || !last) return null
-  if (last.run.at === lastPostedAt || now - last.run.at > RESULT_FRESH_MS) return null
-  const { verdict, score, guessedHandicap } = last.assessment
+  if (last.run.at === lastPostedAt || last.run.at > now || now - last.run.at > RESULT_FRESH_MS) return null
+  const { verdict, score } = last.assessment
   return {
+    intent: 'share-ticket',
     deviceId: stored.deviceId,
     nickname: stored.nickname,
     verdict,
     score,
     mode: last.mode,
-    // The stored result keeps only the app's guess at the handicap, and only in demo mode. An example
-    // run had no handicap at all, so it never carries one onto "Dizziest after the handicap".
-    ...(last.mode === 'demo' && last.reference.kind === 'personal' && guessedHandicap ? { handicap: guessedHandicap } : {}),
   }
 }
 

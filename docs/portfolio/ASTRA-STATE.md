@@ -101,3 +101,9 @@ Next action is owner draft review and CI verification. Keep the physical-phone p
 ### Phase E owner-requested visual correction · 24 November 2026
 
 The initial Phase E feed-paper illustration was not accepted. Removed `PaperRecorder.tsx` and `recorder.css`, restored `src/screens/landing/index.tsx` byte-for-byte to merged Phase D, and replaced the recorder browser test with original Landing screenshot parity against main. The animated receipt regression comparator remains. The 2/5/8-hour caffeine scenario selector is unchanged. Earlier feed screenshots are archival only and do not represent the proposed product. No PR or merge is approved. Recheck CI on the refined branch and ask the owner whether this visual direction is accepted before opening the draft PR.
+
+### Phase F · Public room and deliberate ticket sharing
+
+Branch `feat/phase-f-social` starts at PR #61, `41f801479f004ac5462d2f829581be9a712ba3e7`. Commits `9a97089`, `594bffe` and `e2077f1` cover the deliberate-write contract and empty ranking arrays, current-document consent and recoverable removal, and the chronological public projector. The verification commit includes the social browser runner, before/after images, threat-model update and [Phase F report](PHASE-F.md).
+
+Final checks passed: TypeScript, 687 unit/integration tests, production build, 141 targeted tests, both browser viewports, 18 privacy checks, 18 extra browser checks, 16 caffeine checks, 11 example-flow checks and 12 animated ticket comparisons. The isolated Redis 7.4 authentication, persistence, outage, retry and cold-restart exercise passed. GitHub account lookup was forbidden, so the owner must create the draft PR. Confirm CI on its head, review the visual evidence and verify staging/production prerequisites before approving a merge. Physical devices, native share sheets, operational monitoring and Australian legal/privacy review remain open for Phase G.

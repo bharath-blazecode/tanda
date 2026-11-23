@@ -146,3 +146,7 @@ breaking the instrument. Constraints found in source:
 A candidate starting point to test in Report-Only mode first:
 `default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`.
 It has not been run against the full flow. Record the result before enforcing.
+
+## Phase F update · Public room
+
+The public room retains its anonymous, bearer-like device handle and single-instance boundary. Live opt-in and sharing a specific ticket now have separate actions. The result endpoint ignores old automatic submissions. The projector shows recent personal/simulated tickets without ranking them, discards unconfirmed snapshots, and never receives a handle. A failed Start over withdrawal retains a scrubbed local retry record and blocks reuse of that handle for new participation until confirmed removal. See the [Phase F review](PHASE-F.md) for exact payloads, retention, limits, compatibility and evidence.

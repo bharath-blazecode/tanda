@@ -220,6 +220,10 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     const toggle = page.getByRole('checkbox', { name: 'Show me on the room screen' });
     check('landing: room sharing starts off', !(await toggle.isChecked()));
     await shot(page, 'flow-landing-first-visit');
+    page.once('dialog', dialog => dialog.dismiss());
+    await toggle.click();
+    check('cancelling public room consent leaves sharing off', !(await toggle.isChecked()));
+    page.once('dialog', dialog => dialog.accept());
     await toggle.check();
     await page.getByLabel('Your name').fill('Privacy Pelican');
     await page.getByRole('button', { name: /Quick demo/ }).click();
@@ -231,10 +235,8 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     await page.waitForURL('**/result');
     await page.waitForTimeout(1500);
     check('sharing on: presence was sent', requests.some((r) => r.url === '/api/room/presence'));
-    check('sharing on: the result was posted as simulated', requests.some((r) => r.url === '/api/room/result' && JSON.parse(r.body).mode === 'demo' && !('handicap' in JSON.parse(r.body))));
+    check('opening a result with live sharing on does not publish the ticket', !requests.some(r => r.url === '/api/room/result'));
     check('commentary off: no verdict request', !requests.some((r) => r.url === '/api/verdict'));
-    let state = await board(page);
-    check('board shows the entry', state.feed.some((e) => e.nickname === 'Privacy Pelican'));
     // Receipt fields: name off by default in the preview.
     await page.getByText('What the image will say').click();
     const preview = await page.locator('.result-preview-text').innerText();
@@ -245,6 +247,11 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     // 2. Turn sharing off in Privacy: withdraw request, entry gone.
     await page.getByRole('link', { name: 'Home', exact: true }).click();
     await page.getByRole('button', { name: /Privacy · room screen/ }).click();
+    await page.getByRole('button', { name: 'Share this ticket to the room' }).click();
+    await page.getByText(/Ticket request sent/).waitFor();
+    check('chosen ticket was posted as simulated', requests.some(r => r.url === '/api/room/result' && JSON.parse(r.body).mode === 'demo' && !('handicap' in JSON.parse(r.body))));
+    let state = await board(page);
+    check('board shows the chosen entry', state.feed.some(e => e.nickname === 'Privacy Pelican'));
     await shot(page, 'flow-privacy');
     // Keep the old opted-in record readable while writes and removals fail.
     await page.evaluate(() => {
@@ -253,7 +260,7 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     });
     await page.route('**/api/room/withdraw', route => route.fulfill({ status: 503 }), { times: 1 });
     await page.getByRole('checkbox', { name: 'Show me on the room screen' }).uncheck();
-    await page.getByRole('button', { name: 'Retry room removal' }).click();
+    await page.getByRole('button', { name: 'Remove any previous room entry' }).click();
     check('an unconfirmed withdrawal can be retried with sharing off', !(await toggle.isChecked()));
     await page.getByText('Removed from the room screen.').waitFor({ timeout: 5000 });
     check('turning sharing off sends a withdrawal', requests.some((r) => r.url === '/api/room/withdraw'));

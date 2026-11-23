@@ -1,154 +1,81 @@
-// CARD 9. The room board, shown on the projector (docs/04-screens-spec.md, section 10).
-// The live list sits in the middle on chart paper: it is what moves while a hundred phones run a check.
+// Public projector. Reading the board needs no grant and never publishes a participant.
 import { useMemo } from 'react'
-import type { RoomEntry } from '../../../shared/contracts'
-import { Badge, ChartWindow, Ibis } from '../../ui'
-import {
-  commentaryLine,
-  displayUrl,
-  emptyRoom,
-  isStale,
-  joinUrl,
-  liveView,
-  qrGeometry,
-  roomMood,
-  VERDICT_LABEL,
-  VERDICT_ORDER,
-} from './board'
+import { Badge, ChartWindow, Ibis, SafetyLine } from '../../ui'
+import { commentaryLine, displayUrl, emptyRoom, isStale, joinUrl, liveView, qrGeometry, roomMood, VERDICT_LABEL } from './board'
 import { useRoomBoard } from './use-room-board'
 import './room.css'
 
-// The server sends up to 12; only this many stay legible from the back row in the side column.
-const FEED_ROWS = 5
-// Two columns of six fit the chart at a size the back row can read. A commentary line costs one row.
-const LIVE_ROWS = 12
-
 export function Room() {
   const board = useRoomBoard()
-  const room = board.room ?? emptyRoom
-  const stale = isStale(board)
-  const line = commentaryLine(room)
-  const live = liveView(room, line ? LIVE_ROWS - 2 : LIVE_ROWS)
-
+  const room = board.room
+  const line = room && commentaryLine(room)
+  const live = liveView(room ?? emptyRoom, line ? 10 : 12)
   const url = joinUrl(window.location.origin)
   const qr = useMemo(() => qrGeometry(url), [url])
-  const shownUrl = displayUrl(url)
 
   return (
     <main className="room">
       <div className="room-frame">
         <div className="room-board">
-          <section className="room-left" aria-label="Join and the room mix">
+          <section className="room-left" aria-label="Room sharing options">
             <div className="room-join">
-              <svg
-                className="room-qr"
-                viewBox={`0 0 ${qr.size} ${qr.size}`}
-                shapeRendering="crispEdges"
-                role="img"
-                aria-label={`QR code to join: ${shownUrl}`}
-              >
+              <svg className="room-qr" viewBox={`0 0 ${qr.size} ${qr.size}`} shapeRendering="crispEdges"
+                aria-hidden="true">
                 <rect className="room-qr-light" width={qr.size} height={qr.size} />
                 <path className="room-qr-dark" d={qr.path} />
               </svg>
-              <h1 className="room-join-h">Scan. Stand still.</h1>
-              <p className="room-url">{shownUrl}</p>
+              <h1 className="room-join-h">Public room</h1>
+              <a className="room-url" href={url}>Room sharing options<br />{displayUrl(url)}</a>
             </div>
-
-            <p className="room-total">
-              <span className="room-num">{room.total}</span> {room.total === 1 ? 'reading' : 'readings'}
-            </p>
-            <ul className="room-tally">
-              {VERDICT_ORDER.map((v) => (
-                <li key={v}>
-                  <span className="room-tally-n room-num">{room.mix[v]}</span>
-                  <span className="room-verdict">{VERDICT_LABEL[v]}</span>
-                </li>
-              ))}
-            </ul>
+            <p>Anyone can watch. Scan to choose whether to share from your phone.</p>
           </section>
 
           <ChartWindow className="room-live">
             <section className="room-live-in" aria-labelledby="room-live-h">
               <div className="room-live-head">
-                <Badge>
-                  <Ibis mood={roomMood(room)} />
-                </Badge>
-                <p className="room-live-count">
-                  <span className="room-num room-live-n">{live.count}</span>
-                  <span id="room-live-h" className="room-live-h">
-                    In the lab right now
-                  </span>
-                </p>
+                <Badge><Ibis mood={roomMood(room ?? emptyRoom)} /></Badge>
+                <h2 id="room-live-h" className="room-live-count">
+                  {room && <span className="room-num room-live-n">{live.count}</span>}
+                  <span className="room-live-h">In the lab right now</span>
+                </h2>
               </div>
               {line && <p className="room-say">{line}</p>}
-
-              {live.count === 0 ? (
-                <p className="room-live-empty">Nobody yet. Scan the code and walk in.</p>
+              {!room ? (
+                <p className="room-live-empty" role="status">{isStale(board) ? 'Room updates paused. Reconnecting…' : 'Connecting to the room…'}</p>
+              ) : live.count === 0 ? (
+                <p className="room-live-empty">No one is sharing live activity.</p>
               ) : (
                 <ul className="room-people">
-                  {live.rows.map((p) => (
+                  {live.rows.map(p => (
                     <li key={p.key} className="room-person">
                       <span className="room-person-name">{p.nickname}</span>
                       <span className="room-person-doing">{p.doing}</span>
                     </li>
                   ))}
-                  {live.more > 0 && (
-                    <li className="room-person room-person-more">
-                      <span className="room-person-name">and {live.more} more</span>
-                    </li>
-                  )}
+                  {live.more > 0 && <li className="room-person room-person-more">and {live.more} more</li>}
                 </ul>
               )}
             </section>
           </ChartWindow>
 
-          <section className="room-side" aria-label="Readings">
-            <h2 className="room-h">Latest readings</h2>
-            {room.feed.length === 0 ? (
-              <p className="room-empty">No readings yet. Be the first.</p>
-            ) : (
+          <section className="room-side" aria-label="Shared tickets">
+            <h2 className="room-h">Latest shared tickets</h2>
+            {room && (room.feed.length ? (
               <ul className="room-feed">
-                {room.feed.slice(0, FEED_ROWS).map((e) => (
-                  <li key={entryKey(e)}>
-                    <span className="room-nick">
-                      {e.nickname}
-                      {e.mode === 'demo' && <span className="room-demo"> (demo)</span>}
-                    </span>
+                {room.feed.slice(0, 5).map((e, i) => (
+                  <li key={`${e.nickname}:${e.at}:${e.mode}:${i}`}>
+                    <span className="room-nick">{e.nickname}</span>
                     <span className="room-verdict">{VERDICT_LABEL[e.verdict]}</span>
+                    <span className="room-mode">{e.mode === 'demo' ? 'Simulated' : 'Personal reading'}</span>
                   </li>
                 ))}
               </ul>
-            )}
-
-            <h2 className="room-h">Steadiest in the room</h2>
-            <TopList entries={room.top.real} />
-
-            <h2 className="room-h">Dizziest after the handicap (demo only)</h2>
-            <TopList entries={room.top.demo} wobble />
+            ) : <p className="room-empty">No shared tickets yet.</p>)}
+            <p>Ticket words use the person’s log. The phone cannot detect intoxication.</p>
+            <SafetyLine />
           </section>
         </div>
-        {stale && <p className="room-reconnecting">reconnecting</p>}
       </div>
     </main>
   )
-}
-
-/** `wobble` flips the number to "how far off" (100 minus steadiness), which is what a dizziest list means. */
-function TopList({ entries, wobble = false }: { entries: RoomEntry[]; wobble?: boolean }) {
-  if (entries.length === 0) return <p className="room-none">None yet.</p>
-  return (
-    <ol className="room-top">
-      {entries.map((e) => (
-        <li key={entryKey(e)}>
-          <span className="room-nick">{e.nickname}</span>
-          <span className="room-num">{wobble ? 100 - e.score : e.score}</span>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-// Nicknames can repeat across devices, so the timestamp joins the key.
-function entryKey(e: RoomEntry): string {
-  return `${e.nickname}:${e.at}:${e.mode}`
 }

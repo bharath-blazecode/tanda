@@ -27,17 +27,17 @@ const live: RoomState = {
 }
 
 describe('reduceBoard', () => {
-  it('keeps the last good state when a poll fails, and marks it stale after repeated failures', () => {
+  it('clears participant data as soon as a poll fails', () => {
     const ok = reduceBoard(initialBoard, live)
     expect(ok).toEqual({ room: live, failures: 0 })
     expect(isStale(ok)).toBe(false)
 
     const once = reduceBoard(ok, null)
-    expect(once.room).toBe(live)
-    expect(isStale(once)).toBe(false) // a single dropped poll stays quiet
+    expect(once.room).toBeNull()
+    expect(isStale(once)).toBe(true)
 
     const twice = reduceBoard(once, null)
-    expect(twice.room).toBe(live)
+    expect(twice.room).toBeNull()
     expect(isStale(twice)).toBe(true)
   })
 
@@ -119,8 +119,8 @@ describe('commentaryLine', () => {
 
 describe('join URL and QR', () => {
   it('points at the phone app on the same origin', () => {
-    expect(joinUrl('https://kachka.fun')).toBe('https://kachka.fun/')
-    expect(joinUrl('http://192.168.1.5:5173/')).toBe('http://192.168.1.5:5173/')
+    expect(joinUrl('https://kachka.fun')).toBe('https://kachka.fun/privacy')
+    expect(joinUrl('http://192.168.1.5:5173/')).toBe('http://192.168.1.5:5173/privacy')
     expect(displayUrl('https://kachka.fun/')).toBe('kachka.fun')
   })
 
@@ -175,6 +175,24 @@ describe('createPoller', () => {
     p.stop()
     await vi.advanceTimersByTimeAsync(10_000)
     expect(fetchRoom).toHaveBeenCalledTimes(3)
+  })
+
+  it('discards a response begun before hiding and obtains a fresh one on return', async () => {
+    let hidden = false
+    let release!: (value: RoomState) => void
+    const fetchRoom = vi.fn().mockImplementationOnce(() => new Promise(resolve => { release = resolve }))
+      .mockResolvedValue(emptyRoom)
+    const onResult = vi.fn()
+    const poller = createPoller({ fetchRoom, onResult, isHidden: () => hidden })
+    poller.start()
+    hidden = true
+    poller.visibilityChanged()
+    hidden = false
+    poller.visibilityChanged()
+    release(live)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(onResult.mock.calls.map(([room]) => room)).toEqual([null, emptyRoom])
+    poller.stop()
   })
 
   it('passes a failed poll through as null and keeps polling', async () => {

@@ -55,6 +55,7 @@ describe('room routes', () => {
   // Changed on purpose (live presence): a typed name is sanitised onto the board, not rejected.
   it('stores a nickname that is not from the fixed word lists under its sanitised form', async () => {
     const res = await post('/api/room/result', {
+      intent: 'share-ticket',
       deviceId: verdictRequest.deviceId,
       nickname: 'Free Text',
       verdict: 'steady',

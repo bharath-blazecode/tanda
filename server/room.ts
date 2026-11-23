@@ -87,11 +87,14 @@ export function roomRoutes(
     const parsed = RoomResultRequest.safeParse(await c.req.json().catch(() => null))
     if (!parsed.success) return c.json({ error: 'bad_request' }, 400)
     // The deviceId is only the key for one-entry-per-device; it is never stored in an entry.
-    const { deviceId, nickname: raw, ...rest } = parsed.data
+    const { deviceId, nickname: raw, verdict, mode, score, intent } = parsed.data
+    // Older open tabs automatically post when a ticket is viewed. Leave those requests
+    // without side effects. Intent distinguishes first-party flows; it is not authentication.
+    if (intent !== 'share-ticket') return c.body(null, 204)
     const at = now()
     if (!throttle.admit(ip, deviceId, at) || !throttle.takeResult(deviceId, at)) return c.body(null, 204)
     const nickname = nameFor(raw, deviceId)
-    store.add({ ...rest, nickname, at }, deviceId)
+    store.add({ nickname, verdict, mode, score, at }, deviceId)
     presence.beat(deviceId, nickname, 'result', at, true)
     return c.body(null, 204)
   })

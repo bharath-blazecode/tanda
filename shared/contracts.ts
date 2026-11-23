@@ -218,6 +218,7 @@ export const Stored = z.object({
   deviceId: z.string().min(8).max(64), // random UUID; rate-limit and board key, not an account
   nickname: z.string().min(3).max(40), // generated, or typed on Landing; the server cleans it before showing it
   shareToRoom: z.boolean(), // off until the person turns it on
+  roomRemovalPending: z.literal(true).optional(), // Start over kept the former handle solely for a retry
   aiCommentary: z.boolean(), // whether the ticket line may be requested from Claude
   bedtimeMinutes: z.number().int().min(0).max(1439).optional(), // minutes after local midnight
   baseline: Baseline.optional(), // personal only: the example reference is never stored here
@@ -279,6 +280,7 @@ export type VerdictResponse = z.infer<typeof VerdictResponse>
 const RoomNickname = z.string().min(1).max(40)
 
 export const RoomResultRequest = z.object({
+  intent: z.literal('share-ticket').optional(), // absent on older automatic posts
   deviceId: z.string().min(8).max(64),
   nickname: RoomNickname,
   verdict: Verdict,
@@ -335,8 +337,8 @@ export const RoomState = z.object({
   }),
   feed: z.array(RoomEntry).max(12), // newest first
   top: z.object({
-    real: z.array(RoomEntry).max(5), // steadiest; real readings are never ranked by drift (D22)
-    demo: z.array(RoomEntry).max(5), // dizziest after the spin
+    real: z.array(RoomEntry).max(5), // legacy slot, now emitted empty
+    demo: z.array(RoomEntry).max(5), // legacy slot, now emitted empty
   }),
   updatedAt: z.number().int(),
   commentary: z.string().nullable().optional(), // room commentator (D32), only if built

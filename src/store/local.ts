@@ -75,6 +75,7 @@ function hasGrant(storage: KeyValue): boolean {
 export function setRoomSharing(on: boolean, storage = browserStorage()): Stored {
   const current = load(storage)
   activeGrant = undefined
+  if (on && current.roomRemovalPending) return { ...current, shareToRoom: false }
   const channel = consentChannel()
   if (!on) {
     try { channel?.postMessage('revoke') } catch { /* The local grant has already ended. */ }
@@ -158,6 +159,7 @@ export function parseStored(raw: unknown): Parsed | null {
     aiCommentary: field(shape.aiCommentary, r.aiCommentary, 'aiCommentary', dropped) ?? false,
     drinks: list(Drink, r.drinks, 'drinks', dropped),
   }
+  if (r.roomRemovalPending === true) value.roomRemovalPending = true
   const bedtime = field(shape.bedtimeMinutes, r.bedtimeMinutes, 'bedtimeMinutes', dropped)
   if (bedtime !== undefined) value.bedtimeMinutes = bedtime
   const baseline = field(Baseline, r.baseline, 'baseline', dropped)
@@ -252,7 +254,7 @@ export function load(storage: KeyValue = browserStorage()): Stored {
   const current = parseStored(read(storage, KEY))
   if (current) {
     if (current.dropped.length > 0) save(current.value, storage)
-    return { ...current.value, shareToRoom: current.value.shareToRoom && hasGrant(storage) }
+    return { ...current.value, shareToRoom: !current.value.roomRemovalPending && current.value.shareToRoom && hasGrant(storage) }
   }
   const migrated = migrateV1(read(storage, LEGACY_KEY))
   if (migrated) {
@@ -283,20 +285,39 @@ export function update(change: (current: Stored) => Stored, storage: KeyValue = 
   return load(storage)
 }
 
+/** Retire the handle saved by an offline Start over only after its own removal was acknowledged. */
+export function finishRoomRemoval(deviceId: string, storage = browserStorage()): Stored {
+  const current = load(storage)
+  if (current.deviceId !== deviceId || !current.roomRemovalPending) return current
+  const { roomRemovalPending: _removed, ...rest } = current
+  save({ ...rest, deviceId: newId(), shareToRoom: false }, storage)
+  return load(storage)
+}
+
 /**
  * Deletes everything this app keeps in this browser: the v2 record and the v1 rollback copy.
  * It does not reach the server. Callers withdraw the room entry first (src/api/room.ts).
  */
-export function reset(storage: KeyValue = browserStorage()): boolean {
+export function reset(storage: KeyValue = browserStorage(), retryDeviceId?: string): boolean {
   let cleared = true
   activeGrant = undefined
-  memory.delete(storage)
-  for (const key of [KEY, LEGACY_KEY, ROOM_GRANT]) {
+  if (retryDeviceId) {
+    // Overwrite the personal record atomically. The existing random handle is still
+    // needed to retry removal after a failed withdrawal, including after a reload.
+    const scrubbed = JSON.stringify({ ...fresh(), deviceId: retryDeviceId, roomRemovalPending: true })
+    memory.set(storage, scrubbed)
     try {
-      storage.removeItem(key)
-    } catch {
-      cleared = false
-    }
+      storage.setItem(KEY, scrubbed)
+      memory.delete(storage)
+    } catch { cleared = false }
+  } else {
+    try {
+      storage.removeItem(KEY)
+      memory.delete(storage)
+    } catch { cleared = false }
+  }
+  for (const key of [LEGACY_KEY, ROOM_GRANT]) {
+    try { storage.removeItem(key) } catch { cleared = false }
   }
   return cleared
 }
