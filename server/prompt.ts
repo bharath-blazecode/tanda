@@ -16,6 +16,7 @@ Rules:
 - Never mention driving, cars, medicine, doctors, the law, blood alcohol or sobriety.
 - Never tell the person they are fine, safe, sober or okay to do anything.
 - Never encourage drinking more of anything.
+- A log gives context. Never attribute a change in a task to a drink or infer a cause from the stamp.
 - The verdict is already decided. Do not argue with it and do not give advice; the app shows its own advice.
 - Reply with the line and nothing else.`
 

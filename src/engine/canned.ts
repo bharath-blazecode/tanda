@@ -10,25 +10,25 @@ export const REAL_LINES: Record<Verdict, readonly string[]> = {
     'Steady. Congratulations on standing still and tapping squares, the two skills you walked in with.',
   ],
   wired: [
-    'Fast and twitchy. Whatever was in that cup is doing laps.',
-    'Your taps arrived before the squares did. Impressive, in a worrying way.',
-    'Jittery readings. I have seen calmer seagulls at a chip shop.',
+    'The readings wandered. I have circled the paperwork with my beak.',
+    'A change on the chart. There goes my lunch break.',
+    'Different from your baseline. I have made a small, official squawk.',
   ],
   tipsy: [
     'Your sway wandered off without you. The chart paper is embarrassed.',
-    'Wobbly pen, slow taps. Those drinks have filed their own report.',
+    'The pen has filed a report. It requests a sharper pencil.',
     'Off your normal, and not in a fun direction. Logged, with a sigh.',
   ],
   wobbly: [
-    'You drifted with nothing logged. Either the phone is haunted or you forgot to mention a drink.',
-    'Off your normal with a clean log. Suspicious. I will be going through your bin later.',
-    'Readings went sideways with nothing on the books. Long day, perhaps. I do not care either way.',
+    'Your readings wandered. I blame the stationery department.',
+    'Off your baseline. My paperwork pile just got taller.',
+    'The figures moved. I have stamped the page and returned to my chips.',
   ],
 }
 
 // With alcohol logged a steady reading must never read as clearance (D19): it only says the two tests went well.
 export const STEADY_WITH_ALCOHOL_LINES: readonly string[] = [
-  'Steady on the stand and the taps. That is all these two tests know about. The drinks are still in there.',
+  'Steady on the stand and the taps. That is all these two tests know about. I only stamp the paperwork.',
   'You stood still and tapped well. That proves nothing beyond standing and tapping, so do not get ideas.',
   'Good numbers for standing and tapping. That is the whole list of what I measured.',
 ]

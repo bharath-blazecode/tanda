@@ -8,12 +8,6 @@ import { ALCOHOL_KINDS, CAFFEINE_KINDS, DEFAULT_CAFFEINE_MG, tallyCaffeine, type
 /** The app's one-tap defaults, in mg. Kept under this name for older imports; see serving.ts. */
 export const CAFFEINE_MG = DEFAULT_CAFFEINE_MG
 
-/**
- * Past this much logged in a day, the stub suggests pausing caffeine even when the reading is steady.
- * A product prompt, not a safety limit or anyone's guidance: see the evidence ledger.
- */
-export const CAFFEINE_LIMIT_MG = 400
-
 export function hasAlcohol(drinksToday: readonly DrinkInput[]): boolean {
   return drinksToday.some((d) => ALCOHOL_KINDS.has(d.kind))
 }
@@ -35,12 +29,7 @@ export function nudgeFor(verdict: Verdict, drinksToday: readonly DrinkInput[]): 
   if (verdict === 'tipsy') return { nudge: 'ride-or-friend', showSafetyLine: true }
   if (verdict === 'steady' && alcohol) return { nudge: 'steady-not-a-driving-test', showSafetyLine: true }
 
-  if (verdict === 'wired') return { nudge: 'no-more-caffeine', showSafetyLine: alcohol }
   if (verdict === 'wobbly') return { nudge: 'water', showSafetyLine: alcohol }
 
-  // Steady, nothing alcoholic logged: only worth saying something if the day has been heavy.
-  if (caffeineMgToday(drinksToday) >= CAFFEINE_LIMIT_MG) {
-    return { nudge: 'no-more-caffeine', showSafetyLine: false }
-  }
   return { nudge: 'carry-on', showSafetyLine: alcohol }
 }

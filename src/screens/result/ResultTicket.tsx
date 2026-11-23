@@ -16,6 +16,7 @@ import {
   Label,
 } from "../../ui";
 import { ResultBird } from "./ResultBird";
+import { nudgeWords } from "./format";
 import { receiptText } from "./receipt-image";
 import { canShareReceipt, saveReceipt, shareReceipt } from "./share";
 import { Toggle } from "../../ui";
@@ -36,6 +37,7 @@ export type ResultTicketProps = {
   extra?: string;
   /** What was logged today, in words. The label behind the verdict, never a measurement. */
   logged?: string;
+  alcoholLogged?: boolean;
   /** Why a test has no change beside it, one sentence each. Printed under the rows and on the image. */
   notes?: string[];
   /** What the reading was compared with, e.g. "Against · your baseline, Sun 22 Nov 09:10". */
@@ -50,14 +52,6 @@ export type ResultTicketProps = {
   againTo?: string;
   againState?: unknown;
 };
-const nudges: Record<Assessment["nudge"], string> = {
-  "carry-on": "Carry on.",
-  water: "Water, and a slow breath.",
-  "no-more-caffeine": "No more coffee today. Water.",
-  "ride-or-friend": "Get a ride or ping a friend.",
-  "steady-not-a-driving-test": "Get a ride or a friend.",
-};
-
 export function ResultTicket({
   assessment,
   rows,
@@ -70,6 +64,7 @@ export function ResultTicket({
   tags = [],
   extra,
   logged,
+  alcoholLogged = false,
   notes = [],
   reference,
   labelNote,
@@ -80,7 +75,8 @@ export function ResultTicket({
 }: ResultTicketProps) {
   // The data producer owns the verdict. The screen renders the supplied assessment.
   // Keep the fixed safety line visible for every Tipsy presentation as well.
-  const safety = assessment.showSafetyLine || assessment.verdict === "tipsy";
+  const safety = assessment.showSafetyLine || assessment.verdict === "tipsy" || alcoholLogged;
+  const nudge = nudgeWords(safety && assessment.nudge === "carry-on" ? "ride-or-friend" : assessment.nudge);
   // Saving always works. Sharing an image does not exist in every browser, so it is only
   // offered where it does rather than failing in someone's hand.
   const [busy, setBusy] = useState<"save" | "share" | null>(null);
@@ -106,7 +102,7 @@ export function ResultTicket({
     // The safety line is on the shared image under exactly the rule it is on the screen (D19):
     // a receipt that leaves the phone must not be the one copy that drops it.
     safety,
-    nudge: nudges[assessment.nudge],
+    nudge,
   };
   const run = async (what: "save" | "share") => {
     setBusy(what);
@@ -199,7 +195,7 @@ export function ResultTicket({
               <SafetyLine />
             </div>
           )}
-          <Stub label="Next">{nudges[assessment.nudge]}</Stub>
+          <Stub label="Next">{nudge}</Stub>
         </Ticket>
         <nav className="k-keys k-keys--2" aria-label="After your reading">
           <Link className="k-key k-key--quiet result-link" to={againTo} state={againState}>

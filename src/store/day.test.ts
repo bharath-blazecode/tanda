@@ -26,6 +26,12 @@ describe('drinksToday', () => {
     expect(drinksToday(drinks, at('2026-11-21T09:00'))).toHaveLength(1)
   })
 
+  it('omits drinks consumed after the time of a saved reading', () => {
+    const enteredLater = drink('2026-11-22T06:00')
+    const atReading = drink('2026-11-21T12:00', 'coffee')
+    expect(drinksToday([enteredLater, atReading], atReading.at)).toEqual([atReading])
+  })
+
   it('returns the newest first', () => {
     const drinks = [drink('2026-11-21T10:00'), drink('2026-11-21T12:00')]
     expect(drinksToday(drinks, at('2026-11-21T13:00'))[0].at).toBe(at('2026-11-21T12:00'))

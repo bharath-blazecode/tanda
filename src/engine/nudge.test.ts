@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DrinkInput as Drink } from './serving'
-import { CAFFEINE_LIMIT_MG, CAFFEINE_MG, caffeineMgToday, nudgeFor } from './nudge'
+import { CAFFEINE_MG, caffeineMgToday, nudgeFor } from './nudge'
 
 const beer: Drink[] = [{ kind: 'beer', at: 0 }]
 const coffee: Drink[] = [{ kind: 'coffee', at: 0 }]
@@ -27,14 +27,14 @@ describe('safety rules', () => {
 })
 
 describe('caffeine', () => {
-  it('tells a wired reading to stop at the coffee', () => {
-    expect(nudgeFor('wired', coffee).nudge).toBe('no-more-caffeine')
+  it('does not turn a Wired stamp into a caffeine instruction', () => {
+    expect(nudgeFor('wired', coffee).nudge).toBe('carry-on')
   })
 
-  it('says something on a steady reading once the day has been heavy', () => {
-    const heavy: Drink[] = Array.from({ length: 4 }, () => ({ kind: 'coffee', at: 0 }))
-    expect(caffeineMgToday(heavy)).toBeGreaterThanOrEqual(CAFFEINE_LIMIT_MG)
-    expect(nudgeFor('steady', heavy).nudge).toBe('no-more-caffeine')
+  it('does not treat a logged intake total as an individual stopping point', () => {
+    const heavy: Drink[] = Array.from({ length: 5 }, () => ({ kind: 'coffee', at: 0 }))
+    expect(caffeineMgToday(heavy)).toBe(500)
+    expect(nudgeFor('steady', heavy).nudge).toBe('carry-on')
   })
 
   it('leaves a steady reading alone after one coffee', () => {

@@ -14,5 +14,5 @@ export function dayStart(now: number): number {
 /** Newest first, so Home can print the list without sorting again. */
 export function drinksToday<T extends { at: number }>(drinks: readonly T[], now: number): T[] {
   const from = dayStart(now)
-  return drinks.filter((d) => d.at >= from).sort((a, b) => b.at - a.at)
+  return drinks.filter((d) => d.at >= from && d.at <= now).sort((a, b) => b.at - a.at)
 }

@@ -113,9 +113,9 @@ describe('nudgeWords', () => {
   it('has the fixed words for every nudge', () => {
     expect(nudgeWords('carry-on')).toBe('Carry on.')
     expect(nudgeWords('water')).toBe('Water, and a slow breath.')
-    expect(nudgeWords('no-more-caffeine')).toBe('No more coffee today.')
+    expect(nudgeWords('no-more-caffeine')).toBe('Check the amounts in your drink log.')
     expect(nudgeWords('ride-or-friend')).toBe('Get a ride or ping a friend.')
-    expect(nudgeWords('steady-not-a-driving-test')).toBe('Still not a driving test.')
+    expect(nudgeWords('steady-not-a-driving-test')).toBe('Get a ride or a friend.')
   })
 })
 
@@ -140,9 +140,9 @@ describe('provenance and label wording', () => {
     expect(referenceLine({ kind: 'example', run: baseline, clean: true })).toBe('Against · example numbers')
     expect(referenceLine({ kind: 'personal', run: baseline, clean: true })).toMatch(/^Against · your baseline, /)
   })
-  it('says Wired and Tipsy come from the log, not from detection', () => {
-    expect(labelNote('wired')).toMatch(/does not detect caffeine or alcohol/)
-    expect(labelNote('tipsy')).toMatch(/does not detect caffeine or alcohol/)
+  it('separates stamp names from the cause of task changes', () => {
+    expect(labelNote('wired')).toMatch(/cannot explain what caused/)
+    expect(labelNote('tipsy')).toMatch(/cannot explain what caused/)
     expect(labelNote('steady')).toMatch(/threshold/)
   })
 })
