@@ -5,7 +5,6 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { ChartWindow, Housing, Key, Plate, Printed, Toggle } from '../../ui'
 import { load, setRoomSharing, update } from '../../store/local'
 import { withdrawFromRoom } from '../../api/room'
-import { PaperRecorder } from './PaperRecorder'
 import { eraseEverything } from '../privacy/erase'
 
 const NAME_MAX = 16
@@ -67,17 +66,24 @@ export function Landing() {
       <Plate serial={'Body drift recorder\nModel BC-2'} />
 
       {/* First visit carries the name field, so the chart gives up height to keep the keys above the fold. */}
-      <ChartWindow className="landing-chart" style={{ flex: 1, minHeight: returning ? 260 : 200 }}>
+      <ChartWindow bottom style={{ flex: 1, minHeight: returning ? 260 : 200 }}>
         <Printed>
-          <h2>
+          <h2
+            style={{
+              margin: '0 0 var(--s2)',
+              font: '900 clamp(34px, 11vw, 52px)/0.9 var(--display)',
+              letterSpacing: '.02em',
+              textTransform: 'uppercase',
+              textWrap: 'balance',
+            }}
+          >
             Wired or wobbly?
           </h2>
-          <p>
+          <p style={{ margin: 0, maxWidth: '30ch', background: 'var(--chart)', display: 'inline' }}>
             Log a coffee or a drink. Stand still, then tap fast. A bin chicken will judge how far you
             have drifted from your own normal.
           </p>
         </Printed>
-        <PaperRecorder />
       </ChartWindow>
 
       {eraseError && <p role="status">{eraseError}</p>}
