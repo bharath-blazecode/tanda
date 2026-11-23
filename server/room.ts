@@ -24,8 +24,8 @@ const WINDOW_MS = 60_000
 export const DEFAULT_POSTS_PER_MINUTE = 600
 // 200 phones on one venue IP beating every 15 s is 800 a minute; this leaves room for stage changes.
 export const DEFAULT_HEARTBEATS_PER_MINUTE = 3_000
-// Past this many tracked clients, expired windows are swept so the limiter cannot grow without bound.
-const SWEEP_AT = 5_000
+// Existing clients keep their buckets at capacity; new ones wait for the next expiry.
+const MAX_CLIENT_WINDOWS = 5_000
 
 // Hashing first gives equal-length buffers, which timingSafeEqual requires, without leaking the length.
 function sameToken(given: string, expected: string): boolean {
@@ -49,7 +49,7 @@ function createLimiter(limit: number) {
     }
     const current = windows.get(key)
     if (!current || now - current.start >= WINDOW_MS) {
-      if (windows.size >= SWEEP_AT) return false
+      if (windows.size >= MAX_CLIENT_WINDOWS) return false
       windows.set(key, { start: now, count: 1 })
       return true
     }

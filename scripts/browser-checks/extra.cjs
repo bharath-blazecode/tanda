@@ -29,6 +29,14 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
   // 2. No horizontal overflow at 320 px on the busiest screens.
   {
     const ctx = await newContext({ viewport: { width: 320, height: 640 } }); const p = await ctx.newPage();
+    // Desktop headless Chromium has no system share sheet. Verify the application's file handoff.
+    await p.addInitScript(() => {
+      navigator.canShare = data => data.files?.length === 1 && data.files[0] instanceof File;
+      navigator.share = async data => {
+        const file = data.files[0];
+        window.sharedPng = file.type === 'image/png' && file.name.endsWith('.png') && file.size > 0;
+      };
+    });
     await p.goto(BASE + '/');
     await p.evaluate(() => { const now = Date.now(); localStorage.setItem('bc:v2', JSON.stringify({ v: 2, deviceId: 'aaaaaaaa-0000-4000-8000-0000000000ab', nickname: 'Wobbly Cassowary', shareToRoom: false, aiCommentary: true,
       drinks: [ { id: 'e', kind: 'energy', at: now - 3600000, servingMl: 500, fraction: 0.5, name: 'Sugar free can, large', caffeine: { basis: 'per100ml', mgPer100ml: 32, source: 'label' } }, { id: 'w', kind: 'wine', at: now - 600000, servingMl: 150, alcohol: { abv: 13.5, source: 'label' } } ],
@@ -56,6 +64,9 @@ const results = []; const check = (n, ok, d = '') => { results.push(ok); console
     await p.getByRole('button', { name: 'Save receipt' }).click();
     const download = await downloadPromise;
     const bytes = require('node:fs').readFileSync(await download.path());
+    await p.getByRole('button', { name: 'Share', exact: true }).click();
+    await p.waitForFunction(() => window.sharedPng);
+    check('share hands a PNG file to the simulated system share sheet', true);
     check('saved receipt is a PNG image', bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a');
     await ctx.close();
   }
