@@ -11,7 +11,7 @@ const T0 = 1_763_700_000_000
 
 function setup({ withToken = true, postsPerMinute = 30, env = {} as Record<string, string> } = {}) {
   const clock = { t: T0 }
-  const config = loadConfig({ ...(withToken ? { ROOM_ADMIN_TOKEN: TOKEN } : {}), ...env })
+  const config = loadConfig({ TRUSTED_PROXY_IPS: '127.0.0.1,10.0.0.1', ...(withToken ? { ROOM_ADMIN_TOKEN: TOKEN } : {}), ...env })
   const app = new Hono().route(
     '/api',
     roomRoutes(config, createRoomStore(), { now: () => clock.t, postsPerMinute }),
@@ -21,7 +21,7 @@ function setup({ withToken = true, postsPerMinute = 30, env = {} as Record<strin
       method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(body),
-    })
+    }, { incoming: { socket: { remoteAddress: '127.0.0.1' } } })
   const board = async () => RoomState.parse(await (await app.request('/api/room')).json())
   return { app, clock, post, board }
 }
@@ -114,14 +114,14 @@ describe('POST /api/room/result', () => {
 
   it('answers 429 past 30 posts a minute from one IP, and lets other IPs through', async () => {
     const { post, clock } = setup()
-    const ip = { 'cf-connecting-ip': '203.0.113.7' }
+    const ip = { 'x-forwarded-for': '203.0.113.7' }
     for (let i = 0; i < 30; i++) {
       expect((await post('/api/room/result', result(), ip)).status).toBe(204)
     }
     const limited = await post('/api/room/result', result(), ip)
     expect(limited.status).toBe(429)
     expect(await limited.json()).toEqual({ error: 'rate_limited' })
-    expect((await post('/api/room/result', result(), { 'cf-connecting-ip': '203.0.113.8' })).status).toBe(204)
+    expect((await post('/api/room/result', result(), { 'x-forwarded-for': '203.0.113.8' })).status).toBe(204)
     clock.t += 60_000
     expect((await post('/api/room/result', result(), ip)).status).toBe(204)
   })
@@ -129,7 +129,7 @@ describe('POST /api/room/result', () => {
   it('lets 200 devices on one shared venue IP all post inside a minute with the default limit', async () => {
     const clock = { t: T0 }
     const app = new Hono().route('/api', roomRoutes(loadConfig({}), createRoomStore(), { now: () => clock.t }))
-    const venue = { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.50' }
+    const venue = { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.50' }
     const send = (i: number) =>
       app.request('/api/room/result', {
         method: 'POST',
@@ -144,14 +144,14 @@ describe('POST /api/room/result', () => {
     expect(DEFAULT_POSTS_PER_MINUTE).toBe(600)
   })
 
-  it('treats a spoofed non-IP header as unknown', async () => {
+  it('uses the peer bucket for a malformed forwarded address', async () => {
     const { post } = setup({ postsPerMinute: 1 })
-    expect((await post('/api/room/result', result(), { 'cf-connecting-ip': 'spoof-a' })).status).toBe(204)
-    // A different made-up value lands on the same 'unknown' key instead of a fresh window.
-    expect((await post('/api/room/result', result(), { 'cf-connecting-ip': 'spoof-b' })).status).toBe(429)
+    expect((await post('/api/room/result', result(), { 'x-forwarded-for': 'spoof-a' })).status).toBe(204)
+    // A different made-up value lands on the same peer key instead of a fresh window.
+    expect((await post('/api/room/result', result(), { 'x-forwarded-for': 'spoof-b' })).status).toBe(429)
   })
 
-  it('falls back to the first X-Forwarded-For entry for the client IP', async () => {
+  it('walks through explicitly trusted forwarding hops', async () => {
     const { post } = setup({ postsPerMinute: 1 })
     const first = { 'x-forwarded-for': '198.51.100.1, 10.0.0.1' }
     expect((await post('/api/room/result', result(), first)).status).toBe(204)
@@ -309,7 +309,7 @@ describe('POST /api/room/presence', () => {
     for (let i = 0; i < 1005; i++) {
       clock.t += 1
       // Changed for the new-identity cap (800 per IP): spread over IPs so this tests the store cap.
-      const ip = { 'cf-connecting-ip': `198.51.100.${i % 2}` }
+      const ip = { 'x-forwarded-for': `198.51.100.${i % 2}` }
       await post('/api/room/presence', beat({ deviceId: `device-${String(i).padStart(5, '0')}`, nickname: `P${i}` }), ip)
     }
     const state = await board()
@@ -334,7 +334,7 @@ describe('POST /api/room/presence', () => {
     const send = (path: string, body: unknown) =>
       app.request(path, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.9' },
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.9' },
         body: JSON.stringify(body),
       })
     expect((await send('/api/room/presence', beat())).status).toBe(204)
@@ -356,7 +356,7 @@ describe('POST /api/room/presence', () => {
 })
 
 describe('per-device throttles', () => {
-  const venue = { 'cf-connecting-ip': '203.0.113.60' }
+  const venue = { 'x-forwarded-for': '203.0.113.60' }
   const id = (i: number) => `device-${String(i).padStart(5, '0')}-x`
   const beat = (deviceId: string, over: Partial<RoomPresenceRequest> = {}): RoomPresenceRequest => ({
     deviceId,
@@ -430,7 +430,7 @@ describe('per-device throttles', () => {
     expect(state.feed[0]!.score).toBe(42)
     expect(state.live?.map((p) => p.nickname)).not.toContain('P850')
     // Another IP has its own quota.
-    await post('/api/room/presence', beat(id(950), { nickname: 'Elsewhere' }), { 'cf-connecting-ip': '203.0.113.61' })
+    await post('/api/room/presence', beat(id(950), { nickname: 'Elsewhere' }), { 'x-forwarded-for': '203.0.113.61' })
     expect((await board()).live?.map((p) => p.nickname)).toContain('Elsewhere')
   })
 })

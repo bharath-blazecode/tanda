@@ -6,7 +6,7 @@ import type { RoomEntry, RoomState } from '../shared/contracts'
 export type RoomStore = {
   add(entry: RoomEntry, deviceId: string): void
   snapshot(now: number): RoomState
-  reset(): void
+  reset(): void | Promise<void>
   // Takes one device's entry off the board. True when there was one to take.
   remove(deviceId: string, now: number): boolean | Promise<boolean>
   // Folds in entries from elsewhere (the mirror). Newer `at` wins; returns how many changed.

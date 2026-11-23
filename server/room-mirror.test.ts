@@ -115,6 +115,34 @@ describe('mirrored room store', () => {
     expect((await withdraw()).status).toBe(204)
   })
 
+  it('keeps an unconfirmed reset hidden through recovery and confirms a later retry', async () => {
+    const { mirror, state, hash } = fakeMirror({ 'device-local-001': JSON.stringify(entry()) })
+    const room = createMirroredRoom(mirror, { now: () => T0, log: quietLog().log })
+    await room.hydrate()
+    const token = 'fixture-admin-token-123456'
+    const app = createApp(loadConfig({ ROOM_ADMIN_TOKEN: token }), { store: room.store })
+    const reset = () => app.request('/api/room/reset', { method: 'POST', headers: { 'x-admin-token': token } })
+    state.mode = 'reject'
+    expect((await reset()).status).toBe(503)
+    state.mode = 'ok'
+    await room.sync()
+    expect(room.store.snapshot(T0).total).toBe(0)
+    expect((await reset()).status).toBe(204)
+    expect(hash.size).toBe(0)
+  })
+
+  it('discards a snapshot still in flight when withdrawal was confirmed, even with clock skew', async () => {
+    const { mirror } = fakeMirror()
+    let resolve!: (entries: Record<string, string>) => void
+    mirror.readAll = () => new Promise(done => { resolve = done })
+    const room = createMirroredRoom(mirror, { now: () => T0, log: quietLog().log })
+    const pending = room.sync()
+    await room.store.remove('device-local-001', T0)
+    resolve({ 'device-local-001': JSON.stringify(entry({ at: T0 + 100 })) })
+    await pending
+    expect(room.store.snapshot(T0).total).toBe(0)
+  })
+
   it('accepts a newer entry for a withdrawn device, because the person shared again', async () => {
     const { mirror, hash } = fakeMirror()
     const room = createMirroredRoom(mirror, { now: () => T0 + 6000, log: quietLog().log })
@@ -224,7 +252,7 @@ describe('mirrored room store', () => {
     for (const raw of [null, undefined, 'x', 42, ['a']]) expect(parseMirrored(raw).pairs).toEqual([])
   })
 
-  it('keeps add, snapshot and reset working when the mirror throws or rejects', async () => {
+  it('keeps local writes available and surfaces failed durable resets', async () => {
     for (const mode of ['throw', 'reject'] as const) {
       const { mirror, state } = fakeMirror()
       state.mode = mode
@@ -232,7 +260,7 @@ describe('mirrored room store', () => {
       const room = createMirroredRoom(mirror, { log })
       expect(() => room.store.add(entry(), 'device-aaaa-1111')).not.toThrow()
       expect(room.store.snapshot(T0).total).toBe(1)
-      expect(() => room.store.reset()).not.toThrow()
+      await expect(room.store.reset()).rejects.toThrow()
       expect(room.store.snapshot(T0).total).toBe(0)
       expect(await room.hydrate()).toBe(0)
       await flush()
@@ -328,7 +356,7 @@ describe('prepareRoom', () => {
     expect(fake.calls).toContain('close')
   })
 
-  it('falls back to memory only when the client cannot even be created', async () => {
+  it('keeps local reads available but never confirms durable removal when client creation fails', async () => {
     const { lines, log } = quietLog()
     const room = await prepareRoom(loadConfig({ REDIS_URL: 'redis://x' }), {
       createMirror: () => {
@@ -338,6 +366,8 @@ describe('prepareRoom', () => {
     })
     room.store.add(entry(), 'device-aaaa-1111')
     expect(room.store.snapshot(T0).total).toBe(1)
+    await expect(room.store.remove('device-aaaa-1111', T0)).rejects.toThrow()
+    expect(room.store.snapshot(T0).total).toBe(0)
     expect(lines).toEqual([{ msg: 'room mirror disabled', reason: 'Error' }])
   })
 })

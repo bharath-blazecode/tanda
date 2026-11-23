@@ -1,6 +1,6 @@
 // A durable copy of the room board, so a restart or a deploy does not empty the projector.
 // Memory stays the source of truth: reads never touch the mirror, writes go to it without being
-// awaited, and every failure is counted and swallowed. No mirror means memory only, as before.
+// awaited, except deletion and reset, which require confirmation. No mirror means memory only, as before.
 import { RoomEntry } from '../shared/contracts'
 import type { Config } from './config'
 import { createRedisMirror } from './redis'
@@ -21,7 +21,7 @@ const LOG_EVERY_MS = 60_000
 
 // Field = deviceId, value = JSON of a RoomEntry. Values are raw strings so junk can be caught here.
 export type RoomMirror = {
-  readAll(): Promise<Record<string, string>>
+  readAll(maxFields: number): Promise<Record<string, string>>
   write(deviceId: string, value: string): Promise<void>
   remove(deviceIds: string[]): Promise<void>
   clear(): Promise<void>
@@ -80,12 +80,12 @@ export function parseMirrored(raw: unknown): { pairs: Array<[string, RoomEntry]>
   for (const [deviceId, value] of Object.entries(raw)) {
     let parsed: unknown
     try {
-      parsed = typeof value === 'string' ? JSON.parse(value) : undefined
+      parsed = typeof value === 'string' && value.length <= 1024 ? JSON.parse(value) : undefined
     } catch {
       parsed = undefined
     }
     const entry = RoomEntry.safeParse(parsed)
-    if (entry.success && deviceId.length >= 1 && deviceId.length <= 64) pairs.push([deviceId, entry.data])
+    if (entry.success && deviceId.length >= 8 && deviceId.length <= 64) pairs.push([deviceId, entry.data])
     else junk.push(deviceId)
   }
   return { pairs, junk }
@@ -126,10 +126,11 @@ export function createMirroredRoom(
   let lastLog = -Infinity
   // Bumped on reset, so a read that started before a reset cannot bring the old board back.
   let generation = 0
-  // Withdrawn devices and when. A mirror read that started before a withdrawal, or a delete that has
-  // not landed yet, must not bring the entry back. A newer post (the person shared again) is allowed.
-  // Bounded, and forgotten once anything older would have expired anyway.
-  const withdrawn = new Map<string, number>()
+  // Hide unconfirmed withdrawals until a durable delete or an explicit new local share.
+  // The expiry includes clock skew allowed on hydrated rows.
+  const withdrawn = new Map<string, { until: number }>()
+  let suspendUntil = 0
+  let resetPending: symbol | undefined
   const MAX_WITHDRAWN = 5_000
 
   const report = (err: unknown) => {
@@ -152,9 +153,10 @@ export function createMirroredRoom(
   const inner = createRoomStore({ ...storeOptions, onEvict: (ids) => fire(() => mirror.remove(ids)) })
 
   const pull = async (timeoutMs: number): Promise<number> => {
+    if (resetPending || now() < suspendUntil) return 0
     const started = generation
     try {
-      const raw = await withTimeout(() => mirror.readAll(), timeoutMs)
+      const raw = await withTimeout(() => mirror.readAll(maxFields), timeoutMs)
       if (started !== generation) return 0
       if (raw && typeof raw === 'object' && Object.keys(raw).length > maxFields) {
         report(Object.assign(new Error('mirror too large'), { name: 'MirrorTooLarge' }))
@@ -169,7 +171,7 @@ export function createMirroredRoom(
       for (const [deviceId, entry] of pairs) {
         const nickname = names(entry.nickname, deviceId)
         const gone = withdrawn.get(deviceId)
-        if (gone !== undefined && entry.at <= gone) drop.push(deviceId)
+        if (gone && at <= gone.until) drop.push(deviceId)
         else if (nickname === null || at - entry.at > maxAgeMs || entry.at - at > MAX_FUTURE_MS) drop.push(deviceId)
         else kept.push([deviceId, { ...entry, nickname }])
       }
@@ -183,28 +185,45 @@ export function createMirroredRoom(
 
   const store: RoomStore = {
     add(entry, deviceId) {
+      generation++
+      withdrawn.delete(deviceId)
       inner.add(entry, deviceId)
       // Only the RoomEntry fields go to Redis; zod strips anything else, deviceId included.
       const clean = RoomEntry.safeParse(entry)
       if (clean.success) fire(() => mirror.write(deviceId, JSON.stringify(clean.data)))
     },
     snapshot: (at) => inner.snapshot(at),
-    reset() {
+    async reset() {
       inner.reset()
       generation++
+      const reset = Symbol()
+      resetPending = reset
       withdrawn.clear()
-      fire(() => mirror.clear())
+      try {
+        await withTimeout(() => mirror.clear(), callTimeoutMs)
+        if (resetPending === reset) resetPending = undefined
+      } catch (error) {
+        report(error)
+        throw error
+      }
     },
     async remove(deviceId, at) {
       const had = inner.remove(deviceId, at)
+      generation++
+      const marker = { until: at + maxAgeMs + MAX_FUTURE_MS }
       withdrawn.delete(deviceId)
-      withdrawn.set(deviceId, at)
-      for (const [id, when] of withdrawn) {
-        if (withdrawn.size <= MAX_WITHDRAWN && at - when <= maxAgeMs) break
+      withdrawn.set(deviceId, marker)
+      for (const [id, previous] of withdrawn) {
+        if (withdrawn.size <= MAX_WITHDRAWN && at <= previous.until) break
+        // If unresolved deletes fill the table, memory stays available while pulls
+        // pause until even the evicted withdrawal's old row must have expired.
+        if (at <= previous.until) suspendUntil = Math.max(suspendUntil, previous.until + 1)
         withdrawn.delete(id)
       }
       try {
         await withTimeout(() => mirror.remove([deviceId]), callTimeoutMs)
+        generation++
+        if (withdrawn.get(deviceId) === marker) withdrawn.delete(deviceId)
       } catch (error) {
         report(error)
         throw error
@@ -269,7 +288,14 @@ export async function prepareRoom(
     mirror = createMirror(config.redisUrl, (err) => room?.report(err))
   } catch (err) {
     log({ msg: 'room mirror disabled', reason: errorReason(err) })
-    return memoryOnly()
+    const fallback = memoryOnly()
+    const local = fallback.store
+    const unconfirmed = () => { throw new Error('Room mirror unavailable') }
+    return { ...fallback, store: {
+      ...local,
+      async remove(id, at) { local.remove(id, at); return unconfirmed() },
+      async reset() { local.reset(); return unconfirmed() },
+    } }
   }
   room = createMirroredRoom(mirror, { log, names: namePolicy(config.roomNames ?? 'typed') })
   const loaded = await room.hydrate(hydrateTimeoutMs)
