@@ -92,3 +92,18 @@ describe('unknown API paths', () => {
     expect(res.status).toBe(404)
   })
 })
+
+
+describe('JSON write contract', () => {
+  it.each(['/api/verdict', '/api/room/result', '/api/room/presence', '/api/room/withdraw'])(
+    'requires the documented media type on %s', async path => {
+      const response = await app.request(path, { method: 'POST', body: '{}' })
+      expect(response.status).toBe(415)
+      expect(await response.json()).toEqual({ error: 'json_required' })
+    },
+  )
+  it('accepts JSON with a charset parameter', async () => {
+    const res = await post('/api/verdict', verdictRequest, { 'content-type': 'application/json; charset=utf-8' })
+    expect(res.status).toBe(200)
+  })
+})
