@@ -152,9 +152,9 @@ export function describeDrinks(drinks: readonly DrinkInput[]): string {
 const NUDGE_WORDS: Record<NudgeKind, string> = {
   'carry-on': 'Carry on.',
   water: 'Water, and a slow breath.',
-  'no-more-caffeine': 'Check the amounts in your drink log.',
+  'no-more-caffeine': 'No more coffee today.',
   'ride-or-friend': 'Get a ride or ping a friend.',
-  'steady-not-a-driving-test': 'Get a ride or a friend.',
+  'steady-not-a-driving-test': 'Still not a driving test.',
 }
 
 /** The few words on the tear-off stub. The engine picks the kind; this only says it. */
@@ -200,7 +200,7 @@ export function labelNote(verdict: Verdict): string {
       return 'Steady: no change past this app\'s threshold in what was compared.'
     case 'wired':
     case 'tipsy':
-      return 'Your log names this stamp. The task comparison cannot explain what caused the change.'
+      return 'Named from your log. The phone does not detect caffeine or alcohol.'
     case 'wobbly':
       return 'Changed, with nothing logged to name it.'
   }
