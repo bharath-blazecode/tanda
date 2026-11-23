@@ -12,12 +12,14 @@ import {
   PEAK_MINUTES,
   recentDrinks,
 } from '../../engine/caffeine'
-import type { DrinkInput } from '../../engine/serving'
+import { DRINK_LABELS } from '../log/presets'
+import { DEFAULT_CAFFEINE_MG, type AmountOrigin, type DrinkInput } from '../../engine/serving'
 import { CaffeineChart, Field, Label, Rows, Sheet } from '../../ui'
 
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-const mg = (n: number) => `${Math.round(n)} mg`
-const range = (low: number, high: number) => `${Math.round(low)} to ${Math.round(high)} mg`
+const mg = (n: number) => n > 0 && n < 1 ? 'under 1 mg' : `${Math.round(n)} mg`
+const sourceName: Record<AmountOrigin, string> = { label: 'Label', estimate: 'Your estimate', default: 'App default' }
+const range = (low: number, high: number) => `${mg(low)} to ${mg(high)}`
 
 const toMinutes = (text: string): number | null => {
   const m = /^(\d{2}):(\d{2})$/.exec(text)
@@ -47,41 +49,51 @@ export function CaffeineCard({
   const recent = recentDrinks(drinks, now)
   const s = caffeineSummary(drinks, now, bedtime, dayStartAt)
   // An hour past bedtime, so the marker is not jammed against the right edge.
-  const curve = caffeineCurve(recent, dayStartAt, bedtime + 3_600_000, 10)
+  const curve = s.known ? caffeineCurve(recent, dayStartAt, bedtime + 3_600_000, 10) : []
 
   const rows: [string, string][] = [
     ['Now', `about ${mg(s.now.mg)}`],
-    ['Now, range', range(s.now.low, s.now.high)],
+    ['Now, scenarios', range(s.now.low, s.now.high)],
     [`At ${clock(bedtime)}`, `about ${mg(s.bedtime.mg)}`],
-    [`At ${clock(bedtime)}, range`, range(s.bedtime.low, s.bedtime.high)],
+    [`At ${clock(bedtime)}, scenarios`, range(s.bedtime.low, s.bedtime.high)],
   ]
   if (s.carriedOverMg >= 1) rows.push(['From before 4am', `about ${mg(s.carriedOverMg)}`])
 
-  const gaps: string[] = []
-  if (s.unknown > 0) gaps.push(`${s.unknown} caffeinated ${s.unknown === 1 ? 'entry has' : 'entries have'} no amount and ${s.unknown === 1 ? 'is' : 'are'} left out, so this reads low.`)
-  if (s.defaults > 0) gaps.push(`${s.defaults} ${s.defaults === 1 ? 'entry uses' : 'entries use'} the app's default dose, not a label or your figure.`)
-  if (s.approxTimes > 0) gaps.push(`${s.approxTimes} ${s.approxTimes === 1 ? 'time is' : 'times are'} rough guesses.`)
-  if (s.legacy > 0) gaps.push(`${s.legacy} ${s.legacy === 1 ? 'entry was' : 'entries were'} logged before times and amounts could be edited.`)
+  const example = s.bedtimeExample
+  const sourceRows: [string, string][] = []
+  for (const origin of ['label', 'estimate', 'default'] as const) {
+    const { entries, mg: total } = s.sources[origin]
+    if (entries) sourceRows.push([sourceName[origin], `${mg(total)} · ${entries} ${entries === 1 ? 'entry' : 'entries'}`])
+  }
+  const inputs = [
+    [s.sources.label.entries, 'from labels'],
+    [s.sources.estimate.entries, 'manually estimated'],
+    [s.sources.default.entries, 'using app defaults'],
+  ] as const
+  const provenance = inputs.filter(([count]) => count > 0).map(([count, text]) => `${count} ${text}`).join(', ')
+  const omitted = s.unknown === 1 ? '1 entry with an unknown amount is' : `${s.unknown} entries with unknown amounts are`
 
   return (
     <>
-      <CaffeineChart points={curve} bedtime={bedtime} atBedtimeMg={s.bedtime.mg} />
+      {s.known > 0 && <CaffeineChart points={curve} bedtime={bedtime} atBedtimeMg={s.bedtime.mg} />}
       <Sheet>
-        <Label paper>Caffeine estimate</Label>
-        <Rows items={rows} />
-        <p className="k-small">
-          Arithmetic on your log, not a measurement of you. It assumes each dose peaks about {PEAK_MINUTES} minutes after
-          you drink it and then halves every {HALF_LIFE_HOURS} hours. The range uses {HALF_LIFE_FAST_HOURS} and{' '}
-          {HALF_LIFE_SLOW_HOURS} hours instead: a spread of assumptions, not a confidence interval, and some people fall
-          outside it. Pregnancy, some medicines and smoking change it a lot.
-        </p>
-        {gaps.length > 0 && (
-          <ul className="k-notes">
-            {gaps.map((gap) => (
-              <li key={gap}>{gap}</li>
-            ))}
-          </ul>
-        )}
+        <Label paper>{s.unknown && s.known ? 'Partial caffeine estimate' : 'Caffeine estimate'}</Label>
+        {s.known > 0 ? <Rows items={rows} /> : <p>Amount unknown. Add a caffeine amount to a drink in your log to see an estimate.</p>}
+        {s.known > 0 && <p className="k-small">Doses in the model · {provenance}. {s.unknown > 0 && `${omitted} left out.`}</p>}
+        {s.needsVolume > 0 && <p className="k-small">For a label in mg per 100 mL, enter the serving volume as well.</p>}
+        <details>
+          <summary className="k-small">How this estimate was made</summary>
+          {sourceRows.length > 0 && <>
+            <p className="k-small">Caffeine logged in the last 48 hours, adjusted for the fraction consumed.</p>
+            <Rows items={sourceRows} />
+          </>}
+          {s.defaults > 0 && <p className="k-small">One-tap coffee uses {DEFAULT_CAFFEINE_MG.coffee} mg and energy drink uses {DEFAULT_CAFFEINE_MG.energy} mg per serving. Edit an entry if you have its label.</p>}
+          {s.approxTimes > 0 && <p className="k-small">{s.approxTimes} {s.approxTimes === 1 ? 'entry has a rough time' : 'entries have rough times'}. An earlier or later time moves the curve.</p>}
+          {s.legacy > 0 && <p className="k-small">Your log includes older entries made before serving details could be recorded.</p>}
+          {example && <p className="k-small">The {DRINK_LABELS[example.kind].toLowerCase()} logged {example.approxTime ? 'around' : 'at'} {clock(example.at)} on {new Date(example.at).toLocaleDateString([], { month: 'short', day: 'numeric' })} contributes about {mg(example.projected)} at bedtime in the five-hour model, from a logged dose of {mg(example.dose)} ({sourceName[example.origin].toLowerCase()}).</p>}
+          <p className="k-small">Each dose follows an illustrative rise to a peak at {PEAK_MINUTES} minutes, then halves every {HALF_LIFE_HOURS} hours. The band reruns the same log at {HALF_LIFE_FAST_HOURS} and {HALF_LIFE_SLOW_HOURS} hours. Your own timing can fall outside those scenarios.</p>
+          <p className="k-small">The bedtime marker shows where the bedtime setting falls on the curve. The model cannot predict how you will sleep.</p>
+        </details>
         {editing ? (
           <>
             <Field

@@ -1,7 +1,7 @@
 // CARD 6. Landing (docs/04-screens-spec.md, section 1).
 // Say what this is in five seconds and get the first tap.
 import { useState, type FormEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { ChartWindow, Housing, Key, Plate, Printed, Toggle } from '../../ui'
 import { load, setRoomSharing, update } from '../../store/local'
 import { withdrawFromRoom } from '../../api/room'
@@ -135,6 +135,10 @@ export function Landing() {
           <Key quiet onClick={quickDemo}>
             Quick demo · example numbers
           </Key>
+          <Link className="k-small" style={{ color: 'var(--housing-ink)', textAlign: 'center' }} to="/log"
+            onClick={() => update(s => ({ ...s, nickname: chooseName(name, s.nickname) }))}>
+            Just log a drink
+          </Link>
         </>
       )}
 
