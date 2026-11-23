@@ -2,21 +2,22 @@
 # Dokploy builds with --target runtime, so the final stage must keep that name.
 
 # The commit this image was built from, for /api/health. Falls back to "unknown" outside a git checkout.
-FROM alpine/git:latest AS gitsha
+FROM alpine/git@sha256:29cff25811f790b9f72fc266bf8009a5a911714c0e03c31c47339c50909d9aef AS gitsha
 WORKDIR /repo
 COPY . .
-RUN (git rev-parse --short HEAD 2>/dev/null || echo unknown) > /git-sha
+# Object history, remotes, credentials and reflogs are excluded from the build context.
+RUN mkdir -p .git/objects .git/refs && (git rev-parse --verify HEAD 2>/dev/null || echo unknown) | cut -c1-12 > /git-sha
 
-FROM node:22-slim AS deps
+FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+RUN --mount=type=cache,id=kachka-npm,target=/root/.npm npm ci --prefer-offline --no-audit --no-fund
 
 FROM deps AS build
 COPY . .
 RUN npm run build
 
-FROM node:22-slim AS runtime
+FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS runtime
 ENV NODE_ENV=production TZ=UTC HOST=0.0.0.0 PORT=3333 NODE_OPTIONS=--max-old-space-size=384
 WORKDIR /app
 # The server bundle carries its own dependencies, so the runtime needs no node_modules.
