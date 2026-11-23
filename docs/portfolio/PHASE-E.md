@@ -1,85 +1,50 @@
-# Phase E · Refined creative experience
+# Phase E · Clean Kachka and tactile caffeine scenarios
 
-> **Owner-requested visual revision (24 November 2026).** The initial hand-fed BC-2 recorder was rejected because its human-like instruction mark looked wrong and the original clean Landing was preferred. The entire **Feed paper** experience (illustration, 3D deck, animation and button) has been removed, with Landing restored byte-for-byte from merged Phase D. The caffeine selector remains; existing thermal receipt wording, layout, animations, save/share and alcohol safety are untouched. The original prototype screenshots below are *historical design review evidence*, not the current shipping landing UI. No PR has been created or deployment authorised.
+## Final owner-directed visual scope (24 November 2026)
 
-The remaining Phase E enhancement is the optional **2 h / 5 h / 8 h caffeine scenario selector**, which changes the illustrative curve and bedtime readout together using existing modelling scenarios, not new measurements. The five-hour model remains the default. The rest of the report below describes the initial candidate for context; references to the paper feeder and its test results are **historical and not part of this revised implementation**. Verify the updated branch and exact landing-parity tests before any PR or merge.
+The initial Phase E candidate at `b7ac0226321b79ae72ea1a74fa53aeddb0a79dfa` added a hand-fed BC-2 miniature illustration to Landing. The first instruction on the paper included a human-like SVG outline. The owner reviewed this and preferred the original uncluttered landing screen. The entire miniature recorder, its **Feed paper** control, CSS, animation, JSX and rejected prototype screenshots have been removed from this revised feature branch.
 
----
+**Landing is restored byte-for-byte to merged Phase D** (`src/screens/landing/index.tsx`, identical Git blob SHA on `main` and this branch). No substitute image or illustration was introduced. The team’s existing title, graph-paper presentation, form, privacy choice, demo and quick-log entry remain exactly as before.
 
-# Phase E · The hand-fed BC-2
+The accepted improvement is the interactive caffeine chart, separate from Landing and from the protected receipt.
 
-The earliest place a visitor meets Kachka is a sheet of graph paper. On the PR #60 build that sheet explained the tests in words. The result screen already had a much richer physical vocabulary: a printing ticket, ink stamp, animated bird and tear-off stub. Phase E brings a working part of that instrument to the first visit and gives the existing caffeine plotter a physical selector.
+## Retained chart feature
 
-## Direction
+- Three compact latching radio keys labelled **2 h**, **5 h** and **8 h** select the existing illustrative caffeine half-life scenarios.
+- The plotted curve and the line directly beneath it display the same selected scenario and bedtime estimate. The shaded uncertainty/sensitivity envelope does not change.
+- Five-hour modelling is the initial selection on each visit. Changing the selector does not modify stored drinks, real test results, baseline, personal data, server requests or paid API usage.
+- The field guide and broader Home values continue to state the five-hour model explicitly; the optional chart control only changes its own chart and legend, not the baseline calculation or actual measurements.
+- Accessible native radios, keyboard arrow navigation, 44 px touch targets, visible focus, forced-colour style and no dependency on animations or WebGL remain.
+- No new library, font or external asset is required.
 
-| Concept | Experience and fit | Cost and decision |
-| --- | --- | --- |
-| Hand-fed desktop recorder | A little green machine feeds three illustrated instructions. Anyone can operate it before giving a sensor permission. Latching keys on Home use the same physical vocabulary to compare real model assumptions. | Finite transforms, native controls and existing artwork work on small screens. Selected. |
-| Animated sensor panel | A shutter could uncover the active channel as a sensor becomes available. It would make an otherwise technical state tangible. | The setup already checks for actual samples and can hand over quickly. Extra motion could compete with permission instructions or falsely suggest readiness. Deferred. |
-| Scroll through an exploded machine | An exploded assembly could show where the chart, pen and paper come from. High visual impact with room for storytelling. | It would add length and a second navigation language to a short mobile task. It would also require a static equivalent. Better suited to an optional future exhibit. |
+## Protected design and functionality
 
-CSS perspective and separate folded surfaces make the deck, front plate and side wall occupy different planes. A fixed SVG drawing could show a static cutaway more cheaply but would still need separate moving parts. A WebGL scene or authored mesh would enable free rotation, at the cost of a renderer, model assets and GPU lifecycle work. The only useful degrees of freedom here are the feed and register-wheel rotation. There is no graphics context, external asset request or animation dependency.
+This revised branch introduces no source changes to the original thermal receipt components, Dr. Bin Chicken’s original fallback jokes, result animations, stamps, receipt CSS, PNG export, privacy toggles, or fixed alcohol no-driving messages. Demo, Stand Still, Choice Tap, camera pulse, room consent and all original navigation paths remain unchanged by the accepted visual work.
 
-## Delivered interactions
+The original result animations remain the satisfying motion treatment. No unwanted visual clutter or additional Landing scroll is shipped.
 
-- **Landing.** Press **Feed paper** to move through Stand still, Tap the squares and Read your ticket. The sprocket holes travel with the strip under a fixed roller. Each press advances the wheel by 120 degrees and gives the key a recessed face. The strip settles in 260 ms. The text updates immediately and the original Start, demo and drink-log controls stay live throughout. The last illustration reuses the team's ibis mark.
-- **Home.** The 2 h, 5 h and 8 h latching keys select the existing fast, middle and slow curves. The selected curve and bedtime readout change together. The shaded envelope remains fixed, while the rows below explicitly identify the five-hour model. The choice lasts for this view. A fresh visit starts on 5 h. With unknown-only caffeine amounts, the existing correction path still appears. There is no new estimate, persistence or personal-data field.
-- **During measurement.** The model exists only on Landing. The selector is present on a chart with known caffeine data on Home. The baseline, Stand Still, Choice Tap, camera, audio, room, privacy, receipt and export implementations have no Phase E diff. The controls introduce no timers, animation-frame loops, sensor listeners or navigation delays.
+## Evidence and verification status
 
-## Accessibility and footprint
+The initial candidate (with the subsequently rejected feeder) reported TypeScript, **686/686** unit tests, a successful production build, **18/18** additional Chromium checks and a successful **15/15** isolated personal flow. The combined synthetic motion flow had a timeout also reproduced on the original Phase D base. These are *historical results for the initial branch tip*, not independent verification of this revised head.
 
-Feed paper is a native button with a separate polite status caption. The decorative 3D scene is hidden from assistive technology. The chart keys use a labelled native radio group, arrow-key navigation, visible focus and an underline plus recessed state. The readout is a polite live region. Under reduced motion, the strip and wheel immediately display the selected state. At 390 px the Landing screenshot grew from 844 to 906 px in height and Start remained visible within the first viewport. The mobile chart gained 71 px for the switch and readout. Static views and the existing navigation also worked with WebGL disabled and local font requests blocked. Physical screen readers and native mobile browsers were not exercised.
+The revised browser harness now:
+- Captures Landing at both mobile and desktop sizes and checks the screenshots **byte-for-byte against merged Phase D**.
+- Confirms the **Feed paper** button is absent.
+- Exercises native keyboard, scenario selection, chart-curve switching, bedtime readout agreement, unchanged chart band, no log mutation and reset to 5 h on reload.
+- Compares exported receipts, ticket text and ticket pixels with the baseline.
+- Preserves independent animation-timeline comparisons for all four original ticket verdicts at three instants, without depending on the removed miniature recorder.
 
-With Vite's gzip reporting, main JS grew from 163.39 to 164.15 kB and CSS from 6.60 to 8.08 kB, about **2.24 kB combined**. The build already reported a chunk above 500 kB. No new binary art, font or npm package ships in the application. The screenshot directory is review material outside the production bundle.
+The revised GitHub branch must undergo checks on its exact head once a draft PR is opened. A standalone `npm run check` and `npm run build` should also be run where a development environment is available. Physical iPhone/Android sensor, low-end device, screen-reader and native share-sheet release validation remains separate.
 
-With Chromium's 4× CPU throttle, six feeds across 120 animation frames gave a median interval of 16.7 ms and p95 of 16.8 ms. The maximum reached 66.7 ms in the final run and 33.4 ms in the earlier run. No recorder animation remained active after settling. These are desktop/emulated compositor observations. They do not establish phone battery life, memory usage or a guaranteed frame rate.
+## Review images
 
-## Visual evidence
+- [Clean Landing — desktop](screenshots/phase-e/before-desktop-landing.png) and [mobile](screenshots/phase-e/before-mobile-landing.png): captured from merged Phase D; revised source is identical.
+- [Caffeine chart — 5 h mobile](screenshots/phase-e/after-mobile-chart.png) and [8 h mobile](screenshots/phase-e/after-mobile-chart-slow.png).
+- [Caffeine chart — 5 h desktop](screenshots/phase-e/after-desktop-chart.png) and [8 h desktop](screenshots/phase-e/after-desktop-chart-slow.png).
+- [Protected receipt — mobile](screenshots/phase-e/after-mobile-ticket.png), [desktop](screenshots/phase-e/after-desktop-ticket.png); exported PNGs are also in this screenshot directory.
 
-All before/after pairs use the same Chromium binary, synthetic data, Brisbane clock, local fonts, viewports and reduced-motion setting. The two stroke frames below use normal motion. The before captures used the clean PR #60 tree at `01ee82ddf8a1552a8432e14ac89d78d36182a569`.
+Rejected images are no longer present in the active branch. Older commits retain historical evidence without force-pushing or rewriting team contributions.
 
-| View | Before | After |
-| --- | --- | --- |
-| Mobile landing, 390 × 844 | [Landing](screenshots/phase-e/before-mobile-landing.png) | [Resting](screenshots/phase-e/after-mobile-landing.png) · [Advanced](screenshots/phase-e/after-mobile-feed.png) |
-| Desktop landing, 1280 × 900 | [Landing](screenshots/phase-e/before-desktop-landing.png) | [Resting](screenshots/phase-e/after-desktop-landing.png) · [Advanced](screenshots/phase-e/after-desktop-feed.png) |
-| Mobile chart | [Original](screenshots/phase-e/before-mobile-chart.png) | [5 h](screenshots/phase-e/after-mobile-chart.png) · [8 h](screenshots/phase-e/after-mobile-chart-slow.png) |
-| Desktop chart | [Original](screenshots/phase-e/before-desktop-chart.png) | [5 h](screenshots/phase-e/after-desktop-chart.png) · [8 h](screenshots/phase-e/after-desktop-chart-slow.png) |
-| Normal-motion paper feed | [Midstroke at 130 ms](screenshots/phase-e/mobile-feed-midstroke.png) | [Settled](screenshots/phase-e/mobile-feed-settled.png) |
-| Mobile protected ticket | [On screen](screenshots/phase-e/before-mobile-ticket.png) · [Export](screenshots/phase-e/before-mobile-export.png) | [On screen](screenshots/phase-e/after-mobile-ticket.png) · [Export](screenshots/phase-e/after-mobile-export.png) |
-| Desktop protected ticket | [On screen](screenshots/phase-e/before-desktop-ticket.png) | [On screen](screenshots/phase-e/after-desktop-ticket.png) |
+## Acceptance and release
 
-The same simulated, partial Tipsy ticket with an alcohol log produced byte-identical visible text, ticket screenshot and 1080 × 2094 downloaded PNG on each viewport across revisions. The ticket screenshots were 332 × 924 on mobile and 382 × 840 on desktop. The PNG used the default private export choices. The four animated preview verdicts also produced identical ticket pixels at 320, 1100 and 1800 ms on mobile. These comparisons cover those fixtures and instants. Source comparison separately covers all original joke strings, stamp content, typography, mascot animations, provenance, alcohol safety and export options.
-
-## Repeat the comparison
-
-Run `npm run check` and `npm run build`. Serve the original and candidate production builds on separate loopback ports with paid commentary disabled, no API key and no Redis. The following uses ports 4387 and 4386 respectively. A system install of Playwright and Chromium is required for the browser scripts.
-
-~~~sh
-export CHROMIUM_PATH=/usr/bin/chromium
-export KACHKA_REFERENCE_ORIGIN=http://127.0.0.1:4387
-export KACHKA_TEST_ORIGIN=http://127.0.0.1:4386
-KACHKA_TEST_ORIGIN="$KACHKA_REFERENCE_ORIGIN" node scripts/browser-checks/creative.cjs before /tmp/kachka-e
-node scripts/browser-checks/creative.cjs after /tmp/kachka-e
-node scripts/browser-checks/creative-motion.cjs /tmp/kachka-e
-node scripts/browser-checks/extra.cjs
-node scripts/browser-checks/flows.cjs
-python scripts/browser-checks/pulse.py
-~~~
-
-The creative runner asserts native touch and keyboard advances, wraparound, reduced motion, curve and readout changes, a fixed scenario band, default on reload and identical receipt artifacts. The motion runner exercises interrupted feeds, repeated presses, frozen/resumed lifecycle, browser back, six route re-entries, immediate Start, 280–640 px resizing and missing fonts. The 320 px extra suite covers narrow layouts, PNG saving, simulated system sharing, room consent on blocked storage, and CSP. A desktop hit-test initially found the projected scene could intercept a click meant for Feed paper. Removing the decorative stage from pointer hit testing fixed the issue, and the final two-viewport run passed.
-
-## Verification results and release decision
-
-| Check | Observed result |
-| --- | --- |
-| `npm run check` | TypeScript passed. All 686 Vitest tests in 49 files passed. |
-| `npm run build` | Vite client and bundled Node server succeeded. Existing chunk-size warning remains. |
-| `creative.cjs` and `creative-motion.cjs` | Both viewport comparisons, protected artifacts, 12 animated verdict frames and lifecycle cases passed. |
-| `extra.cjs` | 18/18 passed, including a downloaded PNG and synthetic Web Share file handoff. |
-| `flows.cjs` | The combined run passed the 11 example checks, then timed out waiting for **Use this reading** in synthetic Stand Still. The clean PR #60 build also timed out at this control. The feature branch personal section subsequently passed 15/15. |
-| Remaining named flow sections | Reduced 3/3, migration 3/3, privacy 16/16, caffeine 16/16, lapses 2/2. The reduced-flow fixture initially supplied a historical standing baseline while expecting the current protocol's Start button. Specifying protocol version 2 in that fixture exercised the intended missing-sensor path. Runtime compatibility rules were preserved. |
-| `pulse.py` | Permission rejection, late cancellation cleanup, navigation cleanup and synthetic 72 bpm contact video passed. |
-
-Ready for draft review. Confirm PR CI and review both viewports before authorising a merge. There is no production configuration, data migration or new paid service. Merging to main requests Dokploy deployment after CI. Reverting the frontend or redeploying PR #60 restores the previous views against the same records.
-
-The synthetic motion timeout remains intermittent. Retain the physical-phone Stand Still and camera pulse pilot, native share sheet, VoiceOver/TalkBack and low-end mobile frame pacing on the release checklist. A larger 3D exhibit, scroll choreography and new sound are deferred. Phase F can scope social participation, consent and deletion. Phase G covers commercial release readiness, accessibility, performance, support and operational checks.
+**No pull request or merge was authorised by the review request.** Ask the owner to confirm acceptance of the restored clean Landing and the retained chart controls, then create a *draft* PR under `bharath-blazecode`. A merge to `main` triggers the configured Dokploy deployment job and always requires explicit owner approval. The Phase F social and Phase G commercial readiness stages remain separate.
