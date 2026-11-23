@@ -80,3 +80,11 @@ The [Phase C review and owner runbook](PHASE-C.md) records independent evidence,
 production checks, rollback and commercial privacy questions. Next decision is owner review.
 Phase D wellbeing/caffeine, Phase E creative animation/3D/scroll, Phase F social and Phase G
 commercial readiness remain separate.
+
+### Phase D · Connected wellbeing
+
+Review `feat/phase-d-wellbeing` from merged main `ffbf493ba2a8eb923eb93b41a2d9e72fc7853e07`. Commit `50b1c1b` adds the log-only entry and source-aware caffeine field guide. Commit `b301924` protects receipt warnings and retires the universal caffeine prompt. Commit `4373817` clarifies the previous-day list and very small estimates. The accompanying documentation commit contains the browser runner, evidence review and nine synthetic screenshots.
+
+TypeScript and 686 Vitest tests passed, and the production build succeeded. Chromium passed 16 caffeine, 11 example, 3 migration and 18 additional checks, plus the two-viewport wellbeing journey. On the same synthetic log, collapsed Home height changed from 1818 to 1401 px on mobile and 1997 to 1722 px on desktop. The initial receipt-preview test used a sample ticket that omits export controls. The regression test now exercises the real export-enabled ticket, checks both warning locations and verifies optional drink details remain hidden.
+
+For continuation, review the [Phase D report](PHASE-D.md) and [sources and access limits](research/PHASE-D-EVIDENCE.md), check GitHub CI on the exact branch tip, and have the owner review the screenshots and open a draft PR if needed. Independent plasma data support showing variation. Clinical validation and fresh access to current official Australian text remain open. Physical-phone B1/B2 validation, including reported motion timeouts, remains a separate release gate. Owner approval is required before merge, deployment or Phase E.

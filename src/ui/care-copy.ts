@@ -20,12 +20,8 @@ export const CARE_COPY: Record<CareTag, CareCopy> = {
     title: 'Eat something',
     body: 'Have food if you are drinking. It does not undo what you have already had.',
   },
-  'caffeine-over-limit': {
-    title: 'A lot of caffeine today',
-    body: 'Over 400 mg logged today. The app uses that number as a prompt to pause, not as a safe limit. Advice differs between countries and between people, and some need far less.',
-  },
   'caffeine-at-bedtime': {
-    title: 'Still with you at bedtime',
+    title: 'The bedtime estimate',
     body: 'The estimate assumes caffeine halves every five hours, which varies a lot between people. It cannot tell you whether you will sleep.',
   },
 }

@@ -51,10 +51,10 @@ export function CaffeineChart({
         <Axis left={clock(from)} right={clock(to)} />
         {bedtime !== undefined && atBedtimeMg !== null && atBedtimeMg !== undefined && (
           <Label paper>
-            Estimate: about {Math.round(atBedtimeMg)} mg at {clock(bedtime)}, if caffeine halves every 5 hours.
+            Five-hour model · {atBedtimeMg > 0 && atBedtimeMg < 1 ? 'under 1' : Math.round(atBedtimeMg)} mg at {clock(bedtime)}.
           </Label>
         )}
-        <Label paper>Band: the same log at 2 h and 8 h half-lives. A range of assumptions, not a measurement.</Label>
+        <Label paper>Shaded band · two alternative half-lives, 2 and 8 hours.</Label>
       </Printed>
     </ChartWindow>
   )

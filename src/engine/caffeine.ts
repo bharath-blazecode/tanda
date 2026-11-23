@@ -5,12 +5,12 @@
 // The model is the one in docs/05-architecture.md: a dose rises to a peak at about 50 minutes,
 // then halves every 5 hours. Half-life varies a lot between people (genetics, the pill, smoking,
 // pregnancy), which is why the chart carries a band rather than a line.
-import { caffeineMgFor, CAFFEINE_KINDS, type DrinkInput } from './serving'
+import { caffeineMgFor, CAFFEINE_KINDS, type AmountOrigin, type DrinkInput } from './serving'
 
-/** Minutes from the first sip to the most on board. */
+/** Fixed time to the top of the illustrative curve after the logged consumption time. */
 export const PEAK_MINUTES = 50
 
-/** The middle of the published range, and the edges the band is drawn between. */
+/** Chosen decay scenarios. These values do not bound individual variation. */
 export const HALF_LIFE_HOURS = 5
 export const HALF_LIFE_FAST_HOURS = 2
 export const HALF_LIFE_SLOW_HOURS = 8
@@ -21,7 +21,8 @@ export const HALF_LIFE_SLOW_HOURS = 8
  * cornering, then halves on the given half-life.
  */
 export function doseOnBoardMg(doseMg: number, minutesSince: number, halfLifeHours = HALF_LIFE_HOURS): number {
-  if (!Number.isFinite(minutesSince) || minutesSince <= 0) return 0
+  if (!Number.isFinite(minutesSince) || minutesSince <= 0 || !Number.isFinite(doseMg) || doseMg <= 0 ||
+      !Number.isFinite(halfLifeHours) || halfLifeHours <= 0) return 0
   if (minutesSince < PEAK_MINUTES) return doseMg * Math.sin((Math.PI / 2) * (minutesSince / PEAK_MINUTES))
   const hoursSincePeak = (minutesSince - PEAK_MINUTES) / 60
   return doseMg * Math.pow(0.5, hoursSincePeak / halfLifeHours)
@@ -110,8 +111,7 @@ export function lastCallFor(
 }
 
 /**
- * How far back a dose still matters to the estimate. Ten slow half-lives leave under 0.1% of a dose,
- * so 48 hours covers everything the slow edge of the band can still see.
+ * Fixed log lookback. Even after 48 hours the slow scenario still has a small tail.
  */
 export const RECENT_HOURS = 48
 
@@ -134,6 +134,11 @@ export type CaffeineSummary = {
   carriedOverMg: number
   /** Caffeinated entries in the window whose amount is unknown, so the estimate reads low. */
   unknown: number
+  /** Consumed doses behind the estimate, grouped by how the amount was supplied. */
+  sources: Record<AmountOrigin, { entries: number; mg: number }>
+  known: number
+  needsVolume: number
+  bedtimeExample: { kind: DrinkInput['kind']; at: number; approxTime: boolean; dose: number; projected: number; origin: AmountOrigin } | null
   /** Entries using the app's default dose, not a label or the person's figure. */
   defaults: number
   /** Entries with a rough time ("about an hour ago"). */
@@ -158,18 +163,35 @@ export function caffeineSummary(
     high: caffeineOnBoardMg(recent, t, HALF_LIFE_SLOW_HOURS),
   })
   let unknown = 0
-  let defaults = 0
+  let needsVolume = 0
+  let bedtimeExample: CaffeineSummary['bedtimeExample'] = null
+  const sources = { label: { entries: 0, mg: 0 }, estimate: { entries: 0, mg: 0 }, default: { entries: 0, mg: 0 } }
   for (const d of caffeinated) {
     const figure = caffeineMgFor(d)
-    if (figure.mg === null) unknown++
-    else if (figure.origin === 'default') defaults++
+    if (figure.mg === null) {
+      unknown++
+      if (figure.reason === 'needs-volume') needsVolume++
+      continue
+    }
+    sources[figure.origin].entries++
+    sources[figure.origin].mg += figure.mg
+    const projected = doseOnBoardMg(figure.mg, (bedtime - d.at) / 60000)
+    // Explain one material contribution. Use the largest, then the more recent on ties.
+    if (projected >= 1 && (!bedtimeExample || projected > bedtimeExample.projected ||
+        (projected === bedtimeExample.projected && d.at > bedtimeExample.at))) {
+      bedtimeExample = { kind: d.kind, at: d.at, approxTime: !!d.approxTime, dose: figure.mg, projected, origin: figure.origin }
+    }
   }
   return {
     now: at(now),
     bedtime: { at: bedtime, ...at(bedtime) },
     carriedOverMg: caffeineOnBoardMg(before, now),
     unknown,
-    defaults,
+    defaults: sources.default.entries,
+    sources,
+    known: caffeinated.length - unknown,
+    needsVolume,
+    bedtimeExample,
     approxTimes: caffeinated.filter((d) => d.approxTime).length,
     legacy: caffeinated.filter((d) => d.legacy).length,
   }

@@ -56,10 +56,10 @@ describe('careFor', () => {
     expect(care.tags).not.toContain('water-between')
   })
 
-  it('mentions the daily guide only once the day is past it', () => {
-    const three = [drink('coffee'), drink('coffee'), drink('coffee')]
-    expect(careFor(three, NOON).tags).not.toContain('caffeine-over-limit')
-    expect(careFor([...three, drink('coffee')], NOON).tags).toContain('caffeine-over-limit')
+  it('keeps an unknown-only bedtime estimate unavailable', () => {
+    const care = careFor([drink('tea')], NOON)
+    expect(care.caffeineAtBedtimeMg).toBeNull()
+    expect(care.tags).toEqual([])
   })
 
   it('notices caffeine that will still be on board at bedtime', () => {

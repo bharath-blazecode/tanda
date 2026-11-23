@@ -8,7 +8,8 @@
 // remedies with a countdown would be read as "do these and you are done", which is the clearance
 // claim this product does not make (CLAUDE.md, product rules).
 import { caffeineOnBoardMg } from './caffeine'
-import { CAFFEINE_LIMIT_MG, caffeineMgToday, hasAlcohol, hasCaffeine } from './nudge'
+import { hasAlcohol } from './nudge'
+import { tallyCaffeine } from './serving'
 import type { DrinkInput } from './serving'
 
 // Three tags were retired on 22 Nov 2026 because the evidence ledger could not support them as
@@ -18,7 +19,6 @@ export type CareTag =
   | 'only-time'
   | 'water-between'
   | 'food-with-it'
-  | 'caffeine-over-limit'
   | 'caffeine-at-bedtime'
 
 /** Local bedtime used when nobody has said otherwise. */
@@ -42,11 +42,9 @@ export function nextBedtimeAt(now: number, minutes: number): number {
 
 export type Care = {
   tags: CareTag[]
-  /** On board at bedtime, in mg, or null when nothing caffeinated was logged. */
+  /** On board at bedtime, in mg, or null when no logged caffeine amount is available. */
   caffeineAtBedtimeMg: number | null
   bedtime: number
-  /** The day's intake, for the over-the-guide line. */
-  caffeineTodayMg: number
 }
 
 /**
@@ -69,11 +67,9 @@ export function careFor(
     tags.push('only-time', 'water-between', 'food-with-it')
   }
 
-  const caffeineTodayMg = caffeineMgToday(drinks)
-  const caffeineAtBedtimeMg = hasCaffeine(onBoard) ? caffeineOnBoardMg(onBoard, bedtime) : null
+  const caffeineAtBedtimeMg = tallyCaffeine(onBoard).known > 0 ? caffeineOnBoardMg(onBoard, bedtime) : null
 
-  if (caffeineTodayMg >= CAFFEINE_LIMIT_MG) tags.push('caffeine-over-limit')
   if (caffeineAtBedtimeMg !== null && caffeineAtBedtimeMg >= BEDTIME_NOTICE_MG) tags.push('caffeine-at-bedtime')
 
-  return { tags, caffeineAtBedtimeMg, bedtime, caffeineTodayMg }
+  return { tags, caffeineAtBedtimeMg, bedtime }
 }

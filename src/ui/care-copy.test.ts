@@ -16,10 +16,8 @@ const BANNED = [
 ]
 
 describe('care copy', () => {
-  it('never presents 400 mg as safe or as anyone\'s guidance', () => {
-    const body = CARE_COPY['caffeine-over-limit'].body
-    expect(body).toMatch(/not as a safe limit/)
-    expect(body).not.toMatch(/guide for adults|recommended|FSANZ|EFSA/i)
+  it('keeps population intake limits out of personal advice', () => {
+    for (const [, copy] of entries) expect(copy.body).not.toMatch(/400 mg|safe limit/i)
   })
 
   it('never promises a kinder tomorrow or an early wake-up, and disowns any sleep prediction', () => {

@@ -7,7 +7,7 @@ import type { Drink, Stored } from '../../../shared/contracts'
 import { careFor, nextBedtimeAt, DEFAULT_BEDTIME_HOUR } from '../../engine/aftercare'
 import { recentDrinks } from '../../engine/caffeine'
 import { hasAlcohol, hasCaffeine } from '../../engine/nudge'
-import { tallyAlcohol, tallyCaffeine } from '../../engine/serving'
+import { CAFFEINE_KINDS, tallyAlcohol, tallyCaffeine } from '../../engine/serving'
 import { dayStart, drinksToday } from '../../store/day'
 import { load, update } from '../../store/local'
 import { CareCard, Housing, Key, Keys, Label, Plate, Rows, SafetyLine, Sheet } from '../../ui'
@@ -27,7 +27,8 @@ function totals(today: Drink[]): string[] {
   const alcohol = tallyAlcohol(today)
   const lines: string[] = []
   if (caffeine.known + caffeine.unknown > 0) {
-    lines.push(
+    if (!caffeine.known) lines.push('Caffeine today: amount unknown.')
+    else lines.push(
       `Caffeine today: about ${Math.round(caffeine.mg)} mg` +
         (caffeine.unknown > 0 ? `, plus ${caffeine.unknown} with no amount.` : '.'),
     )
@@ -88,12 +89,22 @@ export function Home() {
   const edit = (d: Drink) => navigate('/log', { state: { edit: d.id } })
 
   // One reading of the clock for the whole render, so the log, the curve and the bedtime agree.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const refresh = () => setTick(tick => tick + 1)
+    const timer = window.setInterval(refresh, 60_000)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [])
   const now = Date.now()
   const startOfDay = dayStart(now)
   const today = drinksToday(stored.drinks, now)
   // Earlier entries that still matter to the caffeine estimate, shown so the carry-over is visible.
   const earlier = recentDrinks(stored.drinks, now)
-    .filter((d) => d.at < startOfDay)
+    .filter((d) => d.at < startOfDay && CAFFEINE_KINDS.has(d.kind))
     .sort((a, b) => b.at - a.at)
   // Any alcohol logged today keeps the fixed line up here as well as on every result (D19).
   const showSafety = hasAlcohol(today)
@@ -118,7 +129,7 @@ export function Home() {
         ))}
         {earlier.length > 0 && (
           <details>
-            <summary className="k-small">Before 4am, still in the caffeine estimate ({earlier.length})</summary>
+            <summary className="k-small">Before 4am, caffeine entries ({earlier.length})</summary>
             <Entries drinks={earlier} onEdit={edit} />
           </details>
         )}
@@ -151,7 +162,7 @@ export function Home() {
         />
       )}
 
-      <CareCard tags={care.tags} />
+      <CareCard tags={care.tags.filter(tag => tag !== 'caffeine-at-bedtime')} />
 
       <Sheet>
         <Label paper>Your baseline</Label>

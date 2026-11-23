@@ -191,3 +191,26 @@ describe('caffeineSummary', () => {
     expect(caffeineSummary([label], now, bed, fourAm).now.mg).toBeCloseTo(160, 6)
   })
 })
+
+describe('field guide evidence', () => {
+  const bedtime = NOON + hours(5)
+  const label: Drink = { at: NOON - minutes(50), kind: 'energy', fraction: 0.5, servingMl: 250,
+    caffeine: { basis: 'per100ml', source: 'label', mgPer100ml: 32 } }
+  it('groups consumed doses by source and attributes an actual contribution at bedtime', () => {
+    const other: Drink = { at: NOON - hours(8), kind: 'tea', caffeine: { basis: 'serving', source: 'estimate', mg: 10 } }
+    const summary = caffeineSummary([label, other, { kind: 'tea', at: NOON }], NOON, bedtime, NOON - hours(8))
+    expect(summary.sources).toEqual({ label: { entries: 1, mg: 40 }, estimate: { entries: 1, mg: 10 }, default: { entries: 0, mg: 0 } })
+    expect(summary.bedtimeExample?.projected).toBeCloseTo(20)
+    expect(summary.bedtimeExample?.origin).toBe('label')
+    expect(summary.unknown).toBe(1)
+    expect(caffeineSummary([label], NOON, bedtime + hours(5), NOON).bedtimeExample?.projected).toBeCloseTo(10)
+  })
+  it('omits missing volumes, future and old entries without inventing an example', () => {
+    const s = caffeineSummary([{ ...label, servingMl: undefined }, coffee(NOON + hours(1)), coffee(NOON - hours(49))], NOON, bedtime, NOON)
+    expect(s).toMatchObject({ known: 0, unknown: 1, needsVolume: 1, bedtimeExample: null })
+  })
+  it('distinguishes an entered zero from an unknown and excludes inconsistent non-caffeine records', () => {
+    const s = caffeineSummary([{ ...label, kind: 'beer' }, { ...label, caffeine: { basis: 'serving', source: 'label', mg: 0 } }], NOON, bedtime, NOON)
+    expect(s).toMatchObject({ known: 1, unknown: 0, bedtimeExample: null, now: { mg: 0 } })
+  })
+})

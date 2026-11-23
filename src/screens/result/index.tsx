@@ -4,6 +4,7 @@
 // later recalibration cannot change the numbers on an old ticket.
 import { useRef } from 'react'
 import { Navigate, useLocation } from 'react-router'
+import { hasAlcohol } from '../../engine/nudge'
 import { compareRuns } from '../../engine/compare'
 import { drinksToday } from '../../store/day'
 import { load } from '../../store/local'
@@ -36,6 +37,10 @@ export function Result() {
   if (!last) return <Navigate to="/home" replace />
 
   const { run, assessment, line, mode, reference } = last
+  // A retrospective edit can supply alcohol that was missing at assessment time.
+  // Later drinks may warrant the safety line without belonging on the original log.
+  const readingDrinks = drinksToday(stored.drinks, run.at)
+  const alcoholLogged = hasAlcohol(readingDrinks) || hasAlcohol(drinksToday(stored.drinks, Date.now()))
   const can = compareRuns(reference.run, run)
   const { rows, notes } = comparisonRows(run, reference.run, can)
   // What the person picked, handed over by Check. Only used to own up to a wrong guess.
@@ -69,7 +74,8 @@ export function Result() {
         conditions={conditionsWords(assessment.confidence)}
         stampNote={stampNote(mode)}
         labelNote={labelNote(assessment.verdict)}
-        logged={describeDrinks(drinksToday(stored.drinks, run.at))}
+        logged={describeDrinks(readingDrinks)}
+        alcoholLogged={alcoholLogged}
         extra={guess}
         againTo={again.to}
         againState={again.state}

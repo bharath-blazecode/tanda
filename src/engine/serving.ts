@@ -52,9 +52,10 @@ export function caffeineSpec(drink: DrinkInput): CaffeineAmount | null {
  * of it drunk is 40 mg. That is arithmetic on the person's inputs, not a claim about any product.
  */
 export function caffeineMgFor(drink: DrinkInput): CaffeineFigure {
+  if (!CAFFEINE_KINDS.has(drink.kind)) return { mg: null, reason: 'not-caffeinated' }
   const spec = caffeineSpec(drink)
   if (spec === null) {
-    return { mg: null, reason: CAFFEINE_KINDS.has(drink.kind) ? 'unknown' : 'not-caffeinated' }
+    return { mg: null, reason: 'unknown' }
   }
   if (spec.basis === 'unknown') return { mg: null, reason: 'unknown' }
   const fraction = fractionOf(drink)

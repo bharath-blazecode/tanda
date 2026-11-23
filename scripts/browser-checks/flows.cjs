@@ -311,7 +311,7 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     });
     await page.goto(BASE + '/home');
     let home = await page.locator('body').innerText();
-    check('carry-over: last night\'s coffee is in the estimate', /From before 4am/i.test(home) && /Before 4am, still in the caffeine estimate/i.test(home));
+    check('carry-over: last night\'s coffee is in the estimate', /From before 4am/i.test(home) && /Before 4am, caffeine entries/i.test(home));
     check('legacy beer shows as a count, not standard drinks', /count only/i.test(home) && /No label detail, so no standard-drink count/i.test(home));
     check('safety line shown with a beer logged', /Not a driving test/.test(home));
     await shot(page, 'flow-home-carryover');
@@ -364,7 +364,7 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     await page.getByRole('button', { name: 'Tea', exact: true }).click();
     await page.getByText('mg unknown').waitFor({ timeout: 5000 }).catch(() => {});
     home = await page.locator('body').innerText();
-    check('tea logs with an unknown amount and the estimate says it reads low', /mg unknown/.test(home) && /left out, so this reads low/.test(home));
+    check('tea logs as unknown and the estimate discloses its omission', /mg unknown/.test(home) && /unknown amount is left out/.test(home));
 
     // Remove the tea, then undo the removal.
     await page.getByRole('button', { name: /^Undo that drink/ }).waitFor();

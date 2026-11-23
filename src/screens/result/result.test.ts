@@ -92,3 +92,17 @@ it("draws the wings behind the body and uses one replacement mouth for Steady", 
   expect(bird.querySelectorAll(".result-mouth")).toHaveLength(1);
   expect(bird.querySelector(".result-lower-beak")).toBeNull();
 });
+
+it("keeps a later alcohol safety warning on a stored Steady ticket and its unnamed export", () => {
+  ticket({
+    assessment: { ...sampleAssessment, verdict: "steady", nudge: "carry-on", showSafetyLine: false },
+    sample: false,
+    alcoholLogged: true,
+    logged: "1 coffee",
+  });
+  expect(document.querySelector(".result-safety")?.textContent).toContain(SAFETY_TEXT);
+  const preview = document.querySelector(".result-preview-text")!;
+  expect(preview.textContent).toContain(SAFETY_TEXT);
+  expect(preview.textContent).not.toContain("1 coffee");
+  expect(preview.textContent).not.toContain("Carry on.");
+});
