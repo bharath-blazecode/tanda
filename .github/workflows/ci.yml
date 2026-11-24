@@ -48,6 +48,7 @@ jobs:
           sed -n '2p' <<< "$meta" | grep -Eiq '^application/json([[:space:]]*;|$)'
           sed -n '3p' <<< "$meta" | grep -Eiq '(^|,)[[:space:]]*no-store[[:space:]]*(,|$)'
           revision=$(jq -er 'select(.status == "ok") | .sha | strings | select(test("^([0-9a-f]{12}|[0-9a-f]{40})$"))' "$body")
+          echo "::notice title=Public health::HTTP 200, valid JSON, no-store, running SHA $revision"
           echo "Valid JSON, no-store, running SHA $revision" | tee -a "$GITHUB_STEP_SUMMARY"
 
   deploy:

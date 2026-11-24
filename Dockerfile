@@ -28,7 +28,8 @@ RUN --mount=type=cache,id=kachka-npm,target=/root/.npm npm ci --prefer-offline -
 
 FROM deps AS build
 COPY . .
-RUN npm run build
+# Vite preserves permissions on files copied from public/. The runtime runs as node.
+RUN npm run build && chmod -R a+rX dist
 
 FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS runtime
 ENV NODE_ENV=production TZ=UTC HOST=0.0.0.0 PORT=3333 NODE_OPTIONS=--max-old-space-size=384

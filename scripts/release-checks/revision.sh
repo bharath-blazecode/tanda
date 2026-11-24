@@ -44,3 +44,15 @@ check_image "$scratch/plain" --build-arg "BUILD_REVISION=$sha"
 refuse_build 'Missing valid source revision' "$scratch/plain"
 refuse_build 'Conflicting source revisions' --build-arg "BUILD_REVISION=${sha:0:12}" "$scratch/archive"
 echo 'Passed checkout, archive, verified build argument, missing and conflicting revision checks.'
+
+
+# A restrictive extraction umask must still produce assets readable by the runtime UID.
+chmod 600 "$scratch/archive/public/manifest.webmanifest"
+runtime=$(docker build -q --target runtime "$scratch/archive")
+docker run --rm --entrypoint sh "$runtime" -ec '
+  test "$(id -u)" != 0
+  test -r dist/manifest.webmanifest
+  test ! -w dist/manifest.webmanifest
+  test -z "$(find dist -type f ! -readable -print -quit)"
+'
+echo 'Passed restrictive-context runtime asset check.'
