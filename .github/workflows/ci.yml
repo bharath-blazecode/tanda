@@ -25,16 +25,42 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: node --test scripts/verify-release.test.mjs
       - run: npm run check
       - run: npm run build
+      - run: bash scripts/release-checks/revision.sh
+
+  production-health-read:
+    # Read-only pre-merge diagnostic requested for the Phase G candidate.
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 63
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Read the existing public health response
+        run: |
+          body="$RUNNER_TEMP/kachka-health.json"
+          meta=$(curl --silent --show-error --proto '=https' --max-time 15 --connect-timeout 5 \
+            -o "$body" -w '%{http_code}\n%header{content-type}\n%header{cache-control}' https://kachka.fun/api/health)
+          status=$(sed -n '1p' <<< "$meta")
+          echo "Public health HTTP $status"
+          test "$status" = 200
+          sed -n '2p' <<< "$meta" | grep -Eiq '^application/json([[:space:]]*;|$)'
+          sed -n '3p' <<< "$meta" | grep -Eiq '(^|,)[[:space:]]*no-store[[:space:]]*(,|$)'
+          revision=$(jq -er 'select(.status == "ok") | .sha | strings | select(test("^([0-9a-f]{12}|[0-9a-f]{40})$"))' "$body")
+          echo "::notice title=Public health::HTTP 200, valid JSON, no-store, running SHA $revision"
+          echo "Valid JSON, no-store, running SHA $revision" | tee -a "$GITHUB_STEP_SUMMARY"
 
   deploy:
     # Merging to main deploys, but only after the checks pass.
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 16
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Ask Dokploy to build and deploy this commit
         env:
           # A URL that can only redeploy this one app. Set by the repo owner under
@@ -54,3 +80,5 @@ jobs:
             -d "{\"ref\":\"refs/heads/main\",\"head_commit\":{\"id\":\"$GITHUB_SHA\",\"message\":\"deploy $GITHUB_SHA\"}}")
           echo "Dokploy answered $code"
           test "$code" -ge 200 && test "$code" -lt 300
+      - name: Confirm the deployed revision on the public origin
+        run: node scripts/verify-release.mjs https://kachka.fun "$GITHUB_SHA"

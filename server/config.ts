@@ -35,7 +35,7 @@ const Env = z.object({
     .default('claude-haiku-5-5'),
   VERDICT_ENABLED: z
     .enum(['true', 'false'])
-    .default('true')
+    .default('false')
     .transform((v) => v === 'true'),
   // Without a token the room reset route is disabled.
   ROOM_ADMIN_TOKEN: z.string().min(16).optional(),
@@ -92,6 +92,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     roomNames: parsed.ROOM_NAMES,
     redisUrl: parsed.REDIS_URL,
     version: parsed.APP_VERSION ?? pkg.version,
-    sha: parsed.GIT_SHA ?? shaFromFile() ?? 'dev',
+    // The revision baked into the image identifies the code, including an unknown build.
+    sha: shaFromFile() ?? parsed.GIT_SHA ?? 'dev',
   }
 }

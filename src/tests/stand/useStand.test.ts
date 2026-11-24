@@ -24,12 +24,15 @@ vi.mock("../../sensors/motion", async (importOriginal) => {
 import { getMotionAvailability } from "../../sensors/motion";
 import { useStand } from "./useStand";
 let beeps: number[];
+let fireEndCue: () => void;
+const closeAudio = vi.fn().mockResolvedValue(undefined);
 beforeEach(() => {
   vi.useFakeTimers();
   sensor.permission.mockResolvedValue("granted");
   sensor.stop.mockReset();
   sensor.listener = null;
   beeps = [];
+  closeAudio.mockClear();
   music.stop.mockReset();
   music.start.mockReset().mockReturnValue(music.stop);
   class AudioMock {
@@ -37,7 +40,7 @@ beforeEach(() => {
     currentTime = 0;
     destination = {};
     resume = vi.fn().mockResolvedValue(undefined);
-    close = vi.fn().mockResolvedValue(undefined);
+    close = closeAudio;
     createGain() {
       return {
         gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
@@ -54,8 +57,8 @@ beforeEach(() => {
         start() {
           beeps.push(frequency.value);
         },
-        stop() {},
-        onended: null,
+        stop() { fireEndCue = () => this.onended?.(); },
+        onended: null as (() => void) | null,
       };
     }
   }
@@ -105,6 +108,9 @@ it("finishes a 10 second capture after countdown with three countdown beeps and 
   expect(complete).toHaveBeenCalledOnce();
   expect(music.stop).toHaveBeenCalledOnce();
   expect(beeps).toEqual([660, 660, 660, 990, 990]);
+  expect(closeAudio).not.toHaveBeenCalled();
+  fireEndCue();
+  expect(closeAudio).toHaveBeenCalledOnce();
   expect(sensor.stop).toHaveBeenCalled();
 });
 it("completes a swaying capture with a tilt warning instead of asking for a retry", async () => {

@@ -7,7 +7,7 @@ import { SYSTEM_PROMPT } from './prompt'
 import { buildParams, verdictRoutes, type ClaudeClient, type VerdictDeps } from './verdict'
 
 const FAKE_KEY = 'test-key-not-real'
-const withKey = loadConfig({ ANTHROPIC_API_KEY: FAKE_KEY, VERDICT_DAILY_CALL_LIMIT: '6000', TRUSTED_PROXY_IPS: '127.0.0.1' })
+const withKey = loadConfig({ VERDICT_ENABLED: 'true', ANTHROPIC_API_KEY: FAKE_KEY, VERDICT_DAILY_CALL_LIMIT: '6000', TRUSTED_PROXY_IPS: '127.0.0.1' })
 
 const request: VerdictRequest = {
   deviceId: '00000000-0000-4000-8000-000000000000',
@@ -143,8 +143,15 @@ describe('POST /verdict', () => {
 
   it('requires an explicit paid-call budget even when a key is present', async () => {
     const { client, create } = fakeClient(async () => textReply('Logged.'))
-    const { call } = setup(loadConfig({ ANTHROPIC_API_KEY: FAKE_KEY }), { client })
+    const { call } = setup(loadConfig({ VERDICT_ENABLED: 'true', ANTHROPIC_API_KEY: FAKE_KEY }), { client })
     expect((await call()).source).toBe('canned')
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it('requires explicit enablement even with both a key and a positive budget', async () => {
+    const { client, create } = fakeClient(async () => textReply('Logged.'))
+    const config = loadConfig({ ANTHROPIC_API_KEY: FAKE_KEY, VERDICT_DAILY_CALL_LIMIT: '1' })
+    expect((await setup(config, { client }).call()).source).toBe('canned')
     expect(create).not.toHaveBeenCalled()
   })
 

@@ -53,7 +53,8 @@ export function createApp(config: Config, deps: AppDeps = {}) {
   app.all('/api/*', (c) => c.json({ error: 'not_found' }, 404))
 
   // The built SPA, then index.html for every client-side route.
-  app.use('*', serveStatic({ root: config.staticDir }))
+  app.use('*', serveStatic({ root: config.staticDir, precompressed: true }))
+  app.get('/assets/*', c => c.notFound())
   app.get('*', serveStatic({ root: config.staticDir, path: 'index.html' }))
 
   return app

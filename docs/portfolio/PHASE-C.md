@@ -68,11 +68,11 @@ now omit exception details. No production traffic generation or private-record i
    in staging with synthetic data. On a deletion 503 keep sharing off, repair Redis and retry.
    Avoid restoring expired or withdrawn board data from a backup. No production Redis role, flag
    or provider setting was observed. The environment's CONNECT proxy denied the public health GET.
-3. **Anthropic.** Keep `VERDICT_DAILY_CALL_LIMIT=0` unless paid commentary is wanted. In the
+3. **Anthropic.** Keep `VERDICT_ENABLED=false` and `VERDICT_DAILY_CALL_LIMIT=0` for built-in commentary. In the
    Anthropic Console select the dedicated Kachka workspace, set its supported spend limit under
    Limits, configure billing alerts and verify organization limits. If a hard cap is unavailable,
    leave paid calls disabled pending an approved budget. Set an integer 1–6000 only after setting
-   the external cap. Keep the key server-side. Monitor attempt counts, canned fallback reasons,
+   the external cap and receiving budget approval. Paid calls also require explicit enablement and a server-side key. Monitor attempt counts, canned fallback reasons,
    actual billed usage and provider retention/region terms.
 4. **Edge and monitoring.** Verify HTTP redirects and TLS/HSTS, delivered CSP, room no-store and
    hashed-asset headers in staging and through Cloudflare. Check permission-based browser flows
@@ -81,8 +81,8 @@ now omit exception details. No production traffic generation or private-record i
    and webhook outcomes without logging input, prompts, addresses, credentials or withdrawal IDs.
 5. **Deployment and rollback.** Protect main and require PR checks. A main push after merge runs
    tests/build then asks Dokploy to deploy. HTTP 2xx confirms webhook acceptance only. Verify
-   the running revision and healthy container in Dokploy. Supply GIT_SHA if the builder lacks
-   Git refs. Retain the prior known-good image and environment config. On failure pause rollout,
+   the running revision and healthy container in Dokploy. For Phase G images built without Git refs, supply the checked-out full SHA via
+   the build argument BUILD_REVISION. The baked value takes priority over runtime variables. Retain the prior known-good image and environment config. On failure pause rollout,
    redeploy the prior image and verify health and privacy behavior. Set VERDICT_ENABLED=false
    before rolling back if paid usage is a concern. Keep a failed withdrawal open across rollback.
    There is no database schema migration; the Redis TTL persists. Review pinned dependencies
