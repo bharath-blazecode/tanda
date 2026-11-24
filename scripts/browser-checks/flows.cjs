@@ -14,6 +14,9 @@ async function newPage(browser, { motion = false } = {}) {
   const requests = [];
   page.on('request', (r) => { if (r.url().includes('/api/')) requests.push({ url: r.url().replace(BASE, ''), method: r.method(), body: r.postData() }); });
   if (motion) {
+    // The positive journey needs a continuous fixture; motion.py separately exercises
+    // wall-clock scheduling, audio and deliberate gaps through the same analyzer.
+    await page.clock.install();
     await page.addInitScript(() => {
       // Synthetic gyroscope at about 60 Hz: small sway, so Stand Still produces a valid reading.
       let t = 0;
@@ -25,11 +28,21 @@ async function newPage(browser, { motion = false } = {}) {
           rotationRate: { alpha: 0.1, beta: 0.6 * Math.sin(t * 2.1), gamma: 0.5 * Math.cos(t * 1.3) },
           interval: 16,
         });
+        Object.defineProperty(e, 'timeStamp', { value: performance.now() });
         window.dispatchEvent(e);
       }, 16);
     });
   }
   return { ctx, page, requests };
+}
+
+async function acceptStand(page) {
+  await page.clock.runFor(14_000);
+  const accepted = page.getByRole('button', { name: 'Use this reading' });
+  const refused = page.getByRole('alert');
+  await accepted.or(refused).first().waitFor({ timeout: 25000 });
+  if (await refused.isVisible()) throw new Error('Synthetic Stand Still refused: ' + await refused.innerText());
+  await accepted.click();
 }
 
 async function playChoice(page) {
@@ -99,8 +112,7 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     await page.getByRole('button', { name: 'Nothing yet' }).click();
     // Stand still: start, wait for the 3 s countdown and 10 s capture.
     await page.getByRole('button', { name: /^Start/ }).first().click();
-    await page.getByRole('button', { name: 'Use this reading' }).waitFor({ timeout: 25000 });
-    await page.getByRole('button', { name: 'Use this reading' }).click();
+    await acceptStand(page);
     await playChoice(page);
     await page.getByRole('button', { name: 'Skip' }).click();
     await page.getByRole('heading', { name: /That is your baseline/ }).waitFor();
@@ -116,8 +128,7 @@ async function shot(page, name) { if (OUT) await page.screenshot({ path: `${OUT}
     await shot(page, 'flow-check-intro');
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.getByRole('button', { name: /^Start/ }).first().click();
-    await page.getByRole('button', { name: 'Use this reading' }).waitFor({ timeout: 25000 });
-    await page.getByRole('button', { name: 'Use this reading' }).click();
+    await acceptStand(page);
     await playChoice(page);
     await page.waitForURL('**/result');
     await page.waitForTimeout(1600);
