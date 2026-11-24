@@ -28,6 +28,27 @@ jobs:
       - run: node --test scripts/verify-release.test.mjs
       - run: npm run check
       - run: npm run build
+      - run: bash scripts/release-checks/revision.sh
+
+  production-health-read:
+    # Read-only pre-merge diagnostic requested for the Phase G candidate.
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 63
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Read the existing public health response
+        run: |
+          body="$RUNNER_TEMP/kachka-health.json"
+          meta=$(curl --silent --show-error --proto '=https' --max-time 15 --connect-timeout 5 \
+            -o "$body" -w '%{http_code}\n%header{content-type}\n%header{cache-control}' https://kachka.fun/api/health)
+          status=$(sed -n '1p' <<< "$meta")
+          echo "Public health HTTP $status"
+          test "$status" = 200
+          sed -n '2p' <<< "$meta" | grep -Eiq '^application/json([[:space:]]*;|$)'
+          sed -n '3p' <<< "$meta" | grep -Eiq '(^|,)[[:space:]]*no-store[[:space:]]*(,|$)'
+          revision=$(jq -er 'select(.status == "ok") | .sha | strings | select(test("^([0-9a-f]{12}|[0-9a-f]{40})$"))' "$body")
+          echo "Valid JSON, no-store, running SHA $revision" | tee -a "$GITHUB_STEP_SUMMARY"
 
   deploy:
     # Merging to main deploys, but only after the checks pass.

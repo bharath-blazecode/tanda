@@ -1,6 +1,7 @@
 # Only the application build inputs and the revision metadata used by gitsha.
 **
 !Dockerfile
+!.source-revision
 !index.html
 !package.json
 !package-lock.json

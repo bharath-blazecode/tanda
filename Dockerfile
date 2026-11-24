@@ -1,17 +1,25 @@
 # One image: the API and the built app, served from the same origin.
 # Dokploy builds with --target runtime, so the final stage must keep that name.
 
-# The commit this image was built from, for /api/health. Falls back to "unknown" outside a git checkout.
+# Require build-time source provenance for the revision reported by /api/health.
 FROM alpine/git@sha256:29cff25811f790b9f72fc266bf8009a5a911714c0e03c31c47339c50909d9aef AS gitsha
 WORKDIR /repo
 COPY . .
 # Object history, remotes, credentials and reflogs are excluded from the build context.
 # A builder that omits Git refs may inject the checked-out full SHA at build time.
 ARG BUILD_REVISION
-RUN mkdir -p .git/objects .git/refs && \
-    revision="$(git rev-parse --verify HEAD 2>/dev/null || true)" && \
-    revision="${revision:-$BUILD_REVISION}" && \
-    if echo "$revision" | grep -Eq '^[0-9a-f]{40}$'; then echo "$revision" | cut -c1-12; else echo unknown; fi > /git-sha
+RUN set -eu; mkdir -p .git/objects .git/refs; \
+    checkout="$(git rev-parse --verify HEAD 2>/dev/null || true)"; \
+    archive="$(cat .source-revision)"; \
+    if [ "$archive" = '$Format:%H$' ]; then archive=''; fi; \
+    revision="${checkout:-${archive:-${BUILD_REVISION:-}}}"; \
+    if ! printf '%s' "$revision" | grep -Eq '^[0-9a-f]{40}$' || [ "${#revision}" != 40 ]; then \
+      echo 'Missing valid source revision: build from a Git checkout, git archive, or pass its verified full SHA as BUILD_REVISION.' >&2; exit 1; \
+    fi; \
+    for supplied in "$archive" "${BUILD_REVISION:-}"; do \
+      if [ -n "$supplied" ] && [ "$supplied" != "$revision" ]; then echo 'Conflicting source revisions.' >&2; exit 1; fi; \
+    done; \
+    printf '%.12s\n' "$revision" > /git-sha
 
 FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS deps
 WORKDIR /app
