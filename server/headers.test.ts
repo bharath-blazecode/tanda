@@ -30,3 +30,30 @@ it('caches a built asset across navigations and revalidates an HTML fallback und
   expect((await staticApp.request('/assets/index-a19b82Zx.css')).headers.get('cache-control')).toContain('immutable')
   expect((await staticApp.request('/assets/oldfn-a19b82Zx.css')).headers.get('cache-control')).toBe('no-cache')
 })
+
+it('serves negotiated assets, 404s missing chunks and keeps client routes working', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const { brotliCompressSync, brotliDecompressSync } = await import('node:zlib')
+  const root = mkdtempSync(join(tmpdir(), 'kachka-assets-'))
+  try {
+    const asset = '/assets/index-test1234.js'
+    mkdirSync(join(root, 'assets'))
+    writeFileSync(join(root, asset), 'export {}')
+    writeFileSync(join(root, asset + '.br'), brotliCompressSync('export {}'))
+    writeFileSync(join(root, 'index.html'), '<title>Kachka</title>')
+    const service = createApp(loadConfig({ STATIC_DIR: root }))
+    const encoded = await service.request(asset, { headers: { 'Accept-Encoding': 'gzip, br' } })
+    expect(encoded.headers.get('content-encoding')).toBe('br')
+    expect(encoded.headers.get('vary')).toBe('Accept-Encoding')
+    expect(brotliDecompressSync(Buffer.from(await encoded.arrayBuffer())).toString()).toBe('export {}')
+    const plain = await service.request(asset)
+    expect(plain.headers.get('vary')).toBe('Accept-Encoding')
+    expect(await plain.text()).toBe('export {}')
+    expect((await service.request('/assets/expired-12345678.js')).status).toBe(404)
+    expect(await (await service.request('/home')).text()).toBe('<title>Kachka</title>')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

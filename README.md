@@ -101,9 +101,10 @@ The default local workflow needs **no API key or Redis service**. [.env.example]
 
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | Enables server-side Claude commentary. Leave unset for built-in lines. |
+| `ANTHROPIC_API_KEY` | Server-side key for optional Claude commentary. Leave unset for built-in lines. |
 | `VERDICT_MODEL` | `claude-haiku-5-5` by default; `claude-sonnet-5-5` is also supported. |
-| `VERDICT_ENABLED` | Set to `false` to use built-in commentary for every request. |
+| `VERDICT_ENABLED` | Defaults to `false` (built-in lines). Set `true` only with an approved provider spending cap. |
+| `VERDICT_DAILY_CALL_LIMIT` | Defaults to 0. Paid attempts require a positive per-process daily budget, enablement and a key. |
 | `REDIS_URL` | Optional room-board persistence across restarts. Without it, the board lives in memory. |
 | `ROOM_ADMIN_TOKEN` | Optional token of at least 16 characters for the room reset endpoint. Unset disables that endpoint. |
 | `ROOM_NAMES` | `typed` by default; `generated` substitutes generated nicknames on the room board. |

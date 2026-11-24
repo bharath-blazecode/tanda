@@ -24,8 +24,10 @@ export const browserHeaders: MiddlewareHandler = async (c, next) => {
   c.header('X-Content-Type-Options', 'nosniff')
   c.header('X-Frame-Options', 'DENY')
   c.header('Permissions-Policy', 'accelerometer=(self), gyroscope=(self), camera=(self), web-share=(self), microphone=(), geolocation=()')
-  // Only Vite's content-hashed assets are immutable. A missing asset may return the SPA shell.
+  // Only Vite's content-hashed assets are immutable.
   const builtAsset = /^\/assets\/[^/]+-[\w-]{8}\.(?:js|css|woff2?)$/.test(c.req.path)
+  if (builtAsset && /\.(?:js|css)$/.test(c.req.path) && !c.res.headers.has('Vary'))
+    c.header('Vary', 'Accept-Encoding')
   let cache = 'no-cache'
   if (c.req.path.startsWith('/api/')) cache = 'no-store'
   else if (builtAsset && c.res.status === 200 && !c.res.headers.get('content-type')?.startsWith('text/html'))

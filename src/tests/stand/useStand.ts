@@ -80,9 +80,14 @@ export function useStand(
     } catch {
       setAudioWarning(true);
     }
-    const beep = (frequency: number, duration: number) => {
+    function closeAudio() {
+      if (audio && audio.state !== "closed") void audio.close().catch(() => {});
+      audio = null;
+    }
+    const beep = (frequency: number, duration: number, ended?: () => void) => {
       if (!audio || audio.state !== "running") {
         setAudioWarning(true);
+        ended?.();
         return;
       }
       const oscillator = audio.createOscillator();
@@ -100,6 +105,7 @@ export function useStand(
         oscillators.delete(oscillator);
         oscillator.disconnect();
         gain.disconnect();
+        ended?.();
       };
       oscillator.start();
       oscillator.stop(audio.currentTime + duration);
@@ -113,7 +119,7 @@ export function useStand(
           oscillator.stop();
         } catch {}
       });
-      if (audio && audio.state !== "closed") void audio.close().catch(() => {});
+      closeAudio();
     };
     const fail = (message: string) => {
       cancel();
@@ -194,7 +200,7 @@ export function useStand(
           unsubscribe();
           clearInterval(timer);
           stopMusic();
-          beep(990, 0.4);
+          beep(990, 0.4, closeAudio);
           navigator.vibrate?.([80, 70, 80]);
           const result = analyze(captured, startedAt / 1000);
           if (!result.metrics.valid) {

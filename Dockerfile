@@ -6,7 +6,12 @@ FROM alpine/git@sha256:29cff25811f790b9f72fc266bf8009a5a911714c0e03c31c47339c509
 WORKDIR /repo
 COPY . .
 # Object history, remotes, credentials and reflogs are excluded from the build context.
-RUN mkdir -p .git/objects .git/refs && (git rev-parse --verify HEAD 2>/dev/null || echo unknown) | cut -c1-12 > /git-sha
+# A builder that omits Git refs may inject the checked-out full SHA at build time.
+ARG BUILD_REVISION
+RUN mkdir -p .git/objects .git/refs && \
+    revision="$(git rev-parse --verify HEAD 2>/dev/null || true)" && \
+    revision="${revision:-$BUILD_REVISION}" && \
+    if echo "$revision" | grep -Eq '^[0-9a-f]{40}$'; then echo "$revision" | cut -c1-12; else echo unknown; fi > /git-sha
 
 FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS deps
 WORKDIR /app
@@ -27,5 +32,5 @@ COPY --from=gitsha /git-sha ./.git-sha
 USER node
 EXPOSE 3333
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
-  CMD ["node", "-e", "fetch('http://127.0.0.1:3333/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+  CMD ["node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || '3333') + '/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 CMD ["node", "dist-server/index.cjs"]
